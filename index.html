@@ -49,7 +49,6 @@ button:disabled{opacity:.5;cursor:default}
 .form-field>label,.field-label-main{display:block;font-weight:650;margin-bottom:7px}
 .hint{color:var(--muted);font-size:12px;margin-top:6px}
 .tags{display:flex;flex-wrap:wrap;gap:8px}
-.check{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#22242b;border:1px solid var(--border);border-radius:8px}
 .property-row{display:grid;grid-template-columns:1fr 1fr auto;gap:7px;margin-bottom:9px}
 .property-row .remove{padding:0 10px;background:none;border:1px solid var(--border);border-radius:8px}
 .related button{margin:0 7px 7px 0}
@@ -75,6 +74,9 @@ button:disabled{opacity:.5;cursor:default}
 .picker-create-form{display:flex;gap:7px;margin-top:8px}
 .picker-create-form input{min-width:0}
 .picker-create-form button{flex-shrink:0}
+.record-heading{display:flex;align-items:center;gap:12px;margin:8px 0}
+.record-heading .record-icon{width:52px;height:52px;font-size:27px}
+.filter-hint{margin-top:9px;color:var(--muted);font-size:12px}
 footer{padding:18px;color:var(--muted);font-size:11px;border-top:1px solid var(--border)}
 [hidden]{display:none!important}
 @media(max-width:420px){.property-row{grid-template-columns:1fr 1fr}.property-row .remove{grid-column:span 2;padding:8px}.toolbar{flex-wrap:wrap}.toolbar>*{flex-basis:100%}}
@@ -98,8 +100,9 @@ footer{padding:18px;color:var(--muted);font-size:11px;border-top:1px solid var(-
     <input id="search" type="search" placeholder="Search records..." autocomplete="off">
     <button id="new-record" class="primary">+ New Record</button>
   </div>
-  <div class="section-title"><h3>Categories</h3></div>
+  <div class="section-title"><h3>Types</h3></div>
   <div id="categories" class="categories"></div>
+  <p class="filter-hint" id="filter-hint">Showing all types.</p>
   <div class="section-title"><h3>Records</h3><span id="count" class="muted"></span></div>
   <div id="records" class="records"></div>
 </section>
@@ -117,6 +120,11 @@ footer{padding:18px;color:var(--muted);font-size:11px;border-top:1px solid var(-
     <div class="form-field">
       <label for="f-name">Name *</label>
       <input id="f-name" required maxlength="100" placeholder="e.g. Leaf Bow">
+    </div>
+    <div class="form-field">
+      <label for="f-icon">Icon / Emoji</label>
+      <input id="f-icon" maxlength="16" placeholder="e.g. ⚔️, 🐉, 🌲">
+      <p class="hint">Leave empty to use the default icon for this record type.</p>
     </div>
     <div class="form-field">
       <label for="f-type">Type *</label>
@@ -178,7 +186,7 @@ const starterRecords = [
 
 let records = [];
 let catalogs = {tags:[],properties:[]};
-let activeFilter = "All";
+let activeFilters = [];
 let editingId = null;
 let currentRecordId = null;
 let selectedTags = [];
@@ -186,6 +194,8 @@ let selectedRelated = [];
 let tagPickerOpen = false;
 let relatedPickerOpen = false;
 let tagCreateOpen = false;
+let tagSearch = "";
+let relatedSearch = "";
 
 function uid(){
  return "r-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,8);
@@ -200,6 +210,7 @@ function findRecord(id){return records.find(r=>r.id===id)}
 function recordIcon(type){
  return ({Mob:"👾",Item:"⚔️",Material:"💎",Area:"🌍",Recipe:"📜",Effect:"✨",Skill:"🔮",NPC:"🧑",Boss:"☠️"})[type] || "◆";
 }
+function displayIcon(record){return record.icon&&record.icon.trim()?record.icon:recordIcon(record.type)}
 function cloneStarterRecords(){
  return starterRecords.map(r=>({...r,tags:[...r.tags],properties:r.properties.map(p=>({...p})),related:[...r.related]}));
 }
@@ -235,9 +246,7 @@ function loadCatalogs(sourceRecords=records){
  try{
   const raw=localStorage.getItem(CATALOG_STORAGE_KEY);
   if(raw!==null)saved=JSON.parse(raw);
- }catch(error){
-  console.warn("Could not load catalogs:",error);
- }
+ }catch(error){console.warn("Could not load catalogs:",error)}
  catalogs={
   tags:Array.isArray(saved?.tags)?saved.tags.filter(item=>item&&item.name).map(item=>({name:String(item.name),types:Array.isArray(item.types)?item.types.map(String):[]})):[],
   properties:Array.isArray(saved?.properties)?saved.properties.filter(item=>item&&item.name).map(item=>({name:String(item.name),types:Array.isArray(item.types)?item.types.map(String):[]})):[]
@@ -246,13 +255,8 @@ function loadCatalogs(sourceRecords=records){
  return catalogs;
 }
 function saveCatalogs(){
- try{
-  localStorage.setItem(CATALOG_STORAGE_KEY,JSON.stringify(catalogs));
-  return true;
- }catch(error){
-  console.warn("Could not save catalogs:",error);
-  return false;
- }
+ try{localStorage.setItem(CATALOG_STORAGE_KEY,JSON.stringify(catalogs));return true}
+ catch(error){console.warn("Could not save catalogs:",error);return false}
 }
 function allTags(type=""){
  syncCatalogs();
@@ -271,6 +275,7 @@ function loadRecords(){
   return parsed.map(r=>({
    id:String(r.id||uid()),
    name:String(r.name||"Untitled"),
+   icon:typeof r.icon==="string"?r.icon:"",
    type:String(r.type||"Item"),
    category:String(r.category||""),
    description:String(r.description||""),
@@ -298,28 +303,35 @@ function saveRecords(){
   return false;
  }
 }
-let tagSearch = "";
-let relatedSearch = "";
-
 function renderCategories(){
- const types=unique(records.map(r=>r.type));
- const options=["All",...types];
- $("categories").innerHTML=options.map(type=>
-  `<button class="category ${activeFilter===type?"active":""}" data-filter="${esc(type)}">${esc(type==="All"?"All":type+"s")}</button>`
- ).join("");
+ const types=unique([...TYPES,...records.map(r=>r.type)]);
+ const allActive=activeFilters.length===0;
+ $("categories").innerHTML=[
+  `<button class="category ${allActive?"active":""}" data-filter="__all__">All</button>`,
+  ...types.map(type=>`<button class="category ${activeFilters.includes(type)?"active":""}" data-filter="${esc(type)}">${esc(type)}</button>`)
+ ].join("");
  $("categories").querySelectorAll("button").forEach(btn=>{
   btn.addEventListener("click",()=>{
-   activeFilter=btn.dataset.filter;
+   const type=btn.dataset.filter;
+   if(type==="__all__"){
+    activeFilters=[];
+   }else{
+    if(activeFilters.includes(type))activeFilters=activeFilters.filter(t=>t!==type);
+    else activeFilters.push(type);
+   }
    renderCategories();
    renderRecords();
   });
  });
+ $("filter-hint").textContent=allActive
+  ?"Showing all types. Select multiple types to combine filters."
+  :"Filtering by: "+activeFilters.join(", ");
 }
 function renderRecords(){
  const query=$("search").value.trim().toLowerCase();
  const filtered=records.filter(r=>{
   const text=[r.name,r.type,r.category,r.description,...r.tags,...r.properties.map(p=>p.name+" "+p.value)].join(" ").toLowerCase();
-  return (activeFilter==="All"||r.type===activeFilter)&&text.includes(query);
+  return (!activeFilters.length||activeFilters.includes(r.type))&&text.includes(query);
  });
  $("count").textContent=filtered.length+" shown";
  if(!filtered.length){
@@ -328,7 +340,7 @@ function renderRecords(){
  }
  $("records").innerHTML=filtered.map(r=>`
   <button class="record" data-open="${esc(r.id)}">
-   <span class="record-icon">${recordIcon(r.type)}</span>
+   <span class="record-icon">${esc(displayIcon(r))}</span>
    <span class="record-info">
     <strong>${esc(r.name)}</strong>
     <p>${esc(r.type)}${r.category?" · "+esc(r.category):""}${r.tags.length?" · "+esc(r.tags.join(", ")):""}</p>
@@ -358,8 +370,10 @@ function openRecord(id){
  const related=r.related.map(findRecord).filter(Boolean);
  $("detail-content").innerHTML=`
   <p class="eyebrow">${esc(r.type.toUpperCase())}</p>
-  <h2>${esc(r.name)}</h2>
-  <p class="muted">${esc(r.category||"Uncategorized")}</p>
+  <div class="record-heading">
+   <span class="record-icon">${esc(displayIcon(r))}</span>
+   <div><h2>${esc(r.name)}</h2><p class="muted">${esc(r.category||"Uncategorized")}</p></div>
+  </div>
   <div class="actions">
    <button id="edit-record" class="primary">Edit Record</button>
    <button id="delete-record" class="danger">Delete</button>
@@ -367,7 +381,7 @@ function openRecord(id){
   <div class="panel"><h3>Description</h3><p style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(r.description||"No description.")}</p></div>
   <div class="panel"><h3>Properties</h3>${properties}</div>
   <div class="panel"><h3>Tags</h3><div class="tags">${tags}</div></div>
-  <div class="panel"><h3>Related Records (${related.length})</h3><div id="detail-related" class="related">${related.length?related.map(x=>`<button class="chip" data-related="${esc(x.id)}">${esc(x.name)} · ${esc(x.type)}</button>`).join(""):'<p class="muted">No related records.</p>'}</div></div>`;
+  <div class="panel"><h3>Related Records (${related.length})</h3><div id="detail-related" class="related">${related.length?related.map(x=>`<button class="chip" data-related="${esc(x.id)}">${esc(displayIcon(x))} ${esc(x.name)} · ${esc(x.type)}</button>`).join(""):'<p class="muted">No related records.</p>'}</div></div>`;
  $("edit-record").addEventListener("click",()=>showForm(r));
  $("delete-record").addEventListener("click",()=>deleteRecord(r.id));
  $("detail-related").querySelectorAll("[data-related]").forEach(btn=>btn.addEventListener("click",()=>openRecord(btn.dataset.related)));
@@ -397,7 +411,7 @@ function renderPropertyRow(prop={}){
 }
 
 // TAG PICKER
-function renderTagPicker(focusSearch=false){
+function renderTagPicker(){
  const root=$("tag-picker");
  const options=allTags($("f-type").value).filter(tag=>
   !selectedTags.includes(tag)&&tag.toLowerCase().includes(tagSearch.toLowerCase())
@@ -428,7 +442,7 @@ function renderTagPicker(focusSearch=false){
  root.querySelector("#tag-toggle").addEventListener("click",()=>{
   tagPickerOpen=!tagPickerOpen;
   tagCreateOpen=false;
-  renderTagPicker(tagPickerOpen);
+  renderTagPicker();
  });
  root.querySelectorAll("[data-remove-tag]").forEach(btn=>btn.addEventListener("click",()=>{
   selectedTags=selectedTags.filter(t=>t!==btn.dataset.removeTag);
@@ -437,27 +451,24 @@ function renderTagPicker(focusSearch=false){
  root.querySelectorAll("[data-add-tag]").forEach(btn=>btn.addEventListener("click",()=>{
   if(!selectedTags.includes(btn.dataset.addTag))selectedTags.push(btn.dataset.addTag);
   tagSearch="";
-  renderTagPicker(true);
+  renderTagPicker();
+  $("tag-search")?.focus();
  }));
  const search=root.querySelector("#tag-search");
- if(search){
-  search.addEventListener("input",()=>{
-   tagSearch=search.value;
-   const start=search.selectionStart;
-   renderTagPicker(true);
-   const next=$("tag-search");
-   next.focus();
-   next.setSelectionRange(start,start);
-  });
- }
- const createButton=root.querySelector("#show-create-tag");
- if(createButton)createButton.addEventListener("click",()=>{
+ if(search)search.addEventListener("input",()=>{
+  tagSearch=search.value;
+  const start=search.selectionStart;
+  renderTagPicker();
+  const next=$("tag-search");
+  next?.focus();
+  next?.setSelectionRange(start,start);
+ });
+ root.querySelector("#show-create-tag")?.addEventListener("click",()=>{
   tagCreateOpen=true;
   renderTagPicker();
   $("new-tag-name")?.focus();
  });
- const createForm=root.querySelector("#create-tag-form");
- if(createForm)createForm.addEventListener("submit",event=>{
+ root.querySelector("#create-tag-form")?.addEventListener("submit",event=>{
   event.preventDefault();
   const name=$("new-tag-name").value.trim();
   if(!name)return;
@@ -473,7 +484,7 @@ function renderTagPicker(focusSearch=false){
 }
 
 // RELATED RECORDS PICKER
-function renderRelatedPicker(focusSearch=false){
+function renderRelatedPicker(){
  const root=$("related-picker");
  const options=records.filter(r=>
   r.id!==editingId&&
@@ -482,7 +493,7 @@ function renderRelatedPicker(focusSearch=false){
  );
  root.innerHTML=`
   <div class="selected-items">${selectedRelated.map(id=>findRecord(id)).filter(Boolean).map(r=>
-   `<span class="selected-item"><span>${esc(r.name)} <span class="muted">· ${esc(r.type)}</span></span><button type="button" data-remove-related="${esc(r.id)}" aria-label="Remove ${esc(r.name)}">×</button></span>`
+   `<span class="selected-item"><span>${esc(displayIcon(r))} ${esc(r.name)} <span class="muted">· ${esc(r.type)}</span></span><button type="button" data-remove-related="${esc(r.id)}" aria-label="Remove ${esc(r.name)}">×</button></span>`
   ).join("")}</div>
   <div class="picker">
    <button type="button" class="picker-trigger" id="related-toggle">
@@ -492,14 +503,15 @@ function renderRelatedPicker(focusSearch=false){
     <div class="picker-menu">
      <input class="picker-search" id="related-search" type="search" placeholder="Search records by name, type or category..." value="${esc(relatedSearch)}" autocomplete="off">
      <div class="picker-options">
-      ${options.map(r=>`<button type="button" class="picker-option" data-add-related="${esc(r.id)}">${esc(r.name)} <span class="muted">· ${esc(r.type)}${r.category?" · "+esc(r.category):""}</span></button>`).join("")}
+      ${options.map(r=>`<button type="button" class="picker-option" data-add-related="${esc(r.id)}">${esc(displayIcon(r))} ${esc(r.name)} <span class="muted">· ${esc(r.type)}${r.category?" · "+esc(r.category):""}</span></button>`).join("")}
       ${options.length?"":'<div class="picker-empty">No matching records found.</div>'}
      </div>
     </div>`:""}
   </div>`;
  root.querySelector("#related-toggle").addEventListener("click",()=>{
   relatedPickerOpen=!relatedPickerOpen;
-  renderRelatedPicker(relatedPickerOpen);
+  renderRelatedPicker();
+  if(relatedPickerOpen)$("related-search")?.focus();
  });
  root.querySelectorAll("[data-remove-related]").forEach(btn=>btn.addEventListener("click",()=>{
   selectedRelated=selectedRelated.filter(id=>id!==btn.dataset.removeRelated);
@@ -508,19 +520,18 @@ function renderRelatedPicker(focusSearch=false){
  root.querySelectorAll("[data-add-related]").forEach(btn=>btn.addEventListener("click",()=>{
   if(!selectedRelated.includes(btn.dataset.addRelated))selectedRelated.push(btn.dataset.addRelated);
   relatedSearch="";
-  renderRelatedPicker(true);
+  renderRelatedPicker();
+  $("related-search")?.focus();
  }));
  const search=root.querySelector("#related-search");
- if(search){
-  search.addEventListener("input",()=>{
-   relatedSearch=search.value;
-   const start=search.selectionStart;
-   renderRelatedPicker(true);
-   const next=$("related-search");
-   next.focus();
-   next.setSelectionRange(start,start);
-  });
- }
+ if(search)search.addEventListener("input",()=>{
+  relatedSearch=search.value;
+  const start=search.selectionStart;
+  renderRelatedPicker();
+  const next=$("related-search");
+  next?.focus();
+  next?.setSelectionRange(start,start);
+ });
 }
 
 function showForm(record=null){
@@ -531,6 +542,7 @@ function showForm(record=null){
  $("form-title").textContent=record?"Edit Record":"New Record";
  $("form-message").hidden=true;
  $("f-name").value=record?.name||"";
+ $("f-icon").value=record?.icon||"";
  $("f-description").value=record?.description||"";
  const types=unique([...TYPES,...records.map(r=>r.type)]);
  $("f-type").innerHTML=types.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("")+'<option value="__new__">+ Create new type...</option>';
@@ -546,9 +558,9 @@ function showForm(record=null){
   const isNew=$("f-type").value==="__new__";
   $("f-new-type").hidden=!isNew;
   if(isNew)$("f-new-type").focus();
-  renderTagPicker();
   $("property-rows").innerHTML="";
   (record?.properties?.length?record.properties:[{name:"",value:""}]).forEach(renderPropertyRow);
+  renderTagPicker();
  };
  $("f-category").onchange=()=>{
   const isNew=$("f-category").value==="__new__";
@@ -619,13 +631,15 @@ $("record-form").addEventListener("submit",event=>{
   }
   const related=unique(selectedRelated);
   const id=editingId||uid();
-  const old=findRecord(id);
-  const updated={id,name,type,category,description:$("f-description").value.trim(),tags,properties,related};
-  if(old){
-   records=records.map(r=>r.id===id?updated:r);
-  }else{
-   records.push(updated);
-  }
+  const updated={
+   id,name,
+   icon:$("f-icon").value.trim(),
+   type,category,
+   description:$("f-description").value.trim(),
+   tags,properties,related
+  };
+  if(findRecord(id))records=records.map(r=>r.id===id?updated:r);
+  else records.push(updated);
   records.forEach(r=>{
    if(r.id===id)return;
    r.related=r.related.filter(link=>link!==id);
@@ -640,7 +654,7 @@ $("record-form").addEventListener("submit",event=>{
  }
 });
 
-// Preserve existing records and rebuild catalogs without changing the old storage key.
+// Keep the existing storage key and load saved records before rendering.
 records=loadRecords();
 loadCatalogs(records);
 saveCatalogs();
