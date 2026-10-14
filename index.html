@@ -15,11 +15,9 @@ button{cursor:pointer;color:inherit}
 header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px;border-bottom:1px solid var(--border)}
 .brand{display:flex;align-items:center;gap:12px}
 .logo{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:var(--accent);color:#191324;font-size:22px;font-weight:800}
-h1,h2,h3,p{margin:0}
-h1{font-size:18px}h2{font-size:25px;margin-bottom:6px}
+h1,h2,h3,p{margin:0}h1{font-size:18px}h2{font-size:25px;margin-bottom:6px}
 .sub,.muted{color:var(--muted);font-size:12px}
-main{padding:22px 18px}
-.eyebrow{color:var(--accent);font-size:10px;letter-spacing:1.5px;margin-bottom:8px}
+main{padding:22px 18px}.eyebrow{color:var(--accent);font-size:10px;letter-spacing:1.5px;margin-bottom:8px}
 .section-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:26px 0 13px}
 input,select,textarea{width:100%;padding:12px;background:var(--panel);border:1px solid var(--border);border-radius:9px;color:var(--text);outline:none}
 textarea{resize:vertical;min-height:90px}
@@ -29,154 +27,123 @@ button.secondary,.chip,.category{background:var(--panel);border:1px solid var(--
 button.primary,button.secondary,.chip,.category{padding:10px 13px;border-radius:9px}
 button.danger{color:var(--danger);background:transparent;border:1px solid #573338;padding:9px 12px;border-radius:9px}
 button:disabled{opacity:.5;cursor:default}
-.toolbar{display:flex;gap:9px;margin-top:16px}
-.toolbar>*{flex:1;min-width:0}
-.categories,.tags,.selected-items{display:flex;flex-wrap:wrap;gap:8px}
+.toolbar{display:flex;gap:9px;margin-top:16px}.toolbar>*{flex:1;min-width:0}
+.categories,.tags,.selected-items,.filter-chip-row{display:flex;flex-wrap:wrap;gap:8px}
 .category{font-size:12px;padding:8px 11px}
 .category.active,.filter-chip.active{color:var(--accent);border-color:var(--accent);background:#252130}
 .records{display:grid;gap:9px}
-.record{display:flex;align-items:center;gap:12px;width:100%;padding:13px;text-align:left;background:var(--panel);border:1px solid var(--border);border-radius:12px}
+.record-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.record{display:flex;align-items:center;gap:12px;width:100%;padding:13px;text-align:left;background:transparent;border:0}
 .record-icon{display:grid;place-items:center;flex-shrink:0;width:42px;height:42px;border-radius:10px;background:#292532;font-size:21px}
-.record-info{flex:1;min-width:0}.record-info strong{display:block;margin-bottom:5px}.record-info p{color:var(--muted);font-size:12px;overflow-wrap:anywhere}
-.record-arrow{color:var(--muted);font-size:20px}
+.record-info{flex:1;min-width:0}.record-info strong{display:block;margin-bottom:5px;overflow-wrap:anywhere}
+.record-info p{color:var(--muted);font-size:12px;overflow-wrap:anywhere}.record-arrow{color:var(--muted);font-size:20px}
+.record-actions{display:flex;justify-content:flex-end;padding:0 12px 10px}
+.preview-toggle{background:transparent;border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px}
+.preview-toggle.active{color:var(--accent);border-color:var(--accent)}
+.record-preview{padding:0 13px 13px;border-top:1px solid var(--border)}
+.preview-property{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);overflow-wrap:anywhere}
+.preview-property:last-child{border-bottom:0}
 .back{padding:8px 0;margin-bottom:20px;background:none;border:0;color:var(--accent)}
 .panel{padding:16px;margin-top:16px;background:var(--panel);border:1px solid var(--border);border-radius:12px}
-.panel h3{margin-bottom:14px}
-.field{padding:12px 0;border-bottom:1px solid var(--border);overflow-wrap:anywhere}
-.field:last-child{border-bottom:0}
-.field-label{display:block;color:var(--muted);font-size:12px;margin-bottom:5px}
-.form-field{margin-bottom:18px}
-.form-field>label,.field-label-main{display:block;font-weight:650;margin-bottom:7px}
+.panel h3{margin-bottom:14px}.field{padding:12px 0;border-bottom:1px solid var(--border);overflow-wrap:anywhere}
+.field:last-child{border-bottom:0}.field-label{display:block;color:var(--muted);font-size:12px;margin-bottom:5px}
+.form-field{margin-bottom:18px}.form-field>label{display:block;font-weight:650;margin-bottom:7px}
 .hint{color:var(--muted);font-size:12px;margin-top:6px}
 .property-row{display:grid;grid-template-columns:1fr 1fr auto;gap:7px;margin-bottom:9px}
 .property-row .remove{padding:0 10px;background:none;border:1px solid var(--border);border-radius:8px}
-.related button{margin:0 7px 7px 0}
-.related .chip{color:var(--accent)}
-.empty{color:var(--muted);padding:25px 8px;text-align:center}
+.related button{margin:0 7px 7px 0}.empty{color:var(--muted);padding:25px 8px;text-align:center}
 .notice{padding:12px;margin-bottom:14px;background:#292532;border:1px solid #393047;border-radius:9px;font-size:12px}
-.actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:22px}
-.actions button{flex:1}
-.picker{position:relative}
+.actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:22px}.actions button{flex:1}
 .picker-trigger{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;background:var(--panel);border:1px solid var(--border);border-radius:9px;text-align:left}
 .picker-menu{position:relative;margin-top:7px;padding:9px;background:#1b1c22;border:1px solid var(--border);border-radius:11px}
-.picker-search{margin-bottom:8px}
-.picker-options{display:grid;gap:4px;max-height:220px;overflow-y:auto}
+.picker-search{margin-bottom:8px}.picker-options{display:grid;gap:4px;max-height:220px;overflow-y:auto}
 .picker-option{width:100%;padding:10px;text-align:left;background:transparent;border:0;border-radius:7px;overflow-wrap:anywhere}
-.picker-option:hover,.picker-option:focus{background:#302b3c;outline:none}
-.picker-option.create{color:var(--accent);border-top:1px solid var(--border);margin-top:4px;padding-top:12px}
-.picker-empty{padding:12px;color:var(--muted);font-size:12px}
-.selected-item{display:inline-flex;align-items:center;gap:7px;max-width:100%;padding:6px 9px;background:#292532;border:1px solid #393047;border-radius:8px;overflow-wrap:anywhere}
-.selected-item button{flex-shrink:0;padding:0 2px;color:var(--accent);background:none;border:0;font-size:17px;line-height:1}
-.picker-create-form{display:flex;gap:7px;margin-top:8px}
-.picker-create-form input{min-width:0}
+.picker-option:hover{background:#302b3c}.picker-option.create{color:var(--accent);border-top:1px solid var(--border);margin-top:4px;padding-top:12px}
+.picker-empty{padding:12px;color:var(--muted);font-size:12px}.picker-create-form{display:flex;gap:7px;margin-top:8px}
+.selected-items{margin-top:8px}.selected-item{display:inline-flex;align-items:center;gap:7px;max-width:100%;padding:6px 9px;background:#292532;border:1px solid #393047;border-radius:8px;overflow-wrap:anywhere}
+.selected-item button{flex-shrink:0;padding:0 2px;color:var(--accent);background:none;border:0;font-size:17px}
 .record-heading{display:flex;align-items:center;gap:12px;margin:8px 0}
 .record-heading .record-icon{width:52px;height:52px;font-size:27px}
 .filter-hint{margin-top:9px;color:var(--muted);font-size:12px}
 .filter-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .filter-grid label{display:grid;gap:7px;font-weight:600;min-width:0}
-.filter-grid .hint{font-weight:400}
+.filter-group{margin-top:14px}.filter-group>label{display:block;font-weight:650;margin-bottom:7px}
+.filter-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.filter-heading button{white-space:nowrap}
 .filter-chip{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px}
-.filter-chip-row{display:flex;flex-wrap:wrap;gap:7px}
-.filter-group{margin-top:14px}
-.filter-group>label{display:block;font-weight:650;margin-bottom:7px}
+.condition-row{display:grid;grid-template-columns:1.2fr .8fr 1fr auto;gap:7px;margin:8px 0}
+.condition-row .remove{padding:0 10px;background:none;border:1px solid var(--border);border-radius:8px}
+.saved-filter-row{display:flex;gap:8px;align-items:center;margin-top:12px}.saved-filter-row select{flex:1;min-width:0}
+.relationship-group{margin-top:15px}.relationship-group h4{color:var(--muted);font-size:12px;margin:0 0 8px}
+.relationship-item{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:7px 0}
+.relationship-item button{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:9px;text-align:left}
+.relationship-item .relation-type{color:var(--muted);font-size:11px}
 footer{padding:18px;color:var(--muted);font-size:11px;border-top:1px solid var(--border)}
 [hidden]{display:none!important}
-@media(max-width:480px){.property-row{grid-template-columns:1fr 1fr}.property-row .remove{grid-column:span 2;padding:8px}.toolbar{flex-wrap:wrap}.toolbar>*{flex-basis:100%}.filter-grid{grid-template-columns:1fr}}
+@media(max-width:480px){
+ .property-row{grid-template-columns:1fr 1fr}.property-row .remove{grid-column:span 2;padding:8px}
+ .toolbar{flex-wrap:wrap}.toolbar>*{flex-basis:100%}.filter-grid{grid-template-columns:1fr}
+ .condition-row{grid-template-columns:1fr 1fr}.saved-filter-row{flex-wrap:wrap}
+ .saved-filter-row select{flex-basis:100%}
+}
 </style>
 </head>
 <body>
 <div class="app">
-<header>
-  <div class="brand"><div class="logo">R</div><div><h1>RPG Codex</h1><p class="sub">Game Development Database</p></div></div>
-  <span class="sub">PROTOTYPE</span>
-</header>
+<header><div class="brand"><div class="logo">R</div><div><h1>RPG Codex</h1><p class="sub">Game Development Database</p></div></div><span class="sub">PROTOTYPE</span></header>
 <main>
 <section id="home">
-  <p class="eyebrow">YOUR WORKSPACE</p>
-  <h2>Game Database</h2>
-  <p class="muted">Everything connected, in one place.</p>
-  <div class="toolbar">
-    <input id="search" type="search" placeholder="Search records..." autocomplete="off">
-    <button id="new-record" class="primary">+ New Record</button>
+ <p class="eyebrow">YOUR WORKSPACE</p><h2>Game Database</h2><p class="muted">Everything connected, in one place.</p>
+ <div class="toolbar"><input id="search" type="search" placeholder="Search records..." autocomplete="off"><button id="new-record" class="primary">+ New Record</button></div>
+ <div class="section-title"><h3>Types</h3></div><div id="categories" class="categories"></div><p class="filter-hint" id="filter-hint">Showing all types.</p>
+ <div class="panel">
+  <div class="filter-heading"><h3 style="margin:0">Advanced Filters</h3><button id="toggle-filters" class="secondary" type="button">Show filters</button></div>
+  <div id="advanced-filter-content" hidden>
+   <div class="filter-grid">
+    <div class="filter-group"><label for="filter-category">Category</label><select id="filter-category"><option value="">All categories</option></select></div>
+    <div class="filter-group"><label for="filter-subcategory">Subcategory</label><select id="filter-subcategory"><option value="">All subcategories</option></select></div>
+    <div class="filter-group"><label>Tags</label><div id="filter-tags" class="filter-chip-row"></div></div>
+    <div class="filter-group"><label for="sort-records">Sort by</label><select id="sort-records"><option value="name-asc">Name A–Z</option><option value="name-desc">Name Z–A</option><option value="type">Type</option><option value="category">Category</option><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select></div>
+   </div>
+   <div class="filter-group"><div class="filter-heading"><label style="margin:0">Property conditions</label><button id="add-filter-condition" type="button" class="secondary">+ Add condition</button></div><p class="hint">All conditions must match. Numeric operators work with numeric values.</p><div id="property-conditions"></div></div>
+   <div class="filter-group"><label for="saved-filters">Saved filters</label><div class="saved-filter-row"><select id="saved-filters"><option value="">Choose a saved filter...</option></select><button id="apply-saved-filter" class="secondary" type="button">Apply</button><button id="save-filter" class="primary" type="button">Save current</button><button id="delete-saved-filter" class="danger" type="button">Delete</button></div></div>
+   <button type="button" id="clear-filters" class="secondary" style="margin-top:14px">Clear filters</button>
   </div>
-  <div class="section-title"><h3>Types</h3></div>
-  <div id="categories" class="categories"></div>
-  <p class="filter-hint" id="filter-hint">Showing all types.</p>
-  <div class="panel">
-    <h3>Advanced Filters</h3>
-    <div class="filter-grid">
-      <div class="filter-group">
-        <label for="filter-category">Category</label>
-        <select id="filter-category"><option value="">All categories</option></select>
-      </div>
-      <div class="filter-group">
-        <label for="filter-subcategory">Subcategory</label>
-        <select id="filter-subcategory"><option value="">All subcategories</option></select>
-      </div>
-      <div class="filter-group">
-        <label>Tags</label>
-        <div id="filter-tags" class="filter-chip-row"></div>
-      </div>
-      <div class="filter-group">
-        <label for="filter-property">Property</label>
-        <select id="filter-property"><option value="">Any property</option></select>
-      </div>
-      <div class="filter-group">
-        <label for="filter-property-value">Property value</label>
-        <input id="filter-property-value" placeholder="e.g. Epic or 20">
-      </div>
-      <div class="filter-group">
-        <label for="sort-records">Sort by</label>
-        <select id="sort-records">
-          <option value="name-asc">Name A–Z</option>
-          <option value="name-desc">Name Z–A</option>
-          <option value="type">Type</option>
-          <option value="category">Category</option>
-          <option value="newest">Newest first</option>
-          <option value="oldest">Oldest first</option>
-        </select>
-      </div>
-    </div>
-    <button type="button" id="clear-filters" class="secondary" style="margin-top:14px">Clear filters</button>
-  </div>
-  <div class="section-title"><h3>Records</h3><span id="count" class="muted"></span></div>
-  <div id="records" class="records"></div>
+ </div>
+ <div class="section-title"><h3>Records</h3><span id="count" class="muted"></span></div><div id="records" class="records"></div>
 </section>
-<section id="detail" hidden>
-  <button id="back" class="back">← Back to records</button>
-  <div id="detail-content"></div>
-</section>
+<section id="detail" hidden><button id="back" class="back">← Back to records</button><div id="detail-content"></div></section>
 <section id="editor" hidden>
-  <button id="cancel-top" class="back">← Cancel</button>
-  <p class="eyebrow">RECORD EDITOR</p>
-  <h2 id="form-title">New Record</h2>
-  <p class="muted" style="margin-bottom:22px">Define the record and connect it to your database.</p>
-  <div id="form-message" class="notice" hidden></div>
-  <form id="record-form">
-    <div class="form-field"><label for="f-name">Name *</label><input id="f-name" required maxlength="100" placeholder="e.g. Leaf Bow"></div>
-    <div class="form-field"><label for="f-icon">Icon / Emoji</label><input id="f-icon" maxlength="16" placeholder="e.g. ⚔️, 🐉, 🌲"><p class="hint">Leave empty to use the default icon for this record type.</p></div>
-    <div class="form-field"><label for="f-type">Type *</label><select id="f-type" required></select><input id="f-new-type" hidden maxlength="50" placeholder="New type name" style="margin-top:8px"></div>
-    <div class="form-field"><label for="f-category">Category</label><select id="f-category"></select><input id="f-new-category" hidden maxlength="60" placeholder="New category name" style="margin-top:8px"></div>
-    <div class="form-field"><label for="f-subcategory">Subcategory</label><input id="f-subcategory" maxlength="60" placeholder="e.g. Swords"></div>
-    <div class="form-field"><label for="f-description">Description</label><textarea id="f-description" maxlength="3000" placeholder="Describe this record..."></textarea></div>
-    <div class="form-field"><label>Tags</label><div id="tag-picker"></div><p class="hint">Add one or more tags. Search the list or create a new tag.</p></div>
-    <div class="form-field"><label>Properties</label><div id="property-rows"></div><button type="button" id="add-property" class="secondary">+ Add Property</button><p class="hint">Choose a property you already use or create a new one. Examples: Health, Damage, Defense.</p></div>
-    <div class="form-field"><label>Related Records</label><div id="related-picker"></div><p class="hint">Search for existing records and add the ones you want to link.</p></div>
-    <div class="actions"><button type="submit" class="primary">Save Record</button><button type="button" id="cancel-bottom" class="secondary">Cancel</button></div>
-  </form>
+ <button id="cancel-top" class="back">← Cancel</button><p class="eyebrow">RECORD EDITOR</p><h2 id="form-title">New Record</h2><p class="muted" style="margin-bottom:22px">Define the record and connect it to your database.</p>
+ <div id="form-message" class="notice" hidden></div>
+ <form id="record-form">
+  <div class="form-field"><label for="f-name">Name *</label><input id="f-name" required maxlength="100" placeholder="e.g. Leaf Bow"></div>
+  <div class="form-field"><label for="f-icon">Icon / Emoji</label><input id="f-icon" maxlength="16" placeholder="e.g. ⚔️, 🐉, 🌲"><p class="hint">Leave empty to use the default icon.</p></div>
+  <div class="form-field"><label for="f-type">Type *</label><select id="f-type" required></select><input id="f-new-type" hidden maxlength="50" placeholder="New type name" style="margin-top:8px"></div>
+  <div class="form-field"><label for="f-category">Category</label><select id="f-category"></select><input id="f-new-category" hidden maxlength="60" placeholder="New category name" style="margin-top:8px"></div>
+  <div class="form-field"><label for="f-subcategory">Subcategory</label><input id="f-subcategory" maxlength="60" placeholder="e.g. Swords"></div>
+  <div class="form-field"><label for="f-description">Description</label><textarea id="f-description" maxlength="3000" placeholder="Describe this record..."></textarea></div>
+  <div class="form-field"><label>Tags</label><div id="tag-picker"></div><p class="hint">Search the list or create a new tag.</p></div>
+  <div class="form-field"><label>Properties</label><div id="property-rows"></div><button type="button" id="add-property" class="secondary">+ Add Property</button><p class="hint">Choose an existing property or create a new one.</p></div>
+  <div class="form-field"><label>Related Records</label><div id="related-picker"></div><p class="hint">Search existing records and add links.</p></div>
+  <div class="actions"><button type="submit" class="primary">Save Record</button><button type="button" id="cancel-bottom" class="secondary">Cancel</button></div>
+ </form>
 </section>
 </main>
 <footer id="status">Local database · Stored in this browser</footer>
 </div>
 <script>
+  
 "use strict";
-const STORAGE_KEY="rpg-codex-records-v2";
-const CATALOG_STORAGE_KEY="rpg-codex-catalogs-v1";
-const TYPES=["Mob","Item","Material","Area","Recipe","Effect","Skill","NPC","Boss"];
-const DEFAULT_TAG_TYPES=["Common","Uncommon","Rare","Epic","Legendary","Craftable","Quest","Optional"];
-const DEFAULT_PROPERTY_TYPES=["Health","Damage","Defense","Armor","Speed","Attack Speed","Cooldown","Duration","Level","Rarity"];
+const STORAGE_KEY="rpg-codex-records-v2",CATALOG_KEY="rpg-codex-catalogs-v1",SAVED_KEY="rpg-codex-saved-filters-v1";
+const DEFAULT_TYPES=["Mob","Item","Material","Area","Recipe","Effect","Skill","NPC","Boss"];
+const DEFAULT_TAGS=["Common","Uncommon","Rare","Epic","Legendary","Craftable","Quest","Optional"];
+const DEFAULT_PROPS=["Health","Damage","Defense","Armor","Speed","Attack Speed","Cooldown","Duration","Level","Rarity"];
 const $=id=>document.getElementById(id);
-const starterRecords=[
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid=()=>"r-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);
+const uniq=a=>[...new Set(a.map(x=>String(x||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+const starter=[
 {id:"sample-mob",name:"Leafling",type:"Mob",category:"Beginning Hole",description:"A small creature found near the entrance.",tags:["Common"],properties:[{name:"Health",value:"20"},{name:"Damage",value:"3"}],related:[]},
 {id:"sample-material",name:"Vines",type:"Material",category:"Beginning Hole",description:"A basic crafting material gathered from local creatures and plants.",tags:["Craftable"],properties:[{name:"Rarity",value:"Common"}],related:[]},
 {id:"sample-item",name:"Leaf Bow",type:"Item",category:"Beginning Hole",description:"A simple bow made with materials from the starting area.",tags:["Craftable","Common"],properties:[{name:"Damage",value:"5"},{name:"Attack Speed",value:"1.0"}],related:["sample-recipe"]},
@@ -184,349 +151,331 @@ const starterRecords=[
 {id:"sample-effect",name:"Slowness",type:"Effect",category:"Debuff",description:"Reduces the affected target's movement speed.",tags:["Debuff"],properties:[{name:"Duration",value:"3 seconds"}],related:[]},
 {id:"sample-recipe",name:"Leaf Bow Recipe",type:"Recipe",category:"Beginning Hole",description:"Crafting recipe for the Leaf Bow.",tags:["Craftable"],properties:[{name:"Material Cost",value:"Vines + Wood"}],related:["sample-item"]}
 ];
-let records=[];
-let catalogs={tags:[],properties:[]};
-let activeFilters=[];
-let selectedFilterTags=[];
-let editingId=null,currentRecordId=null;
-let selectedTags=[],selectedRelated=[];
-let tagPickerOpen=false,relatedPickerOpen=false,tagCreateOpen=false;
-let tagSearch="",relatedSearch="";
-function uid(){return "r-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8)}
-function esc(value){return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-function unique(values){return [...new Set(values.map(v=>String(v??"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b))}
-function findRecord(id){return records.find(r=>r.id===id)}
-function recordIcon(type){return ({Mob:"👾",Item:"⚔️",Material:"💎",Area:"🌍",Recipe:"📜",Effect:"✨",Skill:"🔮",NPC:"🧑",Boss:"☠️"})[type]||"◆"}
-function displayIcon(record){return record.icon&&record.icon.trim()?record.icon:recordIcon(record.type)}
-function cloneStarterRecords(){return starterRecords.map(r=>({...r,tags:[...r.tags],properties:r.properties.map(p=>({...p})),related:[...r.related]}))}
-function catalogId(name){return String(name||"").trim().toLocaleLowerCase()}
-function mergeCatalogItem(list,name,type=""){
- const clean=String(name||"").trim();if(!clean)return;
- const existing=list.find(item=>catalogId(item.name)===catalogId(clean));
- if(existing){if(type&&!existing.types.includes(type))existing.types.push(type);return}
- list.push({name:clean,types:type?[type]:[]});
-}
-function syncCatalogs(sourceRecords=records){
- if(!catalogs||!Array.isArray(catalogs.tags)||!Array.isArray(catalogs.properties))catalogs={tags:[],properties:[]};
- sourceRecords.forEach(record=>{
-  (Array.isArray(record.tags)?record.tags:[]).forEach(tag=>mergeCatalogItem(catalogs.tags,tag,record.type));
-  (Array.isArray(record.properties)?record.properties:[]).forEach(prop=>{if(prop&&prop.name)mergeCatalogItem(catalogs.properties,prop.name,record.type)});
- });
- DEFAULT_TAG_TYPES.forEach(tag=>mergeCatalogItem(catalogs.tags,tag));
- DEFAULT_PROPERTY_TYPES.forEach(prop=>mergeCatalogItem(catalogs.properties,prop));
-}
-function loadCatalogs(sourceRecords=records){
- let saved=null;
- try{const raw=localStorage.getItem(CATALOG_STORAGE_KEY);if(raw!==null)saved=JSON.parse(raw)}catch(error){console.warn("Could not load catalogs:",error)}
- catalogs={
-  tags:Array.isArray(saved?.tags)?saved.tags.filter(item=>item&&item.name).map(item=>({name:String(item.name),types:Array.isArray(item.types)?item.types.map(String):[]})):[],
-  properties:Array.isArray(saved?.properties)?saved.properties.filter(item=>item&&item.name).map(item=>({name:String(item.name),types:Array.isArray(item.types)?item.types.map(String):[]})):[]
- };
- syncCatalogs(sourceRecords);return catalogs;
-}
-function saveCatalogs(){
- try{localStorage.setItem(CATALOG_STORAGE_KEY,JSON.stringify(catalogs));return true}catch(error){console.warn("Could not save catalogs:",error);return false}
-}
-function allTags(type=""){
- syncCatalogs();return unique(catalogs.tags.filter(item=>!type||!item.types.length||item.types.includes(type)).map(item=>item.name));
-}
-function allProperties(type=""){
- syncCatalogs();return unique(catalogs.properties.filter(item=>!type||!item.types.length||item.types.includes(type)).map(item=>item.name));
-}
+let records=[],catalogs={tags:[],properties:[]},savedFilters=[];
+let activeTypes=[],activeTags=[],conditions=[],expanded=new Set();
+let filtersOpen=false,editingId=null,currentId=null,selectedTags=[],selectedRelated=[];
+let tagOpen=false,relatedOpen=false,tagSearch="",relatedSearch="",tagCreateOpen=false;
+function iconFor(type){return ({Mob:"👾",Item:"⚔️",Material:"💎",Area:"🌍",Recipe:"📜",Effect:"✨",Skill:"🔮",NPC:"🧑",Boss:"☠️"})[type]||"◆"}
+function iconOf(r){return r.icon||iconFor(r.type)}
+function getRecord(id){return records.find(r=>r.id===id)}
 function loadRecords(){
  try{
-  const raw=localStorage.getItem(STORAGE_KEY);if(raw===null)return cloneStarterRecords();
-  const parsed=JSON.parse(raw);if(!Array.isArray(parsed))throw new Error("Invalid saved data");
-  return parsed.map(r=>({
-   id:String(r.id||uid()),name:String(r.name||"Untitled"),icon:typeof r.icon==="string"?r.icon:"",
-   type:String(r.type||"Item"),category:String(r.category||""),subcategory:String(r.subcategory||""),
-   createdAt:String(r.createdAt||""),description:String(r.description||""),
-   tags:Array.isArray(r.tags)?r.tags.map(String):[],
-   properties:Array.isArray(r.properties)?r.properties.map(p=>({name:String(p.name||""),value:String(p.value||"")})):[],
-   related:Array.isArray(r.related)?r.related.map(String):[]
-  }));
- }catch(error){
-  console.error("Could not load saved records:",error);
-  $("status").textContent="Could not read saved data. Your browser may be blocking local storage.";
-  return cloneStarterRecords();
- }
+  const raw=localStorage.getItem(STORAGE_KEY);if(raw===null)return starter.map(r=>({...r,tags:[...r.tags],properties:r.properties.map(p=>({...p})),related:[...r.related]}));
+  const data=JSON.parse(raw);if(!Array.isArray(data))throw Error("Invalid data");
+  return data.map(r=>({id:String(r.id||uid()),name:String(r.name||"Untitled"),icon:r.icon||"",type:r.type||"Item",category:r.category||"",subcategory:r.subcategory||"",createdAt:r.createdAt||"",description:r.description||"",tags:Array.isArray(r.tags)?r.tags.map(String):[],properties:Array.isArray(r.properties)?r.properties.map(p=>({name:String(p.name||""),value:String(p.value||"")})):[],related:Array.isArray(r.related)?r.related.map(String):[]}));
+ }catch(e){console.error(e);return starter.map(r=>({...r,tags:[...r.tags],properties:r.properties.map(p=>({...p})),related:[...r.related]}))}
 }
 function saveRecords(){
- try{
-  localStorage.setItem(STORAGE_KEY,JSON.stringify(records));
-  syncCatalogs(records);saveCatalogs();
-  $("status").textContent="Saved in this browser · "+records.length+" records";return true;
- }catch(error){
-  console.error("Could not save records:",error);
-  alert("The browser could not save your records. Do not refresh this page until you copy any new information.");
-  $("status").textContent="Save failed · Browser storage unavailable";return false;
- }
+ try{localStorage.setItem(STORAGE_KEY,JSON.stringify(records));syncCatalogs();saveCatalogs();$("status").textContent="Saved in this browser · "+records.length+" records";return true}
+ catch(e){alert("Could not save data in this browser.");return false}
 }
-</script>
-<script>
+function syncCatalogs(){
+ if(!catalogs||!Array.isArray(catalogs.tags)||!Array.isArray(catalogs.properties))catalogs={tags:[],properties:[]};
+ records.forEach(r=>{r.tags.forEach(t=>mergeCatalog("tags",t,r.type));r.properties.forEach(p=>mergeCatalog("properties",p.name,r.type))});
+ DEFAULT_TAGS.forEach(t=>mergeCatalog("tags",t,""));DEFAULT_PROPS.forEach(p=>mergeCatalog("properties",p,""));
+}
+function mergeCatalog(kind,name,type){
+ name=String(name||"").trim();if(!name)return;
+ let found=catalogs[kind].find(x=>x.name.toLowerCase()===name.toLowerCase());
+ if(!found)catalogs[kind].push({name,types:type?[type]:[]});
+ else if(type&&!found.types.includes(type))found.types.push(type);
+}
+function loadCatalogs(){
+ try{let c=JSON.parse(localStorage.getItem(CATALOG_KEY)||"{}");catalogs={tags:Array.isArray(c.tags)?c.tags:[],properties:Array.isArray(c.properties)?c.properties:[]}}
+ catch{catalogs={tags:[],properties:[]}}
+ syncCatalogs();saveCatalogs();
+}
+function saveCatalogs(){try{localStorage.setItem(CATALOG_KEY,JSON.stringify(catalogs))}catch{}}
+function catalogNames(kind){syncCatalogs();return uniq(catalogs[kind].map(x=>x.name))}
+function loadSavedFilters(){
+ try{savedFilters=JSON.parse(localStorage.getItem(SAVED_KEY)||"[]");if(!Array.isArray(savedFilters))savedFilters=[]}catch{savedFilters=[]}
+ renderSavedFilters();
+}
+function persistFilters(){try{localStorage.setItem(SAVED_KEY,JSON.stringify(savedFilters));return true}catch{alert("Could not save filters.");return false}}
+function filterState(){return {query:$("search").value,types:[...activeTypes],category:$("filter-category").value,subcategory:$("filter-subcategory").value,tags:[...activeTags],sort:$("sort-records").value,conditions:conditions.map(c=>({...c}))}}
+function applyFilterState(s){
+ activeTypes=s.types||[];activeTags=s.tags||[];$("search").value=s.query||"";
+ renderFilterOptions();$("filter-category").value=s.category||"";renderFilterOptions();$("filter-category").value=s.category||"";
+ $("filter-subcategory").value=s.subcategory||"";$("sort-records").value=s.sort||"name-asc";
+ conditions=(s.conditions||[]).map(c=>({...c}));renderConditionRows();renderCategories();renderRecords();updateFilterToggle();
+}
+function renderSavedFilters(){
+ $("saved-filters").innerHTML='<option value="">Choose a saved filter...</option>'+savedFilters.map(f=>`<option value="${esc(f.id)}">${esc(f.name)}</option>`).join("");
+}
+function saveCurrentFilter(){
+ const name=prompt("Name this filter:");if(!name||!name.trim())return;
+ const old=savedFilters.find(f=>f.name.toLowerCase()===name.trim().toLowerCase());
+ const entry={id:old?.id||uid(),name:name.trim(),state:filterState()};
+ savedFilters=old?savedFilters.map(f=>f.id===old.id?entry:f):[...savedFilters,entry];
+ if(persistFilters()){renderSavedFilters();$("saved-filters").value=entry.id}
+}
+function updateFilterToggle(){
+ const count=activeTypes.length+activeTags.length+($("filter-category").value?1:0)+($("filter-subcategory").value?1:0)+conditions.filter(c=>c.property&&c.value.trim()).length;
+ $("toggle-filters").textContent=(filtersOpen?"Hide filters":"Show filters")+(count?" · "+count+" active":"");
+ $("advanced-filter-content").hidden=!filtersOpen;
+}
 function renderCategories(){
- const types=unique([...TYPES,...records.map(r=>r.type)]);
- $("categories").innerHTML=[
-  `<button class="category ${activeFilters.length===0?"active":""}" data-filter="__all__">All</button>`,
-  ...types.map(type=>`<button class="category ${activeFilters.includes(type)?"active":""}" data-filter="${esc(type)}">${esc(type)}</button>`)
- ].join("");
- $("categories").querySelectorAll("button").forEach(btn=>btn.addEventListener("click",()=>{
-  const type=btn.dataset.filter;
-  if(type==="__all__")activeFilters=[];
-  else if(activeFilters.includes(type))activeFilters=activeFilters.filter(t=>t!==type);
-  else activeFilters.push(type);
-  renderCategories();renderRecords();
- }));
- $("filter-hint").textContent=activeFilters.length?"Filtering by: "+activeFilters.join(", "):"Showing all types. Select multiple types to combine filters.";
+ const types=uniq([...DEFAULT_TYPES,...records.map(r=>r.type)]);
+ $("categories").innerHTML=`<button class="category ${!activeTypes.length?"active":""}" data-type="*">All</button>`+types.map(t=>`<button class="category ${activeTypes.includes(t)?"active":""}" data-type="${esc(t)}">${esc(t)}</button>`).join("");
+ $("categories").querySelectorAll("[data-type]").forEach(b=>b.onclick=()=>{
+  const t=b.dataset.type;if(t==="*")activeTypes=[];else activeTypes=activeTypes.includes(t)?activeTypes.filter(x=>x!==t):[...activeTypes,t];
+  renderCategories();renderRecords();updateFilterToggle();
+ });
+ $("filter-hint").textContent=activeTypes.length?"Filtering by: "+activeTypes.join(", "):"Showing all types. Select multiple types to combine filters.";
 }
 function renderFilterOptions(){
- const category=$("filter-category"),subcategory=$("filter-subcategory");
- const oldCategory=category.value,oldSubcategory=subcategory.value;
- const categories=unique(records.map(r=>r.category));
- category.innerHTML='<option value="">All categories</option>'+categories.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("");
- category.value=categories.includes(oldCategory)?oldCategory:"";
- const subs=unique(records.filter(r=>!category.value||r.category===category.value).map(r=>r.subcategory||""));
- subcategory.innerHTML='<option value="">All subcategories</option>'+subs.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join("");
- subcategory.value=subs.includes(oldSubcategory)?oldSubcategory:"";
- const properties=allProperties();
- const property=$("filter-property"),oldProperty=property.value;
- property.innerHTML='<option value="">Any property</option>'+properties.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join("");
- property.value=properties.includes(oldProperty)?oldProperty:"";
- renderFilterTags();
+ const cat=$("filter-category"),sub=$("filter-subcategory"),oldCat=cat.value,oldSub=sub.value;
+ const cats=uniq(records.map(r=>r.category));cat.innerHTML='<option value="">All categories</option>'+cats.map(c=>`<option>${esc(c)}</option>`).join("");
+ cat.value=cats.includes(oldCat)?oldCat:"";
+ const subs=uniq(records.filter(r=>!cat.value||r.category===cat.value).map(r=>r.subcategory));
+ sub.innerHTML='<option value="">All subcategories</option>'+subs.map(s=>`<option>${esc(s)}</option>`).join("");
+ sub.value=subs.includes(oldSub)?oldSub:"";renderFilterTags();
 }
 function renderFilterTags(){
- const root=$("filter-tags");
- const tags=allTags();
- root.innerHTML=tags.map(tag=>`<button type="button" class="filter-chip ${selectedFilterTags.includes(tag)?"active":""}" data-filter-tag="${esc(tag)}">${esc(tag)}</button>`).join("");
- root.querySelectorAll("[data-filter-tag]").forEach(btn=>btn.addEventListener("click",()=>{
-  const tag=btn.dataset.filterTag;
-  if(selectedFilterTags.includes(tag))selectedFilterTags=selectedFilterTags.filter(t=>t!==tag);
-  else selectedFilterTags.push(tag);
-  renderFilterTags();renderRecords();
- }));
+ $("filter-tags").innerHTML=catalogNames("tags").map(t=>`<button class="filter-chip ${activeTags.includes(t)?"active":""}" data-tag="${esc(t)}">${esc(t)}</button>`).join("");
+ $("filter-tags").querySelectorAll("[data-tag]").forEach(b=>b.onclick=()=>{
+  const t=b.dataset.tag;activeTags=activeTags.includes(t)?activeTags.filter(x=>x!==t):[...activeTags,t];
+  renderFilterTags();renderRecords();updateFilterToggle();
+ });
+}
+const operators=[["contains","Contains"],["=","Equal (=)"],["!=","Not equal (≠)"],[">","Greater than (>)"],[">=","Greater/equal (≥)"],["<","Less than (<)"],["<=","Less/equal (≤)"]];
+function renderConditionRows(){
+ $("property-conditions").innerHTML=conditions.map((c,i)=>`<div class="condition-row" data-i="${i}">
+ <select class="prop"><option value="">Property...</option>${catalogNames("properties").map(p=>`<option value="${esc(p)}" ${p===c.property?"selected":""}>${esc(p)}</option>`).join("")}</select>
+ <select class="op">${operators.map(([v,l])=>`<option value="${v}" ${v===c.operator?"selected":""}>${l}</option>`).join("")}</select>
+ <input class="val" value="${esc(c.value)}" placeholder="Value"><button class="remove" type="button">×</button></div>`).join("");
+ $("property-conditions").querySelectorAll(".condition-row").forEach(row=>{
+  const i=+row.dataset.i;
+  row.querySelector(".prop").onchange=e=>{conditions[i].property=e.target.value;renderRecords();updateFilterToggle()};
+  row.querySelector(".op").onchange=e=>{conditions[i].operator=e.target.value;renderRecords();updateFilterToggle()};
+  row.querySelector(".val").oninput=e=>{conditions[i].value=e.target.value;renderRecords();updateFilterToggle()};
+  row.querySelector(".remove").onclick=()=>{conditions.splice(i,1);renderConditionRows();renderRecords();updateFilterToggle()};
+ });
+}
+function num(v){if(!String(v).trim()||!/^[-+]?(?:\d+\.?\d*|\.\d+)$/.test(String(v).trim()))return null;return Number(v)}
+function conditionMatches(r,c){
+ if(!c.property||!c.value.trim())return true;
+ const p=r.properties.find(x=>x.name===c.property);if(!p)return false;
+ const a=String(p.value).trim(),b=c.value.trim(),na=num(a),nb=num(b);
+ if(c.operator==="contains")return a.toLowerCase().includes(b.toLowerCase());
+ if(c.operator==="=")return na!==null&&nb!==null?na===nb:a.toLowerCase()===b.toLowerCase();
+ if(c.operator==="!=")return na!==null&&nb!==null?na!==nb:a.toLowerCase()!==b.toLowerCase();
+ if(na===null||nb===null)return false;
+ return c.operator===">"?na>nb:c.operator===">="?na>=nb:c.operator==="<"?na<nb:c.operator==="<="?na<=nb:true;
 }
 function renderRecords(){
- const query=$("search").value.trim().toLowerCase();
- const category=$("filter-category").value;
- const subcategory=$("filter-subcategory").value;
- const property=$("filter-property").value;
- const propertyValue=$("filter-property-value").value.trim().toLowerCase();
- const sort=$("sort-records").value;
- let filtered=records.filter(r=>{
-  const text=[r.name,r.type,r.category,r.subcategory||"",r.description,...r.tags,...r.properties.map(p=>p.name+" "+p.value)].join(" ").toLowerCase();
-  const tagsMatch=selectedFilterTags.every(tag=>r.tags.includes(tag));
-  const props=r.properties||[];
-  const propertyMatch=!property||props.some(p=>p.name===property&&(!propertyValue||p.value.toLowerCase().includes(propertyValue)));
-  return (!activeFilters.length||activeFilters.includes(r.type))&&
-   (!category||r.category===category)&&
-   (!subcategory||(r.subcategory||"")===subcategory)&&
-   tagsMatch&&propertyMatch&&text.includes(query);
+ const q=$("search").value.trim().toLowerCase(),cat=$("filter-category").value,sub=$("filter-subcategory").value,sort=$("sort-records").value;
+ let list=records.filter(r=>{
+  const text=[r.name,r.type,r.category,r.subcategory,r.description,...r.tags,...r.properties.map(p=>p.name+" "+p.value)].join(" ").toLowerCase();
+  return (!activeTypes.length||activeTypes.includes(r.type))&&(!cat||r.category===cat)&&(!sub||r.subcategory===sub)&&activeTags.every(t=>r.tags.includes(t))&&conditions.every(c=>conditionMatches(r,c))&&text.includes(q);
  });
- filtered.sort((a,b)=>{
-  if(sort==="name-desc")return b.name.localeCompare(a.name);
-  if(sort==="type")return a.type.localeCompare(b.type)||a.name.localeCompare(b.name);
-  if(sort==="category")return (a.category||"").localeCompare(b.category||"")||a.name.localeCompare(b.name);
-  if(sort==="newest")return (b.createdAt||"").localeCompare(a.createdAt||"");
-  if(sort==="oldest")return (a.createdAt||"").localeCompare(b.createdAt||"");
-  return a.name.localeCompare(b.name);
- });
- $("count").textContent=filtered.length+" shown";
- if(!filtered.length){
-  $("records").innerHTML='<div class="empty">No records found.<br><br>Try changing your filters or search.</div>';return;
- }
- $("records").innerHTML=filtered.map(r=>`
-  <button class="record" data-open="${esc(r.id)}">
-   <span class="record-icon">${esc(displayIcon(r))}</span>
-   <span class="record-info"><strong>${esc(r.name)}</strong>
-   <p>${esc(r.type)}${r.category?" · "+esc(r.category):""}${r.subcategory?" · "+esc(r.subcategory):""}${r.tags.length?" · "+esc(r.tags.join(", ")):""}</p></span>
-   <span class="record-arrow">›</span>
-  </button>`).join("");
- $("records").querySelectorAll("[data-open]").forEach(btn=>btn.addEventListener("click",()=>openRecord(btn.dataset.open)));
+ list.sort((a,b)=>sort==="name-desc"?b.name.localeCompare(a.name):sort==="type"?a.type.localeCompare(b.type)||a.name.localeCompare(b.name):sort==="category"?(a.category||"").localeCompare(b.category||"")||a.name.localeCompare(b.name):sort==="newest"?(b.createdAt||"").localeCompare(a.createdAt||""):sort==="oldest"?(a.createdAt||"").localeCompare(b.createdAt||""):a.name.localeCompare(b.name));
+ $("count").textContent=list.length+" shown";
+ if(!list.length){$("records").innerHTML='<div class="empty">No records found.<br><br>Try changing your filters or search.</div>';return}
+ $("records").innerHTML=list.map(r=>`<div class="record-card">
+ <button class="record" data-open="${esc(r.id)}"><span class="record-icon">${esc(iconOf(r))}</span><span class="record-info"><strong>${esc(r.name)}</strong><p>${esc(r.type)}${r.category?" · "+esc(r.category):""}${r.subcategory?" · "+esc(r.subcategory):""}${r.tags.length?" · "+esc(r.tags.join(", ")):""}</p></span><span class="record-arrow">›</span></button>
+ <div class="record-actions"><button class="preview-toggle ${expanded.has(r.id)?"active":""}" data-preview="${esc(r.id)}">${expanded.has(r.id)?"Hide preview":"Preview"} · ${r.properties.length}</button></div>
+ ${expanded.has(r.id)?`<div class="record-preview">${r.properties.length?r.properties.map(p=>`<div class="preview-property"><span>${esc(p.name)}</span><strong>${esc(p.value)}</strong></div>`).join(""):'<p class="muted">No properties defined.</p>'}</div>`:""}</div>`).join("");
+ $("records").querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>openRecord(b.dataset.open));
+ $("records").querySelectorAll("[data-preview]").forEach(b=>b.onclick=()=>{const id=b.dataset.preview;expanded.has(id)?expanded.delete(id):expanded.add(id);renderRecords()});
 }
 function renderHome(){
  $("home").hidden=false;$("detail").hidden=true;$("editor").hidden=true;
- renderCategories();renderFilterOptions();renderRecords();
+ renderCategories();renderFilterOptions();renderConditionRows();renderSavedFilters();renderRecords();updateFilterToggle();
 }
 function openRecord(id){
- const r=findRecord(id);if(!r)return;
- currentRecordId=id;$("home").hidden=true;$("editor").hidden=true;$("detail").hidden=false;
- const properties=r.properties.length?r.properties.map(p=>`<div class="field"><span class="field-label">${esc(p.name)}</span>${esc(p.value)}</div>`).join(""):'<p class="muted">No properties defined.</p>';
- const tags=r.tags.length?r.tags.map(t=>`<span class="chip">${esc(t)}</span>`).join(" "):'<span class="muted">No tags</span>';
- const related=r.related.map(findRecord).filter(Boolean);
- $("detail-content").innerHTML=`
-  <p class="eyebrow">${esc(r.type.toUpperCase())}</p>
-  <div class="record-heading"><span class="record-icon">${esc(displayIcon(r))}</span>
-   <div><h2>${esc(r.name)}</h2><p class="muted">${esc(r.category||"Uncategorized")}${r.subcategory?" · "+esc(r.subcategory):""}</p></div>
-  </div>
-  <div class="actions"><button id="edit-record" class="primary">Edit Record</button><button id="delete-record" class="danger">Delete</button></div>
-  <div class="panel"><h3>Description</h3><p style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(r.description||"No description.")}</p></div>
-  <div class="panel"><h3>Properties</h3>${properties}</div>
-  <div class="panel"><h3>Tags</h3><div class="tags">${tags}</div></div>
-  <div class="panel"><h3>Related Records (${related.length})</h3><div id="detail-related" class="related">${related.length?related.map(x=>`<button class="chip" data-related="${esc(x.id)}">${esc(displayIcon(x))} ${esc(x.name)} · ${esc(x.type)}</button>`).join(""):'<p class="muted">No related records.</p>'}</div></div>`;
- $("edit-record").addEventListener("click",()=>showForm(r));
- $("delete-record").addEventListener("click",()=>deleteRecord(r.id));
- $("detail-related").querySelectorAll("[data-related]").forEach(btn=>btn.addEventListener("click",()=>openRecord(btn.dataset.related)));
+ const r=getRecord(id);if(!r)return;currentId=id;
+ $("home").hidden=true;$("editor").hidden=true;$("detail").hidden=false;
+ const props=r.properties.length?r.properties.map(p=>`<div class="field"><span class="field-label">${esc(p.name)}</span>${esc(p.value)}</div>`).join(""):'<p class="muted">No properties defined.</p>';
+ const related=r.related.map(getRecord).filter(Boolean),incoming=records.filter(x=>x.id!==r.id&&x.related.includes(r.id));
+ const relationList=arr=>arr.length?arr.map(x=>`<div class="relationship-item"><button data-related="${esc(x.id)}">${esc(iconOf(x))} ${esc(x.name)} <span class="relation-type">· ${esc(x.type)}</span></button></div>`).join(""):'<p class="muted">None</p>';
+ $("detail-content").innerHTML=`<p class="eyebrow">${esc(r.type.toUpperCase())}</p>
+ <div class="record-heading"><span class="record-icon">${esc(iconOf(r))}</span><div><h2>${esc(r.name)}</h2><p class="muted">${esc(r.category||"Uncategorized")}${r.subcategory?" · "+esc(r.subcategory):""}</p></div></div>
+ <div class="actions"><button id="edit-record" class="primary">Edit Record</button><button id="delete-record" class="danger">Delete</button></div>
+ <div class="panel"><h3>Description</h3><p style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(r.description||"No description.")}</p></div>
+ <div class="panel"><h3>Properties</h3>${props}</div>
+ <div class="panel"><h3>Tags</h3><div class="tags">${r.tags.length?r.tags.map(t=>`<span class="chip">${esc(t)}</span>`).join(" "):'<span class="muted">No tags</span>'}</div></div>
+ <div class="panel"><h3>Relationships</h3><p class="muted">Open a linked record to navigate through your database.</p>
+ <div class="relationship-group"><h4>Related records (${related.length})</h4>${relationList(related)}</div>
+ <div class="relationship-group"><h4>Linked to this record (${incoming.length})</h4>${relationList(incoming)}</div></div>`;
+ $("edit-record").onclick=()=>showForm(r);$("delete-record").onclick=()=>deleteRecord(r.id);
+ $("detail-content").querySelectorAll("[data-related]").forEach(b=>b.onclick=()=>openRecord(b.dataset.related));
+  }
+  
+function selectOptions(values,current,placeholder){
+ return `<option value="">${esc(placeholder)}</option>`+values.map(v=>`<option value="${esc(v)}" ${v===current?"selected":""}>${esc(v)}</option>`).join("")+`<option value="__new__">+ Create new...</option>`;
 }
-function makeSelect(id,values,selected,allowNew){
- const list=unique(values);if(selected&&!list.includes(selected))list.push(selected);
- const options=list.map(v=>`<option value="${esc(v)}" ${v===selected?"selected":""}>${esc(v)}</option>`).join("");
- return `<select id="${id}">${options}${allowNew?'<option value="__new__">+ Create new...</option>':""}</select>`;
+function setupSelect(id,values,current,placeholder,newInput){
+ const el=$(id);el.innerHTML=selectOptions(values,current,placeholder);
+ el.value=values.includes(current)?current:"";
+ el.onchange=()=>{
+  const create=el.value==="__new__";
+  $(newInput).hidden=!create;
+  if(create)$(newInput).focus();
+ };
 }
-function renderPropertyRow(prop={}){
+function readSelect(id,newInput){
+ const el=$(id);
+ if(el.value==="__new__")return $(newInput).value.trim();
+ return el.value;
+}
+function renderPropertyRows(properties=[]){
+ $("property-rows").innerHTML="";
+ properties.forEach(p=>addPropertyRow(p.name,p.value));
+}
+function addPropertyRow(name="",value=""){
  const row=document.createElement("div");row.className="property-row";
- row.innerHTML=makeSelect("property-name",allProperties($("f-type").value),prop.name||"",true)+
-  '<input class="property-new-name" hidden maxlength="60" placeholder="New property">'+
-  `<input class="property-value" maxlength="200" placeholder="Value" value="${esc(prop.value||"")}">`+
-  '<button type="button" class="remove" aria-label="Remove property">× Remove</button>';
- const select=row.querySelector("select"),newName=row.querySelector(".property-new-name");
- select.addEventListener("change",()=>{newName.hidden=select.value!=="__new__";if(!newName.hidden)newName.focus()});
- row.querySelector(".remove").addEventListener("click",()=>row.remove());
+ row.innerHTML=`<select class="property-name">${selectOptions(catalogNames("properties"),name,"Property name")}</select>
+ <input class="property-new" placeholder="New property name" hidden>
+ <input class="property-value" placeholder="Value" value="${esc(value)}">
+ <button type="button" class="remove" aria-label="Remove property">×</button>`;
+ const select=row.querySelector(".property-name"),newName=row.querySelector(".property-new");
+ select.onchange=()=>{newName.hidden=select.value!=="__new__";if(!newName.hidden)newName.focus()};
+ row.querySelector(".remove").onclick=()=>row.remove();
  $("property-rows").appendChild(row);
 }
-function renderTagPicker(){
- const root=$("tag-picker");
- const options=allTags($("f-type").value).filter(tag=>!selectedTags.includes(tag)&&tag.toLowerCase().includes(tagSearch.toLowerCase()));
- root.innerHTML=`
-  <div class="selected-items">${selectedTags.map(tag=>`<span class="selected-item"><span>${esc(tag)}</span><button type="button" data-remove-tag="${esc(tag)}" aria-label="Remove ${esc(tag)}">×</button></span>`).join("")}</div>
-  <div class="picker"><button type="button" class="picker-trigger" id="tag-toggle"><span>+ Add tag</span><span class="muted">${tagPickerOpen?"▲":"▼"}</span></button>
-  ${tagPickerOpen?`<div class="picker-menu"><input class="picker-search" id="tag-search" type="search" placeholder="Search tags..." value="${esc(tagSearch)}" autocomplete="off">
-   <div class="picker-options">${options.map(tag=>`<button type="button" class="picker-option" data-add-tag="${esc(tag)}">${esc(tag)}</button>`).join("")}
-   ${options.length?"":'<div class="picker-empty">No matching tags.</div>'}
-   <button type="button" class="picker-option create" id="show-create-tag">+ Create new tag</button></div>
-   ${tagCreateOpen?`<form id="create-tag-form" class="picker-create-form"><input id="new-tag-name" maxlength="60" placeholder="New tag name" required><button class="primary" type="submit" style="border-radius:9px;padding:0 12px">Add</button></form>`:""}
-  </div>`:""}</div>`;
- root.querySelector("#tag-toggle").addEventListener("click",()=>{tagPickerOpen=!tagPickerOpen;tagCreateOpen=false;renderTagPicker()});
- root.querySelectorAll("[data-remove-tag]").forEach(btn=>btn.addEventListener("click",()=>{selectedTags=selectedTags.filter(t=>t!==btn.dataset.removeTag);renderTagPicker()}));
- root.querySelectorAll("[data-add-tag]").forEach(btn=>btn.addEventListener("click",()=>{
-  if(!selectedTags.includes(btn.dataset.addTag))selectedTags.push(btn.dataset.addTag);
-  tagSearch="";renderTagPicker();$("tag-search")?.focus();
- }));
- const search=root.querySelector("#tag-search");
- if(search)search.addEventListener("input",()=>{
-  tagSearch=search.value;const start=search.selectionStart;renderTagPicker();
-  const next=$("tag-search");next?.focus();next?.setSelectionRange(start,start);
- });
- root.querySelector("#show-create-tag")?.addEventListener("click",()=>{tagCreateOpen=true;renderTagPicker();$("new-tag-name")?.focus()});
- root.querySelector("#create-tag-form")?.addEventListener("submit",event=>{
-  event.preventDefault();const name=$("new-tag-name").value.trim();if(!name)return;
-  const existing=allTags().find(tag=>catalogId(tag)===catalogId(name));const tag=existing||name;
-  mergeCatalogItem(catalogs.tags,tag,$("f-type").value);saveCatalogs();
-  if(!selectedTags.includes(tag))selectedTags.push(tag);
-  tagSearch="";tagCreateOpen=false;renderTagPicker();
- });
+function readProperties(){
+ return [...$("property-rows").querySelectorAll(".property-row")].map(row=>{
+  const select=row.querySelector(".property-name");
+  const name=select.value==="__new__"?row.querySelector(".property-new").value.trim():select.value;
+  return {name,value:row.querySelector(".property-value").value.trim()};
+ }).filter(p=>p.name);
 }
-function renderRelatedPicker(){
- const root=$("related-picker");
- const options=records.filter(r=>r.id!==editingId&&!selectedRelated.includes(r.id)&&(r.name+" "+r.type+" "+r.category+" "+(r.subcategory||"")).toLowerCase().includes(relatedSearch.toLowerCase()));
- root.innerHTML=`
-  <div class="selected-items">${selectedRelated.map(id=>findRecord(id)).filter(Boolean).map(r=>`<span class="selected-item"><span>${esc(displayIcon(r))} ${esc(r.name)} <span class="muted">· ${esc(r.type)}</span></span><button type="button" data-remove-related="${esc(r.id)}" aria-label="Remove ${esc(r.name)}">×</button></span>`).join("")}</div>
-  <div class="picker"><button type="button" class="picker-trigger" id="related-toggle"><span>+ Add related record</span><span class="muted">${relatedPickerOpen?"▲":"▼"}</span></button>
-  ${relatedPickerOpen?`<div class="picker-menu"><input class="picker-search" id="related-search" type="search" placeholder="Search records by name, type or category..." value="${esc(relatedSearch)}" autocomplete="off">
-   <div class="picker-options">${options.map(r=>`<button type="button" class="picker-option" data-add-related="${esc(r.id)}">${esc(displayIcon(r))} ${esc(r.name)} <span class="muted">· ${esc(r.type)}${r.category?" · "+esc(r.category):""}</span></button>`).join("")}
-   ${options.length?"":'<div class="picker-empty">No matching records found.</div>'}</div></div>`:""}</div>`;
- root.querySelector("#related-toggle").addEventListener("click",()=>{relatedPickerOpen=!relatedPickerOpen;renderRelatedPicker();if(relatedPickerOpen)$("related-search")?.focus()});
- root.querySelectorAll("[data-remove-related]").forEach(btn=>btn.addEventListener("click",()=>{selectedRelated=selectedRelated.filter(id=>id!==btn.dataset.removeRelated);renderRelatedPicker()}));
- root.querySelectorAll("[data-add-related]").forEach(btn=>btn.addEventListener("click",()=>{if(!selectedRelated.includes(btn.dataset.addRelated))selectedRelated.push(btn.dataset.addRelated);relatedSearch="";renderRelatedPicker();$("related-search")?.focus()}));
- const search=root.querySelector("#related-search");
- if(search)search.addEventListener("input",()=>{relatedSearch=search.value;const start=search.selectionStart;renderRelatedPicker();const next=$("related-search");next?.focus();next?.setSelectionRange(start,start)});
+function renderPicker(kind){
+ const isTags=kind==="tags",root=$(isTags?"tag-picker":"related-picker");
+ const open=isTags?tagOpen:relatedOpen,search=isTags?tagSearch:relatedSearch;
+ const selected=isTags?selectedTags:selectedRelated;
+ const options=isTags?catalogNames("tags").filter(t=>t.toLowerCase().includes(search.toLowerCase())):
+  records.filter(r=>r.id!==editingId&&!selected.includes(r.id)&&r.name.toLowerCase().includes(search.toLowerCase()));
+ const selectedHtml=selected.map(id=>{
+  const label=isTags?id:(getRecord(id)?.name||"Unknown record");
+  return `<span class="selected-item">${esc(label)} <button type="button" data-unselect="${esc(id)}" aria-label="Remove ${esc(label)}">×</button></span>`;
+ }).join("");
+ root.innerHTML=`<button type="button" class="picker-trigger" data-toggle-picker>${isTags?"Choose tags":"Choose related records"} <span>${open?"−":"+"}</span></button>
+ ${selectedHtml?`<div class="selected-items">${selectedHtml}</div>`:""}
+ ${open?`<div class="picker-menu"><input class="picker-search" placeholder="Search..." value="${esc(search)}">
+ <div class="picker-options">${options.map(item=>{
+  const id=isTags?item:item.id,label=isTags?item:item.name;
+  return `<button type="button" class="picker-option" data-pick="${esc(id)}">${esc(isTags?"# ":"")}${esc(label)}</button>`;
+ }).join("")||'<div class="picker-empty">No matches found.</div>'}
+ ${isTags?'<button type="button" class="picker-option create" data-create-tag>+ Create a new tag</button>':""}
+ ${isTags&&tagCreateOpen?'<div class="picker-create-form"><input id="new-tag-name" placeholder="New tag name"><button type="button" class="primary" id="confirm-new-tag">Add</button></div>':""}
+ </div></div>`:""}`;
+ root.querySelector("[data-toggle-picker]").onclick=()=>{
+  if(isTags)tagOpen=!tagOpen;else relatedOpen=!relatedOpen;
+  renderPicker(kind);
+ };
+ root.querySelectorAll("[data-unselect]").forEach(b=>b.onclick=()=>{
+  if(isTags)selectedTags=selectedTags.filter(x=>x!==b.dataset.unselect);
+  else selectedRelated=selectedRelated.filter(x=>x!==b.dataset.unselect);
+  renderPicker(kind);
+ });
+ root.querySelectorAll("[data-pick]").forEach(b=>b.onclick=()=>{
+  if(isTags){if(!selectedTags.includes(b.dataset.pick))selectedTags.push(b.dataset.pick);tagSearch=""}
+  else{if(!selectedRelated.includes(b.dataset.pick))selectedRelated.push(b.dataset.pick);relatedSearch=""}
+  renderPicker(kind);
+ });
+ const input=root.querySelector(".picker-search");
+ if(input)input.oninput=()=>{
+  if(isTags)tagSearch=input.value;else relatedSearch=input.value;
+  const pos=input.selectionStart;renderPicker(kind);
+  const next=root.querySelector(".picker-search");next.focus();next.setSelectionRange(pos,pos);
+ };
+ const createBtn=root.querySelector("[data-create-tag]");
+ if(createBtn)createBtn.onclick=()=>{tagCreateOpen=true;renderPicker(kind);$("new-tag-name")?.focus()};
+ const confirm=root.querySelector("#confirm-new-tag");
+ if(confirm)confirm.onclick=()=>{
+  const name=$("new-tag-name").value.trim();if(!name)return;
+  mergeCatalog("tags",name,$("f-type").value);
+  if(!selectedTags.some(t=>t.toLowerCase()===name.toLowerCase()))selectedTags.push(name);
+  saveCatalogs();tagCreateOpen=false;tagSearch="";renderPicker("tags");
+ };
+ const newTagInput=root.querySelector("#new-tag-name");
+ if(newTagInput)newTagInput.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();confirm.click()}};
 }
 function showForm(record=null){
- editingId=record?record.id:null;
+ editingId=record?.id||null;
+ selectedTags=record?[...record.tags]:[];
+ selectedRelated=record?record.related.filter(id=>id!==record.id).filter(getRecord).filter(r=>r.id!==record.id).map(r=>r.id):[];
+ tagOpen=false;relatedOpen=false;tagCreateOpen=false;tagSearch="";relatedSearch="";
  $("home").hidden=true;$("detail").hidden=true;$("editor").hidden=false;
- $("form-title").textContent=record?"Edit Record":"New Record";$("form-message").hidden=true;
+ $("form-title").textContent=record?"Edit Record":"New Record";
+ $("form-message").hidden=true;
  $("f-name").value=record?.name||"";$("f-icon").value=record?.icon||"";
- $("f-description").value=record?.description||"";$("f-subcategory").value=record?.subcategory||"";
- const types=unique([...TYPES,...records.map(r=>r.type)]);
- $("f-type").innerHTML=types.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("")+'<option value="__new__">+ Create new type...</option>';
- $("f-type").value=record?.type||"Mob";$("f-new-type").value="";$("f-new-type").hidden=true;
- const categories=unique(records.map(r=>r.category).filter(Boolean));
- $("f-category").innerHTML='<option value="">None</option>'+categories.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("")+'<option value="__new__">+ Create new category...</option>';
- $("f-category").value=record?.category||"";$("f-new-category").value="";$("f-new-category").hidden=true;
- $("f-type").onchange=()=>{
-  $("f-new-type").hidden=$("f-type").value!=="__new__";
-  if(!$("f-new-type").hidden)$("f-new-type").focus();
-  $("property-rows").innerHTML="";
-  (record?.properties?.length?record.properties:[{name:"",value:""}]).forEach(renderPropertyRow);
-  renderTagPicker();
- };
- $("f-category").onchange=()=>{
-  $("f-new-category").hidden=$("f-category").value!=="__new__";
-  if(!$("f-new-category").hidden)$("f-new-category").focus();
- };
- selectedTags=[...(record?.tags||[])];
- selectedRelated=(record?.related||[]).filter(id=>findRecord(id)&&id!==editingId);
- tagPickerOpen=false;relatedPickerOpen=false;tagCreateOpen=false;tagSearch="";relatedSearch="";
- renderTagPicker();$("property-rows").innerHTML="";
- (record?.properties?.length?record.properties:[{name:"",value:""}]).forEach(renderPropertyRow);
- renderRelatedPicker();
+ $("f-subcategory").value=record?.subcategory||"";$("f-description").value=record?.description||"";
+ $("f-new-type").value="";$("f-new-category").value="";
+ setupSelect("f-type",uniq([...DEFAULT_TYPES,...records.map(r=>r.type)]),record?.type||"","Choose a type...","f-new-type");
+ setupSelect("f-category",uniq(records.map(r=>r.category)),record?.category||"","No category","f-new-category");
+ renderPropertyRows(record?.properties||[]);
+ renderPicker("tags");renderPicker("related");
+ window.scrollTo(0,0);
 }
-function readChoice(selectId,newInputId,label){
- const value=$(selectId).value;
- if(value==="__new__"){const custom=$(newInputId).value.trim();if(!custom)throw new Error("Enter a name for the new "+label+".");return custom}
- return value;
+function cancelForm(){
+ if(currentId&&getRecord(currentId))openRecord(currentId);else renderHome();
 }
-function showHome(){currentRecordId=null;renderHome()}
 function deleteRecord(id){
- const r=findRecord(id);if(!r)return;
- if(!confirm(`Delete "${r.name}"? This cannot be undone.`))return;
- records=records.filter(x=>x.id!==id);records.forEach(x=>x.related=x.related.filter(relatedId=>relatedId!==id));
- saveRecords();showHome();
+ const r=getRecord(id);if(!r||!confirm(`Delete "${r.name}"? This cannot be undone.`))return;
+ records=records.filter(x=>x.id!==id);
+ records.forEach(x=>x.related=x.related.filter(rel=>rel!==id));
+ expanded.delete(id);saveRecords();currentId=null;renderHome();
 }
-$("new-record").addEventListener("click",()=>showForm());
-$("back").addEventListener("click",showHome);
-$("cancel-top").addEventListener("click",showHome);
-$("cancel-bottom").addEventListener("click",showHome);
-$("search").addEventListener("input",renderRecords);
-$("add-property").addEventListener("click",()=>renderPropertyRow());
-$("filter-category").addEventListener("change",()=>{renderFilterOptions();renderRecords()});
-$("filter-subcategory").addEventListener("change",renderRecords);
-$("filter-property").addEventListener("change",renderRecords);
-$("filter-property-value").addEventListener("input",renderRecords);
-$("sort-records").addEventListener("change",renderRecords);
-$("clear-filters").addEventListener("click",()=>{
- activeFilters=[];selectedFilterTags=[];
- $("search").value="";$("filter-category").value="";$("filter-subcategory").value="";
- $("filter-property").value="";$("filter-property-value").value="";$("sort-records").value="name-asc";
- renderCategories();renderFilterOptions();renderRecords();
-});
-$("record-form").addEventListener("submit",event=>{
- event.preventDefault();
- try{
-  const name=$("f-name").value.trim();if(!name)throw new Error("Enter a record name.");
-  const type=readChoice("f-type","f-new-type","type");
-  const category=readChoice("f-category","f-new-category","category");
-  const tags=unique(selectedTags),properties=[];
-  for(const row of $("property-rows").children){
-   const select=row.querySelector("select"),nameInput=row.querySelector(".property-new-name"),valueInput=row.querySelector(".property-value");
-   const propName=select.value==="__new__"?nameInput.value.trim():select.value;
-   const value=valueInput.value.trim();
-   if(!propName&&!value)continue;
-   if(!propName)throw new Error("Choose a property or enter a new property name.");
-   if(!value)throw new Error("Enter a value for the property "+propName+".");
-   properties.push({name:propName,value});
+$("record-form").addEventListener("submit",e=>{
+ e.preventDefault();
+ const name=$("f-name").value.trim();
+ const type=readSelect("f-type","f-new-type");
+ const category=readSelect("f-category","f-new-category");
+ if(!name||!type){alert("Please enter a name and choose a type.");return}
+ if(type==="__new__"||category==="__new__"){alert("Please enter the new type or category name.");return}
+ if(records.some(r=>r.id!==editingId&&r.name.toLowerCase()===name.toLowerCase()&&r.type===type)){
+  if(!confirm("A record with this name and type already exists. Save anyway?"))return;
+ }
+ const properties=readProperties();
+ const existing=editingId?getRecord(editingId):null;
+ const record={
+  id:editingId||uid(),name,icon:$("f-icon").value.trim(),type,category,
+  subcategory:$("f-subcategory").value.trim(),description:$("f-description").value.trim(),
+  tags:uniq(selectedTags),properties,related:uniq(selectedRelated),
+  createdAt:existing?.createdAt||new Date().toISOString()
+ };
+ if(existing){
+  records=records.map(r=>r.id===editingId?record:r);
+ }else records.push(record);
+ // Keep links that point to this record and update links selected in the editor.
+ records.forEach(r=>{
+  if(r.id!==record.id&&r.related.includes(record.id)&&!record.related.includes(r.id)){
+   // Existing incoming relationships remain intact.
   }
-  const related=unique(selectedRelated),id=editingId||uid(),previous=findRecord(id);
-  const updated={
-   id,name,icon:$("f-icon").value.trim(),type,category,
-   subcategory:$("f-subcategory").value.trim(),
-   createdAt:previous?.createdAt||new Date().toISOString(),
-   description:$("f-description").value.trim(),tags,properties,related
-  };
-  if(previous)records=records.map(r=>r.id===id?updated:r);else records.push(updated);
-  records.forEach(r=>{
-   if(r.id===id)return;
-   r.related=r.related.filter(link=>link!==id);
-   if(related.includes(r.id))r.related.push(id);
-   r.related=unique(r.related);
-  });
-  if(!saveRecords())return;
-  renderFilterOptions();openRecord(id);
- }catch(error){$("form-message").textContent=error.message;$("form-message").hidden=false}
+ });
+ syncCatalogs();saveRecords();
+ currentId=record.id;openRecord(record.id);
 });
-records=loadRecords();
-loadCatalogs(records);
-saveCatalogs();
-renderHome();
+$("new-record").onclick=()=>{currentId=null;showForm()};
+$("add-property").onclick=()=>addPropertyRow();
+$("back").onclick=()=>{currentId=null;renderHome()};
+$("cancel-top").onclick=cancelForm;$("cancel-bottom").onclick=cancelForm;
+$("search").addEventListener("input",renderRecords);
+$("toggle-filters").onclick=()=>{filtersOpen=!filtersOpen;updateFilterToggle()};
+$("filter-category").onchange=()=>{renderFilterOptions();renderRecords();updateFilterToggle()};
+$("filter-subcategory").onchange=()=>{renderRecords();updateFilterToggle()};
+$("sort-records").onchange=renderRecords;
+$("add-filter-condition").onclick=()=>{conditions.push({property:"",operator:"contains",value:""});renderConditionRows();renderRecords();updateFilterToggle()};
+$("save-filter").onclick=saveCurrentFilter;
+$("apply-saved-filter").onclick=()=>{
+ const f=savedFilters.find(x=>x.id===$("saved-filters").value);if(f)applyFilterState(f.state);
+};
+$("delete-saved-filter").onclick=()=>{
+ const id=$("saved-filters").value;if(!id)return;
+ const f=savedFilters.find(x=>x.id===id);
+ if(f&&confirm(`Delete saved filter "${f.name}"?`)){
+  savedFilters=savedFilters.filter(x=>x.id!==id);persistFilters();renderSavedFilters();
+ }
+};
+$("clear-filters").onclick=()=>{
+ activeTypes=[];activeTags=[];conditions=[];
+ $("search").value="";$("filter-category").value="";$("filter-subcategory").value="";
+ $("sort-records").value="name-asc";renderHome();
+};
+records=loadRecords();loadCatalogs();loadSavedFilters();renderHome();
 </script>
 </body>
 </html>
