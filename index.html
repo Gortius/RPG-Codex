@@ -78,18 +78,15 @@ footer{padding:18px;color:var(--muted);font-size:11px;border-top:1px solid var(-
   <p class="eyebrow">YOUR WORKSPACE</p>
   <h2>Game Database</h2>
   <p class="muted">Everything connected, in one place.</p>
-
   <div class="toolbar">
     <input id="search" type="search" placeholder="Search records..." autocomplete="off">
     <button id="new-record" class="primary">+ New Record</button>
   </div>
-
   <div class="section-title"><h3>Categories</h3></div>
   <div id="categories" class="categories"></div>
   <div class="section-title"><h3>Records</h3><span id="count" class="muted"></span></div>
   <div id="records" class="records"></div>
 </section>
-
 <section id="detail" hidden>
   <button id="back" class="back">← Back to records</button>
   <div id="detail-content"></div>
@@ -100,7 +97,6 @@ footer{padding:18px;color:var(--muted);font-size:11px;border-top:1px solid var(-
   <h2 id="form-title">New Record</h2>
   <p class="muted" style="margin-bottom:22px">Define the record and connect it to your database.</p>
   <div id="form-message" class="notice" hidden></div>
-
   <form id="record-form">
     <div class="form-field">
       <label for="f-name">Name *</label>
@@ -111,7 +107,6 @@ footer{padding:18px;color:var(--muted);font-size:11px;border-top:1px solid var(-
       <select id="f-type" required></select>
       <input id="f-new-type" hidden maxlength="50" placeholder="New type name" style="margin-top:8px">
     </div>
-
     <div class="form-field">
       <label for="f-category">Category</label>
       <select id="f-category"></select>
@@ -121,7 +116,6 @@ footer{padding:18px;color:var(--muted);font-size:11px;border-top:1px solid var(-
       <label for="f-description">Description</label>
       <textarea id="f-description" maxlength="3000" placeholder="Describe this record..."></textarea>
     </div>
-
     <div class="form-field">
       <label>Tags</label>
       <div id="tag-options" class="tags"></div>
@@ -139,7 +133,6 @@ footer{padding:18px;color:var(--muted);font-size:11px;border-top:1px solid var(-
       <div id="related-options" class="tags"></div>
       <p class="hint">Selected records will be linked in both directions.</p>
     </div>
-
     <div class="actions">
       <button type="submit" class="primary">Save Record</button>
       <button type="button" id="cancel-bottom" class="secondary">Cancel</button>
@@ -154,44 +147,9 @@ footer{padding:18px;color:var(--muted);font-size:11px;border-top:1px solid var(-
 
 const STORAGE_KEY = "rpg-codex-records-v2";
 const CATALOG_STORAGE_KEY = "rpg-codex-catalogs-v1";
-
 const TYPES = ["Mob","Item","Material","Area","Recipe","Effect","Skill","NPC","Boss"];
-
-const DEFAULT_TAGS = [
-  "Common","Uncommon","Rare","Epic","Legendary",
-  "Craftable","Quest","Optional"
-];
-
-const DEFAULT_PROPERTIES = [
-  "Health","Damage","Defense","Armor","Speed",
-  "Attack Speed","Cooldown","Duration","Level","Rarity"
-];
-
-const DEFAULT_TAG_TYPES = {
-  Common: ["Mob","Item","Material"],
-  Uncommon: ["Mob","Item","Material"],
-  Rare: ["Mob","Item","Material"],
-  Epic: ["Mob","Item"],
-  Legendary: ["Mob","Item"],
-  Craftable: ["Item","Material","Recipe"],
-  Quest: ["Item","Material","NPC","Area"],
-  Optional: ["Area","Boss","Skill"]
-};
-
-const DEFAULT_PROPERTY_TYPES = {
-  Health: ["Mob","Boss","NPC"],
-  Damage: ["Mob","Boss","Item","Skill"],
-  Defense: ["Mob","Boss","Item"],
-  Armor: ["Mob","Boss","Item"],
-  Speed: ["Mob","Boss","Item"],
-  "Attack Speed": ["Item","Skill"],
-  Cooldown: ["Skill","Effect"],
-  Duration: ["Effect","Skill"],
-  Level: ["Area","Mob","Boss","Item"],
-  Rarity: ["Item","Material"],
-  "Material Cost": ["Recipe"]
-};
-
+const DEFAULT_TAG_TYPES = ["Common","Uncommon","Rare","Epic","Legendary","Craftable","Quest","Optional"];
+const DEFAULT_PROPERTY_TYPES = ["Health","Damage","Defense","Armor","Speed","Attack Speed","Cooldown","Duration","Level","Rarity"];
 const $ = id => document.getElementById(id);
 
 const starterRecords = [
@@ -204,293 +162,340 @@ const starterRecords = [
 ];
 
 let records = [];
-let catalogs = {tags: [], properties: []};
+let catalogs = {tags:[],properties:[]};
 let activeFilter = "All";
 let editingId = null;
 let currentRecordId = null;
 
 function uid(){
-  return "r-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,8);
+ return "r-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,8);
 }
-
 function esc(value){
-  return String(value ?? "").replace(/[&<>"']/g, c => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-  })[c]);
+ return String(value ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
-
 function unique(values){
-  return [...new Set(values.map(v=>String(v ?? "").trim()).filter(Boolean))]
-    .sort((a,b)=>a.localeCompare(b));
+ return [...new Set(values.map(v=>String(v ?? "").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
 }
-
 function findRecord(id){return records.find(r=>r.id===id)}
-
 function recordIcon(type){
-  return ({Mob:"👾",Item:"⚔️",Material:"💎",Area:"🌍",Recipe:"📜",Effect:"✨",Skill:"🔮",NPC:"🧑",Boss:"☠️"})[type] || "◆";
+ return ({Mob:"👾",Item:"⚔️",Material:"💎",Area:"🌍",Recipe:"📜",Effect:"✨",Skill:"🔮",NPC:"🧑",Boss:"☠️"})[type] || "◆";
 }
-
-function loadRecords(){
-  try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw === null) return starterRecords.map(r=>({...r,tags:[...r.tags],properties:r.properties.map(p=>({...p})),related:[...r.related]}));
-    const parsed = JSON.parse(raw);
-    if(!Array.isArray(parsed)) throw new Error("Invalid saved data");
-    return parsed.map(r=>({
-      id:String(r.id || uid()),
-      name:String(r.name || "Untitled"),
-      type:String(r.type || "Item"),
-      category:String(r.category || ""),
-      description:String(r.description || ""),
-      tags:Array.isArray(r.tags)?r.tags.map(String):[],
-      properties:Array.isArray(r.properties)?r.properties.map(p=>({name:String(p.name||""),value:String(p.value||"")})):[],
-      related:Array.isArray(r.related)?r.related.map(String):[]
-    }));
-  }catch(error){
-    console.error("Could not load saved records:",error);
-    $("status").textContent="Could not read saved data. Your browser may be blocking local storage.";
-    return starterRecords.map(r=>({...r,tags:[...r.tags],properties:r.properties.map(p=>({...p})),related:[...r.related]}));
-  }
+function cloneStarterRecords(){
+ return starterRecords.map(r=>({...r,tags:[...r.tags],properties:r.properties.map(p=>({...p})),related:[...r.related]}));
 }
-
-/* GLOBAL CATALOGS */
-
-function catalogId(prefix, name){
-  const slug = name
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-
-  return prefix + "-" + (slug || uid());
+function catalogId(name){
+ return String(name||"").trim().toLocaleLowerCase();
 }
-
-function mergeCatalogItem(list, prefix, name, types = []){
-  name = String(name || "").trim();
-  if(!name) return;
-
-  let item = list.find(
-    entry => String(entry.name).toLowerCase() === name.toLowerCase()
-  );
-
-  if(!item){
-    item = {
-      id: catalogId(prefix, name),
-      name,
-      suggestedTypes: []
-    };
-    list.push(item);
-  }
-
-  if(!Array.isArray(item.suggestedTypes)){
-    item.suggestedTypes = [];
-  }
-
-  item.suggestedTypes = unique([
-    ...item.suggestedTypes,
-    ...types
-  ]);
+function mergeCatalogItem(list,name,type=""){
+ const clean=String(name||"").trim();
+ if(!clean)return;
+ const id=catalogId(clean);
+ const existing=list.find(item=>catalogId(item.name)===id);
+ if(existing){
+  if(type&&!existing.types.includes(type))existing.types.push(type);
+  return;
+ }
+ list.push({name:clean,types:type?[type]:[]});
 }
-
-function syncCatalogs(sourceRecords = records){
-  if(!catalogs || !Array.isArray(catalogs.tags) ||
-     !Array.isArray(catalogs.properties)){
-    catalogs = {tags: [], properties: []};
-  }
-
-  DEFAULT_TAGS.forEach(tag => {
-    mergeCatalogItem(
-      catalogs.tags,
-      "tag",
-      tag,
-      DEFAULT_TAG_TYPES[tag] || []
-    );
+function syncCatalogs(sourceRecords=records){
+ if(!catalogs||!Array.isArray(catalogs.tags)||!Array.isArray(catalogs.properties)){
+  catalogs={tags:[],properties:[]};
+ }
+ sourceRecords.forEach(record=>{
+  (Array.isArray(record.tags)?record.tags:[]).forEach(tag=>mergeCatalogItem(catalogs.tags,tag,record.type));
+  (Array.isArray(record.properties)?record.properties:[]).forEach(prop=>{
+   if(prop&&prop.name)mergeCatalogItem(catalogs.properties,prop.name,record.type);
   });
-
-  DEFAULT_PROPERTIES.forEach(property => {
-    mergeCatalogItem(
-      catalogs.properties,
-      "property",
-      property,
-      DEFAULT_PROPERTY_TYPES[property] || []
-    );
-  });
-
-  sourceRecords.forEach(record => {
-    (Array.isArray(record.tags) ? record.tags : []).forEach(tag => {
-      mergeCatalogItem(
-        catalogs.tags,
-        "tag",
-        tag,
-        [record.type]
-      );
-    });
-
-    (Array.isArray(record.properties) ? record.properties : []).forEach(property => {
-      mergeCatalogItem(
-        catalogs.properties,
-        "property",
-        property.name,
-        [record.type]
-      );
-    });
-  });
+ });
+ DEFAULT_TAG_TYPES.forEach(tag=>mergeCatalogItem(catalogs.tags,tag));
+ DEFAULT_PROPERTY_TYPES.forEach(prop=>mergeCatalogItem(catalogs.properties,prop));
 }
-
-function loadCatalogs(sourceRecords = records){
-  let saved = null;
-
-  try{
-    const raw = localStorage.getItem(CATALOG_STORAGE_KEY);
-    if(raw !== null){
-      saved = JSON.parse(raw);
-    }
-  }catch(error){
-    console.warn("Could not load catalogs:", error);
-  }
-
-  catalogs = {
-    tags: Array.isArray(saved?.tags)
-      ? saved.tags.filter(item => item && item.name)
-      : [],
-    properties: Array.isArray(saved?.properties)
-      ? saved.properties.filter(item => item && item.name)
-      : []
-  };
-
-  syncCatalogs(sourceRecords);
-  return catalogs;
+function loadCatalogs(sourceRecords=records){
+ let saved=null;
+ try{
+  const raw=localStorage.getItem(CATALOG_STORAGE_KEY);
+  if(raw!==null)saved=JSON.parse(raw);
+ }catch(error){
+  console.warn("Could not load catalogs:",error);
+ }
+ catalogs={
+  tags:Array.isArray(saved?.tags)?saved.tags.filter(item=>item&&item.name).map(item=>({name:String(item.name),types:Array.isArray(item.types)?item.types.map(String):[]})):[],
+  properties:Array.isArray(saved?.properties)?saved.properties.filter(item=>item&&item.name).map(item=>({name:String(item.name),types:Array.isArray(item.types)?item.types.map(String):[]})):[]
+ };
+ syncCatalogs(sourceRecords);
+ return catalogs;
 }
-
 function saveCatalogs(){
-  try{
-    localStorage.setItem(
-      CATALOG_STORAGE_KEY,
-      JSON.stringify(catalogs)
-    );
-    return true;
-  }catch(error){
-    console.warn("Could not save catalogs:", error);
-    return false;
-  }
+ try{
+  localStorage.setItem(CATALOG_STORAGE_KEY,JSON.stringify(catalogs));
+  return true;
+ }catch(error){
+  console.warn("Could not save catalogs:",error);
+  return false;
+ }
 }
-
-function allTags(){
-  return unique(catalogs.tags.map(item => item.name));
+function allTags(type=""){
+ syncCatalogs();
+ return unique(catalogs.tags.filter(item=>!type||!item.types.length||item.types.includes(type)).map(item=>item.name));
 }
-
-function allProperties(){
-  return unique(catalogs.properties.map(item => item.name));
+function allProperties(type=""){
+ syncCatalogs();
+ return unique(catalogs.properties.filter(item=>!type||!item.types.length||item.types.includes(type)).map(item=>item.name));
 }
-
+function loadRecords(){
+ try{
+  const raw=localStorage.getItem(STORAGE_KEY);
+  if(raw===null)return cloneStarterRecords();
+  const parsed=JSON.parse(raw);
+  if(!Array.isArray(parsed))throw new Error("Invalid saved data");
+  return parsed.map(r=>({
+   id:String(r.id||uid()),
+   name:String(r.name||"Untitled"),
+   type:String(r.type||"Item"),
+   category:String(r.category||""),
+   description:String(r.description||""),
+   tags:Array.isArray(r.tags)?r.tags.map(String):[],
+   properties:Array.isArray(r.properties)?r.properties.map(p=>({name:String(p.name||""),value:String(p.value||"")})):[],
+   related:Array.isArray(r.related)?r.related.map(String):[]
+  }));
+ }catch(error){
+  console.error("Could not load saved records:",error);
+  $("status").textContent="Could not read saved data. Your browser may be blocking local storage.";
+  return cloneStarterRecords();
+ }
+}
 function saveRecords(){
-  try{
-    // Keep the existing record storage key and record format.
-    localStorage.setItem(STORAGE_KEY,JSON.stringify(records));
-
-    // Update the catalogs independently.
-    syncCatalogs();
-    saveCatalogs();
-
-    $("status").textContent="Saved in this browser · " + records.length + " records";
-    return true;
-  }catch(error){
-    console.error("Could not save records:",error);
-    alert("The browser could not save your records. Do not refresh this page until you copy any new information.");
-    $("status").textContent="Save failed · Browser storage unavailable";
-    return false;
-  }
+ try{
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(records));
+  syncCatalogs(records);
+  saveCatalogs();
+  $("status").textContent="Saved in this browser · "+records.length+" records";
+  return true;
+ }catch(error){
+  console.error("Could not save records:",error);
+  alert("The browser could not save your records. Do not refresh this page until you copy any new information.");
+  $("status").textContent="Save failed · Browser storage unavailable";
+  return false;
+ }
 }
-
+  
 function renderCategories(){
-  const types = unique(records.map(r=>r.type));
-  const options = ["All",...types];
-  $("categories").innerHTML=options.map(type=>
-    `<button class="category ${activeFilter===type?"active":""}" data-filter="${esc(type)}">${esc(type==="All"?"All":type+"s")}</button>`
-  ).join("");
-  $("categories").querySelectorAll("button").forEach(btn=>{
-    btn.addEventListener("click",()=>{
-      activeFilter=btn.dataset.filter;
-      renderCategories();
-      renderRecords();
-    });
+ const types=unique(records.map(r=>r.type));
+ const options=["All",...types];
+ $("categories").innerHTML=options.map(type=>
+  `<button class="category ${activeFilter===type?"active":""}" data-filter="${esc(type)}">${esc(type==="All"?"All":type+"s")}</button>`
+ ).join("");
+ $("categories").querySelectorAll("button").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+   activeFilter=btn.dataset.filter;
+   renderCategories();
+   renderRecords();
   });
+ });
 }
-
 function renderRecords(){
-  const query=$("search").value.trim().toLowerCase();
-  const filtered=records.filter(r=>{
-    const text=[r.name,r.type,r.category,r.description,...r.tags,...r.properties.map(p=>p.name+" "+p.value)].join(" ").toLowerCase();
-    return (activeFilter==="All"||r.type===activeFilter)&&text.includes(query);
-  });
-  $("count").textContent=filtered.length+" shown";
-  if(!filtered.length){
-    $("records").innerHTML='<div class="empty">No records found.<br><br>Try another search or create a new record.</div>';
-    return;
-  }
-  $("records").innerHTML=filtered.map(r=>`
-    <button class="record" data-open="${esc(r.id)}">
-      <span class="record-icon">${recordIcon(r.type)}</span>
-      <span class="record-info">
-        <strong>${esc(r.name)}</strong>
-        <p>${esc(r.type)}${r.category?" · "+esc(r.category):""}${r.tags.length?" · "+esc(r.tags.join(", ")):""}</p>
-      </span>
-      <span class="record-arrow">›</span>
-    </button>`).join("");
-  $("records").querySelectorAll("[data-open]").forEach(btn=>btn.addEventListener("click",()=>openRecord(btn.dataset.open)));
+ const query=$("search").value.trim().toLowerCase();
+ const filtered=records.filter(r=>{
+  const text=[r.name,r.type,r.category,r.description,...r.tags,...r.properties.map(p=>p.name+" "+p.value)].join(" ").toLowerCase();
+  return (activeFilter==="All"||r.type===activeFilter)&&text.includes(query);
+ });
+ $("count").textContent=filtered.length+" shown";
+ if(!filtered.length){
+  $("records").innerHTML='<div class="empty">No records found.<br><br>Try another search or create a new record.</div>';
+  return;
+ }
+ $("records").innerHTML=filtered.map(r=>`
+  <button class="record" data-open="${esc(r.id)}">
+   <span class="record-icon">${recordIcon(r.type)}</span>
+   <span class="record-info">
+    <strong>${esc(r.name)}</strong>
+    <p>${esc(r.type)}${r.category?" · "+esc(r.category):""}${r.tags.length?" · "+esc(r.tags.join(", ")):""}</p>
+   </span>
+   <span class="record-arrow">›</span>
+  </button>`).join("");
+ $("records").querySelectorAll("[data-open]").forEach(btn=>btn.addEventListener("click",()=>openRecord(btn.dataset.open)));
 }
-
 function renderHome(){
-  $("home").hidden=false;
-  $("detail").hidden=true;
-  $("editor").hidden=true;
-  renderCategories();
-  renderRecords();
+ $("home").hidden=false;
+ $("detail").hidden=true;
+ $("editor").hidden=true;
+ renderCategories();
+ renderRecords();
 }
-
 function openRecord(id){
-  const r=findRecord(id);
-  if(!r)return;
-  currentRecordId=id;
-  $("home").hidden=true;
-  $("editor").hidden=true;
-  $("detail").hidden=false;
-  const properties=r.properties.length?r.properties.map(p=>`
-    <div class="field"><span class="field-label">${esc(p.name)}</span>${esc(p.value)}</div>`).join(""):'<p class="muted">No properties defined.</p>';
-  const tags=r.tags.length?r.tags.map(t=>`<span class="chip">${esc(t)}</span>`).join(" "):'<span class="muted">No tags</span>';
-  const related=r.related.map(findRecord).filter(Boolean);
-  $("detail-content").innerHTML=`
-    <p class="eyebrow">${esc(r.type.toUpperCase())}</p>
-    <h2>${esc(r.name)}</h2>
-    <p class="muted">${esc(r.category||"Uncategorized")}</p>
-    <div class="actions">
-      <button id="edit-record" class="primary">Edit Record</button>
-      <button id="delete-record" class="danger">Delete</button>
-    </div>
-    <div class="panel"><h3>Description</h3><p style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(r.description||"No description.")}</p></div>
-    <div class="panel"><h3>Properties</h3>${properties}</div>
-    <div class="panel"><h3>Tags</h3><div class="tags">${tags}</div></div>
-    <div class="panel"><h3>Related Records (${related.length})</h3><div id="detail-related" class="related">${related.length?related.map(x=>`<button class="chip" data-related="${esc(x.id)}">${esc(x.name)} · ${esc(x.type)}</button>`).join(""):'<p class="muted">No related records.</p>'}</div></div>`;
-  $("edit-record").addEventListener("click",()=>showForm(r));
-  $("delete-record").addEventListener("click",()=>deleteRecord(r.id));
-  $("detail-related").querySelectorAll("[data-related]").forEach(btn=>btn.addEventListener("click",()=>openRecord(btn.dataset.related)));
+ const r=findRecord(id);
+ if(!r)return;
+ currentRecordId=id;
+ $("home").hidden=true;
+ $("editor").hidden=true;
+ $("detail").hidden=false;
+ const properties=r.properties.length?r.properties.map(p=>
+  `<div class="field"><span class="field-label">${esc(p.name)}</span>${esc(p.value)}</div>`
+ ).join(""):'<p class="muted">No properties defined.</p>';
+ const tags=r.tags.length?r.tags.map(t=>`<span class="chip">${esc(t)}</span>`).join(" "):'<span class="muted">No tags</span>';
+ const related=r.related.map(findRecord).filter(Boolean);
+ $("detail-content").innerHTML=`
+  <p class="eyebrow">${esc(r.type.toUpperCase())}</p>
+  <h2>${esc(r.name)}</h2>
+  <p class="muted">${esc(r.category||"Uncategorized")}</p>
+  <div class="actions">
+   <button id="edit-record" class="primary">Edit Record</button>
+   <button id="delete-record" class="danger">Delete</button>
+  </div>
+  <div class="panel"><h3>Description</h3><p style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(r.description||"No description.")}</p></div>
+  <div class="panel"><h3>Properties</h3>${properties}</div>
+  <div class="panel"><h3>Tags</h3><div class="tags">${tags}</div></div>
+  <div class="panel"><h3>Related Records (${related.length})</h3><div id="detail-related" class="related">${related.length?related.map(x=>`<button class="chip" data-related="${esc(x.id)}">${esc(x.name)} · ${esc(x.type)}</button>`).join(""):'<p class="muted">No related records.</p>'}</div></div>`;
+ $("edit-record").addEventListener("click",()=>showForm(r));
+ $("delete-record").addEventListener("click",()=>deleteRecord(r.id));
+ $("detail-related").querySelectorAll("[data-related]").forEach(btn=>btn.addEventListener("click",()=>openRecord(btn.dataset.related)));
 }
-
 function makeSelect(id,values,selected,allowNew){
-  const list=unique(values);
-  if(selected&&!list.includes(selected))list.push(selected);
-  const options=list.map(v=>`<option value="${esc(v)}" ${v===selected?"selected":""}>${esc(v)}</option>`).join("");
-  return `<select id="${id}">${options}${allowNew?'<option value="__new__">+ Create new...</option>':""}</select>`;
+ const list=unique(values);
+ if(selected&&!list.includes(selected))list.push(selected);
+ const options=list.map(v=>`<option value="${esc(v)}" ${v===selected?"selected":""}>${esc(v)}</option>`).join("");
+ return `<select id="${id}">${options}${allowNew?'<option value="__new__">+ Create new...</option>':""}</select>`;
+}
+function renderPropertyRow(prop={}){
+ const row=document.createElement("div");
+ row.className="property-row";
+ row.innerHTML=makeSelect("property-name",allProperties($("f-type").value),prop.name||"",true)+
+  `<input class="property-new-name" hidden maxlength="60" placeholder="New property">`+
+  `<input class="property-value" maxlength="200" placeholder="Value" value="${esc(prop.value||"")}">`+
+  `<button type="button" class="remove" aria-label="Remove property">× Remove</button>`;
+ const select=row.querySelector("select");
+ const newName=row.querySelector(".property-new-name");
+ select.addEventListener("change",()=>{
+  const isNew=select.value==="__new__";
+  newName.hidden=!isNew;
+  if(isNew)newName.focus();
+ });
+ row.querySelector(".remove").addEventListener("click",()=>row.remove());
+ $("property-rows").appendChild(row);
+}
+function showForm(record=null){
+ editingId=record?record.id:null;
+ $("home").hidden=true;
+ $("detail").hidden=true;
+ $("editor").hidden=false;
+ $("form-title").textContent=record?"Edit Record":"New Record";
+ $("form-message").hidden=true;
+ $("f-name").value=record?.name||"";
+ $("f-description").value=record?.description||"";
+ $("f-new-tags").value="";
+ const types=unique([...TYPES,...records.map(r=>r.type)]);
+ $("f-type").innerHTML=types.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("")+'<option value="__new__">+ Create new type...</option>';
+ $("f-type").value=record?.type||"Mob";
+ $("f-new-type").value="";
+ $("f-new-type").hidden=true;
+ const categories=unique(records.map(r=>r.category).filter(Boolean));
+ $("f-category").innerHTML='<option value="">None</option>'+categories.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("")+'<option value="__new__">+ Create new category...</option>';
+ $("f-category").value=record?.category||"";
+ $("f-new-category").value="";
+ $("f-new-category").hidden=true;
+ $("f-type").onchange=()=>{
+  const isNew=$("f-type").value==="__new__";
+  $("f-new-type").hidden=!isNew;
+  if(isNew)$("f-new-type").focus();
+ };
+ $("f-category").onchange=()=>{
+  const isNew=$("f-category").value==="__new__";
+  $("f-new-category").hidden=!isNew;
+  if(isNew)$("f-new-category").focus();
+ };
+ const chosenTags=record?.tags||[];
+ $("tag-options").innerHTML=allTags($("f-type").value).map(tag=>
+  `<label class="check"><input type="checkbox" value="${esc(tag)}" ${chosenTags.includes(tag)?"checked":""}>${esc(tag)}</label>`
+ ).join("");
+ $("property-rows").innerHTML="";
+ (record?.properties?.length?record.properties:[{name:"",value:""}]).forEach(renderPropertyRow);
+ const available=records.filter(r=>r.id!==editingId);
+ $("related-options").innerHTML=available.length?available.map(r=>
+  `<label class="check"><input type="checkbox" value="${esc(r.id)}" ${(record?.related||[]).includes(r.id)?"checked":""}>${esc(r.name)} <span class="muted">(${esc(r.type)})</span></label>`
+ ).join(""):'<p class="muted">Create more records to link them together.</p>';
+}
+function readChoice(selectId,newInputId,label){
+ const value=$(selectId).value;
+ if(value==="__new__"){
+  const custom=$(newInputId).value.trim();
+  if(!custom)throw new Error("Enter a name for the new "+label+".");
+  return custom;
+ }
+ return value;
+}
+function showHome(){
+ currentRecordId=null;
+ renderHome();
+}
+function deleteRecord(id){
+ const r=findRecord(id);
+ if(!r)return;
+ if(!confirm(`Delete "${r.name}"? This cannot be undone.`))return;
+ records=records.filter(x=>x.id!==id);
+ records.forEach(x=>x.related=x.related.filter(relatedId=>relatedId!==id));
+ saveRecords();
+ showHome();
 }
 
-function renderPropertyRow(prop={}){
-  const row=document.createElement("div");
-  row.className="property-row";
-  row.innerHTML=makeSelect("property-name",allProperties(),prop.name||"",true)+
-    `<input class="property-new-name" hidden maxlength="60" placeholder="New property">`+
-    `<input class="property-value" maxlength="200" placeholder="Value" value="${esc(prop.value||"")}">`+
-    `<button type="button" class="remove" aria-label="Remove property">× Remove</button>`;
-  const select=row.querySelector("select");
-  const newName=row.querySelector(".property-new-name");
-  select.addEventListener("change",()
+$("new-record").addEventListener("click",()=>showForm());
+$("back").addEventListener("click",showHome);
+$("cancel-top").addEventListener("click",showHome);
+$("cancel-bottom").addEventListener("click",showHome);
+$("search").addEventListener("input",renderRecords);
+$("add-property").addEventListener("click",()=>renderPropertyRow());
+
+$("record-form").addEventListener("submit",event=>{
+ event.preventDefault();
+ try{
+  const name=$("f-name").value.trim();
+  if(!name)throw new Error("Enter a record name.");
+  const type=readChoice("f-type","f-new-type","type");
+  const category=readChoice("f-category","f-new-category","category");
+  const tags=[
+   ...Array.from($("tag-options").querySelectorAll("input:checked")).map(input=>input.value),
+   ...$("f-new-tags").value.split(",").map(t=>t.trim()).filter(Boolean)
+  ];
+  const properties=[];
+  for(const row of $("property-rows").children){
+   const select=row.querySelector("select");
+   const nameInput=row.querySelector(".property-new-name");
+   const valueInput=row.querySelector(".property-value");
+   let propName=select.value==="__new__"?nameInput.value.trim():select.value;
+   const value=valueInput.value.trim();
+   if(!propName&&!value)continue;
+   if(!propName)throw new Error("Choose a property or enter a new property name.");
+   if(!value)throw new Error("Enter a value for the property "+propName+".");
+   properties.push({name:propName,value});
+  }
+  const related=Array.from($("related-options").querySelectorAll("input:checked")).map(input=>input.value);
+  const id=editingId||uid();
+  const old=findRecord(id);
+  const updated={id,name,type,category,description:$("f-description").value.trim(),tags:unique(tags),properties,related};
+  if(old){
+   records=records.map(r=>r.id===id?updated:r);
+  }else{
+   records.push(updated);
+  }
+  records.forEach(r=>{
+   if(r.id===id)return;
+   r.related=r.related.filter(link=>link!==id);
+   if(related.includes(r.id))r.related.push(id);
+   r.related=unique(r.related);
+  });
+  if(!saveRecords())return;
+  openRecord(id);
+ }catch(error){
+  $("form-message").textContent=error.message;
+  $("form-message").hidden=false;
+ }
+});
+
+// Load existing records first, then rebuild catalogs from those records.
+// The original records storage key is preserved for compatibility.
+records=loadRecords();
+loadCatalogs(records);
+saveCatalogs();
+renderHome();
+</script>
+</body>
+</html>
