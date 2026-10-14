@@ -50,15 +50,31 @@ button:disabled{opacity:.5;cursor:default}
 .hint{color:var(--muted);font-size:12px;margin-top:6px}
 .tags{display:flex;flex-wrap:wrap;gap:8px}
 .check{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#22242b;border:1px solid var(--border);border-radius:8px}
-.check input{width:16px;height:16px;accent-color:var(--accent)}
 .property-row{display:grid;grid-template-columns:1fr 1fr auto;gap:7px;margin-bottom:9px}
 .property-row .remove{padding:0 10px;background:none;border:1px solid var(--border);border-radius:8px}
 .related button{margin:0 7px 7px 0}
 .related .chip{color:var(--accent)}
-.actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:22px}
-.actions button{flex:1}
 .empty{color:var(--muted);padding:25px 8px;text-align:center}
 .notice{padding:12px;margin-bottom:14px;background:#292532;border:1px solid #393047;border-radius:9px;font-size:12px}
+.actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:22px}
+.actions button{flex:1}
+.picker{position:relative}
+.picker-trigger{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;background:var(--panel);border:1px solid var(--border);border-radius:9px;text-align:left}
+.picker-trigger .muted{margin-left:auto}
+.picker-menu{position:relative;margin-top:7px;padding:9px;background:#1b1c22;border:1px solid var(--border);border-radius:11px}
+.picker-search{margin-bottom:8px}
+.picker-options{display:grid;gap:4px;max-height:220px;overflow-y:auto}
+.picker-option{width:100%;padding:10px;text-align:left;background:transparent;border:0;border-radius:7px;overflow-wrap:anywhere}
+.picker-option:hover,.picker-option:focus{background:#302b3c;outline:none}
+.picker-option.create{color:var(--accent);border-top:1px solid var(--border);margin-top:4px;padding-top:12px}
+.picker-empty{padding:12px;color:var(--muted);font-size:12px}
+.selected-items{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:9px}
+.selected-item{display:inline-flex;align-items:center;gap:7px;max-width:100%;padding:6px 9px;background:#292532;border:1px solid #393047;border-radius:8px;overflow-wrap:anywhere}
+.selected-item span{overflow-wrap:anywhere}
+.selected-item button{flex-shrink:0;padding:0 2px;color:var(--accent);background:none;border:0;font-size:17px;line-height:1}
+.picker-create-form{display:flex;gap:7px;margin-top:8px}
+.picker-create-form input{min-width:0}
+.picker-create-form button{flex-shrink:0}
 footer{padding:18px;color:var(--muted);font-size:11px;border-top:1px solid var(--border)}
 [hidden]{display:none!important}
 @media(max-width:420px){.property-row{grid-template-columns:1fr 1fr}.property-row .remove{grid-column:span 2;padding:8px}.toolbar{flex-wrap:wrap}.toolbar>*{flex-basis:100%}}
@@ -118,9 +134,8 @@ footer{padding:18px;color:var(--muted);font-size:11px;border-top:1px solid var(-
     </div>
     <div class="form-field">
       <label>Tags</label>
-      <div id="tag-options" class="tags"></div>
-      <input id="f-new-tags" style="margin-top:10px" placeholder="Add new tags, separated by commas">
-      <p class="hint">Select existing tags or type new ones separated by commas.</p>
+      <div id="tag-picker"></div>
+      <p class="hint">Add one or more tags. Search the list or create a new tag.</p>
     </div>
     <div class="form-field">
       <label>Properties</label>
@@ -130,8 +145,8 @@ footer{padding:18px;color:var(--muted);font-size:11px;border-top:1px solid var(-
     </div>
     <div class="form-field">
       <label>Related Records</label>
-      <div id="related-options" class="tags"></div>
-      <p class="hint">Selected records will be linked in both directions.</p>
+      <div id="related-picker"></div>
+      <p class="hint">Search for existing records and add the ones you want to link.</p>
     </div>
     <div class="actions">
       <button type="submit" class="primary">Save Record</button>
@@ -166,6 +181,11 @@ let catalogs = {tags:[],properties:[]};
 let activeFilter = "All";
 let editingId = null;
 let currentRecordId = null;
+let selectedTags = [];
+let selectedRelated = [];
+let tagPickerOpen = false;
+let relatedPickerOpen = false;
+let tagCreateOpen = false;
 
 function uid(){
  return "r-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,8);
@@ -278,7 +298,9 @@ function saveRecords(){
   return false;
  }
 }
-  
+let tagSearch = "";
+let relatedSearch = "";
+
 function renderCategories(){
  const types=unique(records.map(r=>r.type));
  const options=["All",...types];
@@ -373,6 +395,134 @@ function renderPropertyRow(prop={}){
  row.querySelector(".remove").addEventListener("click",()=>row.remove());
  $("property-rows").appendChild(row);
 }
+
+// TAG PICKER
+function renderTagPicker(focusSearch=false){
+ const root=$("tag-picker");
+ const options=allTags($("f-type").value).filter(tag=>
+  !selectedTags.includes(tag)&&tag.toLowerCase().includes(tagSearch.toLowerCase())
+ );
+ root.innerHTML=`
+  <div class="selected-items">${selectedTags.map(tag=>
+   `<span class="selected-item"><span>${esc(tag)}</span><button type="button" data-remove-tag="${esc(tag)}" aria-label="Remove ${esc(tag)}">×</button></span>`
+  ).join("")}</div>
+  <div class="picker">
+   <button type="button" class="picker-trigger" id="tag-toggle">
+    <span>+ Add tag</span><span class="muted">${tagPickerOpen?"▲":"▼"}</span>
+   </button>
+   ${tagPickerOpen?`
+    <div class="picker-menu">
+     <input class="picker-search" id="tag-search" type="search" placeholder="Search tags..." value="${esc(tagSearch)}" autocomplete="off">
+     <div class="picker-options">
+      ${options.map(tag=>`<button type="button" class="picker-option" data-add-tag="${esc(tag)}">${esc(tag)}</button>`).join("")}
+      ${options.length?"":'<div class="picker-empty">No matching tags.</div>'}
+      <button type="button" class="picker-option create" id="show-create-tag">+ Create new tag</button>
+     </div>
+     ${tagCreateOpen?`
+      <form id="create-tag-form" class="picker-create-form">
+       <input id="new-tag-name" maxlength="60" placeholder="New tag name" required>
+       <button class="primary" type="submit" style="border-radius:9px;padding:0 12px">Add</button>
+      </form>`:""}
+    </div>`:""}
+  </div>`;
+ root.querySelector("#tag-toggle").addEventListener("click",()=>{
+  tagPickerOpen=!tagPickerOpen;
+  tagCreateOpen=false;
+  renderTagPicker(tagPickerOpen);
+ });
+ root.querySelectorAll("[data-remove-tag]").forEach(btn=>btn.addEventListener("click",()=>{
+  selectedTags=selectedTags.filter(t=>t!==btn.dataset.removeTag);
+  renderTagPicker();
+ }));
+ root.querySelectorAll("[data-add-tag]").forEach(btn=>btn.addEventListener("click",()=>{
+  if(!selectedTags.includes(btn.dataset.addTag))selectedTags.push(btn.dataset.addTag);
+  tagSearch="";
+  renderTagPicker(true);
+ }));
+ const search=root.querySelector("#tag-search");
+ if(search){
+  search.addEventListener("input",()=>{
+   tagSearch=search.value;
+   const start=search.selectionStart;
+   renderTagPicker(true);
+   const next=$("tag-search");
+   next.focus();
+   next.setSelectionRange(start,start);
+  });
+ }
+ const createButton=root.querySelector("#show-create-tag");
+ if(createButton)createButton.addEventListener("click",()=>{
+  tagCreateOpen=true;
+  renderTagPicker();
+  $("new-tag-name")?.focus();
+ });
+ const createForm=root.querySelector("#create-tag-form");
+ if(createForm)createForm.addEventListener("submit",event=>{
+  event.preventDefault();
+  const name=$("new-tag-name").value.trim();
+  if(!name)return;
+  const existing=allTags().find(tag=>catalogId(tag)===catalogId(name));
+  const tag=existing||name;
+  mergeCatalogItem(catalogs.tags,tag,$("f-type").value);
+  saveCatalogs();
+  if(!selectedTags.includes(tag))selectedTags.push(tag);
+  tagSearch="";
+  tagCreateOpen=false;
+  renderTagPicker();
+ });
+}
+
+// RELATED RECORDS PICKER
+function renderRelatedPicker(focusSearch=false){
+ const root=$("related-picker");
+ const options=records.filter(r=>
+  r.id!==editingId&&
+  !selectedRelated.includes(r.id)&&
+  (r.name+" "+r.type+" "+r.category).toLowerCase().includes(relatedSearch.toLowerCase())
+ );
+ root.innerHTML=`
+  <div class="selected-items">${selectedRelated.map(id=>findRecord(id)).filter(Boolean).map(r=>
+   `<span class="selected-item"><span>${esc(r.name)} <span class="muted">· ${esc(r.type)}</span></span><button type="button" data-remove-related="${esc(r.id)}" aria-label="Remove ${esc(r.name)}">×</button></span>`
+  ).join("")}</div>
+  <div class="picker">
+   <button type="button" class="picker-trigger" id="related-toggle">
+    <span>+ Add related record</span><span class="muted">${relatedPickerOpen?"▲":"▼"}</span>
+   </button>
+   ${relatedPickerOpen?`
+    <div class="picker-menu">
+     <input class="picker-search" id="related-search" type="search" placeholder="Search records by name, type or category..." value="${esc(relatedSearch)}" autocomplete="off">
+     <div class="picker-options">
+      ${options.map(r=>`<button type="button" class="picker-option" data-add-related="${esc(r.id)}">${esc(r.name)} <span class="muted">· ${esc(r.type)}${r.category?" · "+esc(r.category):""}</span></button>`).join("")}
+      ${options.length?"":'<div class="picker-empty">No matching records found.</div>'}
+     </div>
+    </div>`:""}
+  </div>`;
+ root.querySelector("#related-toggle").addEventListener("click",()=>{
+  relatedPickerOpen=!relatedPickerOpen;
+  renderRelatedPicker(relatedPickerOpen);
+ });
+ root.querySelectorAll("[data-remove-related]").forEach(btn=>btn.addEventListener("click",()=>{
+  selectedRelated=selectedRelated.filter(id=>id!==btn.dataset.removeRelated);
+  renderRelatedPicker();
+ }));
+ root.querySelectorAll("[data-add-related]").forEach(btn=>btn.addEventListener("click",()=>{
+  if(!selectedRelated.includes(btn.dataset.addRelated))selectedRelated.push(btn.dataset.addRelated);
+  relatedSearch="";
+  renderRelatedPicker(true);
+ }));
+ const search=root.querySelector("#related-search");
+ if(search){
+  search.addEventListener("input",()=>{
+   relatedSearch=search.value;
+   const start=search.selectionStart;
+   renderRelatedPicker(true);
+   const next=$("related-search");
+   next.focus();
+   next.setSelectionRange(start,start);
+  });
+ }
+}
+
 function showForm(record=null){
  editingId=record?record.id:null;
  $("home").hidden=true;
@@ -382,7 +532,6 @@ function showForm(record=null){
  $("form-message").hidden=true;
  $("f-name").value=record?.name||"";
  $("f-description").value=record?.description||"";
- $("f-new-tags").value="";
  const types=unique([...TYPES,...records.map(r=>r.type)]);
  $("f-type").innerHTML=types.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("")+'<option value="__new__">+ Create new type...</option>';
  $("f-type").value=record?.type||"Mob";
@@ -397,22 +546,26 @@ function showForm(record=null){
   const isNew=$("f-type").value==="__new__";
   $("f-new-type").hidden=!isNew;
   if(isNew)$("f-new-type").focus();
+  renderTagPicker();
+  $("property-rows").innerHTML="";
+  (record?.properties?.length?record.properties:[{name:"",value:""}]).forEach(renderPropertyRow);
  };
  $("f-category").onchange=()=>{
   const isNew=$("f-category").value==="__new__";
   $("f-new-category").hidden=!isNew;
   if(isNew)$("f-new-category").focus();
  };
- const chosenTags=record?.tags||[];
- $("tag-options").innerHTML=allTags($("f-type").value).map(tag=>
-  `<label class="check"><input type="checkbox" value="${esc(tag)}" ${chosenTags.includes(tag)?"checked":""}>${esc(tag)}</label>`
- ).join("");
+ selectedTags=[...(record?.tags||[])];
+ selectedRelated=(record?.related||[]).filter(id=>findRecord(id)&&id!==editingId);
+ tagPickerOpen=false;
+ relatedPickerOpen=false;
+ tagCreateOpen=false;
+ tagSearch="";
+ relatedSearch="";
+ renderTagPicker();
  $("property-rows").innerHTML="";
  (record?.properties?.length?record.properties:[{name:"",value:""}]).forEach(renderPropertyRow);
- const available=records.filter(r=>r.id!==editingId);
- $("related-options").innerHTML=available.length?available.map(r=>
-  `<label class="check"><input type="checkbox" value="${esc(r.id)}" ${(record?.related||[]).includes(r.id)?"checked":""}>${esc(r.name)} <span class="muted">(${esc(r.type)})</span></label>`
- ).join(""):'<p class="muted">Create more records to link them together.</p>';
+ renderRelatedPicker();
 }
 function readChoice(selectId,newInputId,label){
  const value=$(selectId).value;
@@ -451,10 +604,7 @@ $("record-form").addEventListener("submit",event=>{
   if(!name)throw new Error("Enter a record name.");
   const type=readChoice("f-type","f-new-type","type");
   const category=readChoice("f-category","f-new-category","category");
-  const tags=[
-   ...Array.from($("tag-options").querySelectorAll("input:checked")).map(input=>input.value),
-   ...$("f-new-tags").value.split(",").map(t=>t.trim()).filter(Boolean)
-  ];
+  const tags=unique(selectedTags);
   const properties=[];
   for(const row of $("property-rows").children){
    const select=row.querySelector("select");
@@ -467,10 +617,10 @@ $("record-form").addEventListener("submit",event=>{
    if(!value)throw new Error("Enter a value for the property "+propName+".");
    properties.push({name:propName,value});
   }
-  const related=Array.from($("related-options").querySelectorAll("input:checked")).map(input=>input.value);
+  const related=unique(selectedRelated);
   const id=editingId||uid();
   const old=findRecord(id);
-  const updated={id,name,type,category,description:$("f-description").value.trim(),tags:unique(tags),properties,related};
+  const updated={id,name,type,category,description:$("f-description").value.trim(),tags,properties,related};
   if(old){
    records=records.map(r=>r.id===id?updated:r);
   }else{
@@ -490,8 +640,7 @@ $("record-form").addEventListener("submit",event=>{
  }
 });
 
-// Load existing records first, then rebuild catalogs from those records.
-// The original records storage key is preserved for compatibility.
+// Preserve existing records and rebuild catalogs without changing the old storage key.
 records=loadRecords();
 loadCatalogs(records);
 saveCatalogs();
