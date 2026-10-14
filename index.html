@@ -401,4 +401,54 @@ $("record-form").addEventListener("submit",event=>{
   event.preventDefault();
   try{
     const name=$("f-name").value.trim();
-    if(!name)throw new Error("
+    if(!name)throw new Error("Enter a record name.");
+    const type=readChoice("f-type","f-new-type","type");
+    const category=readChoice("f-category","f-new-category","category");
+    const tags=[
+      ...Array.from($("tag-options").querySelectorAll("input:checked")).map(input=>input.value),
+      ...$("f-new-tags").value.split(",").map(t=>t.trim()).filter(Boolean)
+    ];
+    const properties=[];
+    for(const row of $("property-rows").children){
+      const select=row.querySelector("select");
+      const nameInput=row.querySelector(".property-new-name");
+      const valueInput=row.querySelector(".property-value");
+      let propName=select.value==="__new__"?nameInput.value.trim():select.value;
+      const value=valueInput.value.trim();
+      if(!propName&&!value)continue;
+      if(!propName)throw new Error("Choose a property or enter a new property name.");
+      if(!value)throw new Error("Enter a value for the property "+propName+".");
+      properties.push({name:propName,value});
+    }
+    const related=Array.from($("related-options").querySelectorAll("input:checked")).map(input=>input.value);
+    const id=editingId||uid();
+    const old=findRecord(id);
+    const updated={
+      id,name,type,category,description:$("f-description").value.trim(),
+      tags:unique(tags),properties,related
+    };
+    if(old){
+      records=records.map(r=>r.id===id?updated:r);
+    }else{
+      records.push(updated);
+    }
+    // Keep links bidirectional.
+    records.forEach(r=>{
+      if(r.id===id)return;
+      r.related=r.related.filter(link=>link!==id);
+      if(related.includes(r.id))r.related.push(id);
+      r.related=unique(r.related);
+    });
+    if(!saveRecords())return;
+    openRecord(id);
+  }catch(error){
+    $("form-message").textContent=error.message;
+    $("form-message").hidden=false;
+  }
+});
+
+records=loadRecords();
+renderHome();
+</script>
+</body>
+</html>
