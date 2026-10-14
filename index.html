@@ -16,10 +16,10 @@ header{display:flex;align-items:center;justify-content:space-between;gap:12px;pa
 .brand{display:flex;align-items:center;gap:12px}
 .logo{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:var(--accent);color:#191324;font-size:22px;font-weight:800}
 h1,h2,h3,p{margin:0}
-h1{font-size:18px}.sub,.muted{color:var(--muted);font-size:12px}
+h1{font-size:18px}h2{font-size:25px;margin-bottom:6px}
+.sub,.muted{color:var(--muted);font-size:12px}
 main{padding:22px 18px}
 .eyebrow{color:var(--accent);font-size:10px;letter-spacing:1.5px;margin-bottom:8px}
-h2{font-size:25px;margin-bottom:6px}
 .section-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:26px 0 13px}
 input,select,textarea{width:100%;padding:12px;background:var(--panel);border:1px solid var(--border);border-radius:9px;color:var(--text);outline:none}
 textarea{resize:vertical;min-height:90px}
@@ -31,9 +31,9 @@ button.danger{color:var(--danger);background:transparent;border:1px solid #57333
 button:disabled{opacity:.5;cursor:default}
 .toolbar{display:flex;gap:9px;margin-top:16px}
 .toolbar>*{flex:1;min-width:0}
-.categories{display:flex;flex-wrap:wrap;gap:8px}
+.categories,.tags,.selected-items{display:flex;flex-wrap:wrap;gap:8px}
 .category{font-size:12px;padding:8px 11px}
-.category.active{color:var(--accent);border-color:var(--accent);background:#252130}
+.category.active,.filter-chip.active{color:var(--accent);border-color:var(--accent);background:#252130}
 .records{display:grid;gap:9px}
 .record{display:flex;align-items:center;gap:12px;width:100%;padding:13px;text-align:left;background:var(--panel);border:1px solid var(--border);border-radius:12px}
 .record-icon{display:grid;place-items:center;flex-shrink:0;width:42px;height:42px;border-radius:10px;background:#292532;font-size:21px}
@@ -48,7 +48,6 @@ button:disabled{opacity:.5;cursor:default}
 .form-field{margin-bottom:18px}
 .form-field>label,.field-label-main{display:block;font-weight:650;margin-bottom:7px}
 .hint{color:var(--muted);font-size:12px;margin-top:6px}
-.tags{display:flex;flex-wrap:wrap;gap:8px}
 .property-row{display:grid;grid-template-columns:1fr 1fr auto;gap:7px;margin-bottom:9px}
 .property-row .remove{padding:0 10px;background:none;border:1px solid var(--border);border-radius:8px}
 .related button{margin:0 7px 7px 0}
@@ -59,7 +58,6 @@ button:disabled{opacity:.5;cursor:default}
 .actions button{flex:1}
 .picker{position:relative}
 .picker-trigger{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;background:var(--panel);border:1px solid var(--border);border-radius:9px;text-align:left}
-.picker-trigger .muted{margin-left:auto}
 .picker-menu{position:relative;margin-top:7px;padding:9px;background:#1b1c22;border:1px solid var(--border);border-radius:11px}
 .picker-search{margin-bottom:8px}
 .picker-options{display:grid;gap:4px;max-height:220px;overflow-y:auto}
@@ -67,28 +65,29 @@ button:disabled{opacity:.5;cursor:default}
 .picker-option:hover,.picker-option:focus{background:#302b3c;outline:none}
 .picker-option.create{color:var(--accent);border-top:1px solid var(--border);margin-top:4px;padding-top:12px}
 .picker-empty{padding:12px;color:var(--muted);font-size:12px}
-.selected-items{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:9px}
 .selected-item{display:inline-flex;align-items:center;gap:7px;max-width:100%;padding:6px 9px;background:#292532;border:1px solid #393047;border-radius:8px;overflow-wrap:anywhere}
-.selected-item span{overflow-wrap:anywhere}
 .selected-item button{flex-shrink:0;padding:0 2px;color:var(--accent);background:none;border:0;font-size:17px;line-height:1}
 .picker-create-form{display:flex;gap:7px;margin-top:8px}
 .picker-create-form input{min-width:0}
-.picker-create-form button{flex-shrink:0}
 .record-heading{display:flex;align-items:center;gap:12px;margin:8px 0}
 .record-heading .record-icon{width:52px;height:52px;font-size:27px}
 .filter-hint{margin-top:9px;color:var(--muted);font-size:12px}
+.filter-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.filter-grid label{display:grid;gap:7px;font-weight:600;min-width:0}
+.filter-grid .hint{font-weight:400}
+.filter-chip{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px}
+.filter-chip-row{display:flex;flex-wrap:wrap;gap:7px}
+.filter-group{margin-top:14px}
+.filter-group>label{display:block;font-weight:650;margin-bottom:7px}
 footer{padding:18px;color:var(--muted);font-size:11px;border-top:1px solid var(--border)}
 [hidden]{display:none!important}
-@media(max-width:420px){.property-row{grid-template-columns:1fr 1fr}.property-row .remove{grid-column:span 2;padding:8px}.toolbar{flex-wrap:wrap}.toolbar>*{flex-basis:100%}}
+@media(max-width:480px){.property-row{grid-template-columns:1fr 1fr}.property-row .remove{grid-column:span 2;padding:8px}.toolbar{flex-wrap:wrap}.toolbar>*{flex-basis:100%}.filter-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div class="app">
 <header>
-  <div class="brand">
-    <div class="logo">R</div>
-    <div><h1>RPG Codex</h1><p class="sub">Game Development Database</p></div>
-  </div>
+  <div class="brand"><div class="logo">R</div><div><h1>RPG Codex</h1><p class="sub">Game Development Database</p></div></div>
   <span class="sub">PROTOTYPE</span>
 </header>
 <main>
@@ -103,6 +102,43 @@ footer{padding:18px;color:var(--muted);font-size:11px;border-top:1px solid var(-
   <div class="section-title"><h3>Types</h3></div>
   <div id="categories" class="categories"></div>
   <p class="filter-hint" id="filter-hint">Showing all types.</p>
+  <div class="panel">
+    <h3>Advanced Filters</h3>
+    <div class="filter-grid">
+      <div class="filter-group">
+        <label for="filter-category">Category</label>
+        <select id="filter-category"><option value="">All categories</option></select>
+      </div>
+      <div class="filter-group">
+        <label for="filter-subcategory">Subcategory</label>
+        <select id="filter-subcategory"><option value="">All subcategories</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Tags</label>
+        <div id="filter-tags" class="filter-chip-row"></div>
+      </div>
+      <div class="filter-group">
+        <label for="filter-property">Property</label>
+        <select id="filter-property"><option value="">Any property</option></select>
+      </div>
+      <div class="filter-group">
+        <label for="filter-property-value">Property value</label>
+        <input id="filter-property-value" placeholder="e.g. Epic or 20">
+      </div>
+      <div class="filter-group">
+        <label for="sort-records">Sort by</label>
+        <select id="sort-records">
+          <option value="name-asc">Name A–Z</option>
+          <option value="name-desc">Name Z–A</option>
+          <option value="type">Type</option>
+          <option value="category">Category</option>
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+        </select>
+      </div>
+    </div>
+    <button type="button" id="clear-filters" class="secondary" style="margin-top:14px">Clear filters</button>
+  </div>
   <div class="section-title"><h3>Records</h3><span id="count" class="muted"></span></div>
   <div id="records" class="records"></div>
 </section>
@@ -117,49 +153,16 @@ footer{padding:18px;color:var(--muted);font-size:11px;border-top:1px solid var(-
   <p class="muted" style="margin-bottom:22px">Define the record and connect it to your database.</p>
   <div id="form-message" class="notice" hidden></div>
   <form id="record-form">
-    <div class="form-field">
-      <label for="f-name">Name *</label>
-      <input id="f-name" required maxlength="100" placeholder="e.g. Leaf Bow">
-    </div>
-    <div class="form-field">
-      <label for="f-icon">Icon / Emoji</label>
-      <input id="f-icon" maxlength="16" placeholder="e.g. ⚔️, 🐉, 🌲">
-      <p class="hint">Leave empty to use the default icon for this record type.</p>
-    </div>
-    <div class="form-field">
-      <label for="f-type">Type *</label>
-      <select id="f-type" required></select>
-      <input id="f-new-type" hidden maxlength="50" placeholder="New type name" style="margin-top:8px">
-    </div>
-    <div class="form-field">
-      <label for="f-category">Category</label>
-      <select id="f-category"></select>
-      <input id="f-new-category" hidden maxlength="60" placeholder="New category name" style="margin-top:8px">
-    </div>
-    <div class="form-field">
-      <label for="f-description">Description</label>
-      <textarea id="f-description" maxlength="3000" placeholder="Describe this record..."></textarea>
-    </div>
-    <div class="form-field">
-      <label>Tags</label>
-      <div id="tag-picker"></div>
-      <p class="hint">Add one or more tags. Search the list or create a new tag.</p>
-    </div>
-    <div class="form-field">
-      <label>Properties</label>
-      <div id="property-rows"></div>
-      <button type="button" id="add-property" class="secondary">+ Add Property</button>
-      <p class="hint">Choose a property you already use or create a new one. Examples: Health, Damage, Defense.</p>
-    </div>
-    <div class="form-field">
-      <label>Related Records</label>
-      <div id="related-picker"></div>
-      <p class="hint">Search for existing records and add the ones you want to link.</p>
-    </div>
-    <div class="actions">
-      <button type="submit" class="primary">Save Record</button>
-      <button type="button" id="cancel-bottom" class="secondary">Cancel</button>
-    </div>
+    <div class="form-field"><label for="f-name">Name *</label><input id="f-name" required maxlength="100" placeholder="e.g. Leaf Bow"></div>
+    <div class="form-field"><label for="f-icon">Icon / Emoji</label><input id="f-icon" maxlength="16" placeholder="e.g. ⚔️, 🐉, 🌲"><p class="hint">Leave empty to use the default icon for this record type.</p></div>
+    <div class="form-field"><label for="f-type">Type *</label><select id="f-type" required></select><input id="f-new-type" hidden maxlength="50" placeholder="New type name" style="margin-top:8px"></div>
+    <div class="form-field"><label for="f-category">Category</label><select id="f-category"></select><input id="f-new-category" hidden maxlength="60" placeholder="New category name" style="margin-top:8px"></div>
+    <div class="form-field"><label for="f-subcategory">Subcategory</label><input id="f-subcategory" maxlength="60" placeholder="e.g. Swords"></div>
+    <div class="form-field"><label for="f-description">Description</label><textarea id="f-description" maxlength="3000" placeholder="Describe this record..."></textarea></div>
+    <div class="form-field"><label>Tags</label><div id="tag-picker"></div><p class="hint">Add one or more tags. Search the list or create a new tag.</p></div>
+    <div class="form-field"><label>Properties</label><div id="property-rows"></div><button type="button" id="add-property" class="secondary">+ Add Property</button><p class="hint">Choose a property you already use or create a new one. Examples: Health, Damage, Defense.</p></div>
+    <div class="form-field"><label>Related Records</label><div id="related-picker"></div><p class="hint">Search for existing records and add the ones you want to link.</p></div>
+    <div class="actions"><button type="submit" class="primary">Save Record</button><button type="button" id="cancel-bottom" class="secondary">Cancel</button></div>
   </form>
 </section>
 </main>
@@ -167,118 +170,77 @@ footer{padding:18px;color:var(--muted);font-size:11px;border-top:1px solid var(-
 </div>
 <script>
 "use strict";
-
-const STORAGE_KEY = "rpg-codex-records-v2";
-const CATALOG_STORAGE_KEY = "rpg-codex-catalogs-v1";
-const TYPES = ["Mob","Item","Material","Area","Recipe","Effect","Skill","NPC","Boss"];
-const DEFAULT_TAG_TYPES = ["Common","Uncommon","Rare","Epic","Legendary","Craftable","Quest","Optional"];
-const DEFAULT_PROPERTY_TYPES = ["Health","Damage","Defense","Armor","Speed","Attack Speed","Cooldown","Duration","Level","Rarity"];
-const $ = id => document.getElementById(id);
-
-const starterRecords = [
- {id:"sample-mob",name:"Leafling",type:"Mob",category:"Beginning Hole",description:"A small creature found near the entrance.",tags:["Common"],properties:[{name:"Health",value:"20"},{name:"Damage",value:"3"}],related:[]},
- {id:"sample-material",name:"Vines",type:"Material",category:"Beginning Hole",description:"A basic crafting material gathered from local creatures and plants.",tags:["Craftable"],properties:[{name:"Rarity",value:"Common"}],related:[]},
- {id:"sample-item",name:"Leaf Bow",type:"Item",category:"Beginning Hole",description:"A simple bow made with materials from the starting area.",tags:["Craftable","Common"],properties:[{name:"Damage",value:"5"},{name:"Attack Speed",value:"1.0"}],related:["sample-recipe"]},
- {id:"sample-area",name:"Beginning Hole",type:"Area",category:"Sector 1",description:"The player's starting area, featuring a locked door and an early guardian.",tags:["Starting Area"],properties:[{name:"Level",value:"1"}],related:["sample-mob"]},
- {id:"sample-effect",name:"Slowness",type:"Effect",category:"Debuff",description:"Reduces the affected target's movement speed.",tags:["Debuff"],properties:[{name:"Duration",value:"3 seconds"}],related:[]},
- {id:"sample-recipe",name:"Leaf Bow Recipe",type:"Recipe",category:"Beginning Hole",description:"Crafting recipe for the Leaf Bow.",tags:["Craftable"],properties:[{name:"Material Cost",value:"Vines + Wood"}],related:["sample-item"]}
+const STORAGE_KEY="rpg-codex-records-v2";
+const CATALOG_STORAGE_KEY="rpg-codex-catalogs-v1";
+const TYPES=["Mob","Item","Material","Area","Recipe","Effect","Skill","NPC","Boss"];
+const DEFAULT_TAG_TYPES=["Common","Uncommon","Rare","Epic","Legendary","Craftable","Quest","Optional"];
+const DEFAULT_PROPERTY_TYPES=["Health","Damage","Defense","Armor","Speed","Attack Speed","Cooldown","Duration","Level","Rarity"];
+const $=id=>document.getElementById(id);
+const starterRecords=[
+{id:"sample-mob",name:"Leafling",type:"Mob",category:"Beginning Hole",description:"A small creature found near the entrance.",tags:["Common"],properties:[{name:"Health",value:"20"},{name:"Damage",value:"3"}],related:[]},
+{id:"sample-material",name:"Vines",type:"Material",category:"Beginning Hole",description:"A basic crafting material gathered from local creatures and plants.",tags:["Craftable"],properties:[{name:"Rarity",value:"Common"}],related:[]},
+{id:"sample-item",name:"Leaf Bow",type:"Item",category:"Beginning Hole",description:"A simple bow made with materials from the starting area.",tags:["Craftable","Common"],properties:[{name:"Damage",value:"5"},{name:"Attack Speed",value:"1.0"}],related:["sample-recipe"]},
+{id:"sample-area",name:"Beginning Hole",type:"Area",category:"Sector 1",description:"The player's starting area, featuring a locked door and an early guardian.",tags:["Starting Area"],properties:[{name:"Level",value:"1"}],related:["sample-mob"]},
+{id:"sample-effect",name:"Slowness",type:"Effect",category:"Debuff",description:"Reduces the affected target's movement speed.",tags:["Debuff"],properties:[{name:"Duration",value:"3 seconds"}],related:[]},
+{id:"sample-recipe",name:"Leaf Bow Recipe",type:"Recipe",category:"Beginning Hole",description:"Crafting recipe for the Leaf Bow.",tags:["Craftable"],properties:[{name:"Material Cost",value:"Vines + Wood"}],related:["sample-item"]}
 ];
-
-let records = [];
-let catalogs = {tags:[],properties:[]};
-let activeFilters = [];
-let editingId = null;
-let currentRecordId = null;
-let selectedTags = [];
-let selectedRelated = [];
-let tagPickerOpen = false;
-let relatedPickerOpen = false;
-let tagCreateOpen = false;
-let tagSearch = "";
-let relatedSearch = "";
-
-function uid(){
- return "r-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,8);
-}
-function esc(value){
- return String(value ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-}
-function unique(values){
- return [...new Set(values.map(v=>String(v ?? "").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-}
+let records=[];
+let catalogs={tags:[],properties:[]};
+let activeFilters=[];
+let selectedFilterTags=[];
+let editingId=null,currentRecordId=null;
+let selectedTags=[],selectedRelated=[];
+let tagPickerOpen=false,relatedPickerOpen=false,tagCreateOpen=false;
+let tagSearch="",relatedSearch="";
+function uid(){return "r-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8)}
+function esc(value){return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function unique(values){return [...new Set(values.map(v=>String(v??"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b))}
 function findRecord(id){return records.find(r=>r.id===id)}
-function recordIcon(type){
- return ({Mob:"👾",Item:"⚔️",Material:"💎",Area:"🌍",Recipe:"📜",Effect:"✨",Skill:"🔮",NPC:"🧑",Boss:"☠️"})[type] || "◆";
-}
+function recordIcon(type){return ({Mob:"👾",Item:"⚔️",Material:"💎",Area:"🌍",Recipe:"📜",Effect:"✨",Skill:"🔮",NPC:"🧑",Boss:"☠️"})[type]||"◆"}
 function displayIcon(record){return record.icon&&record.icon.trim()?record.icon:recordIcon(record.type)}
-function cloneStarterRecords(){
- return starterRecords.map(r=>({...r,tags:[...r.tags],properties:r.properties.map(p=>({...p})),related:[...r.related]}));
-}
-function catalogId(name){
- return String(name||"").trim().toLocaleLowerCase();
-}
+function cloneStarterRecords(){return starterRecords.map(r=>({...r,tags:[...r.tags],properties:r.properties.map(p=>({...p})),related:[...r.related]}))}
+function catalogId(name){return String(name||"").trim().toLocaleLowerCase()}
 function mergeCatalogItem(list,name,type=""){
- const clean=String(name||"").trim();
- if(!clean)return;
- const id=catalogId(clean);
- const existing=list.find(item=>catalogId(item.name)===id);
- if(existing){
-  if(type&&!existing.types.includes(type))existing.types.push(type);
-  return;
- }
+ const clean=String(name||"").trim();if(!clean)return;
+ const existing=list.find(item=>catalogId(item.name)===catalogId(clean));
+ if(existing){if(type&&!existing.types.includes(type))existing.types.push(type);return}
  list.push({name:clean,types:type?[type]:[]});
 }
 function syncCatalogs(sourceRecords=records){
- if(!catalogs||!Array.isArray(catalogs.tags)||!Array.isArray(catalogs.properties)){
-  catalogs={tags:[],properties:[]};
- }
+ if(!catalogs||!Array.isArray(catalogs.tags)||!Array.isArray(catalogs.properties))catalogs={tags:[],properties:[]};
  sourceRecords.forEach(record=>{
   (Array.isArray(record.tags)?record.tags:[]).forEach(tag=>mergeCatalogItem(catalogs.tags,tag,record.type));
-  (Array.isArray(record.properties)?record.properties:[]).forEach(prop=>{
-   if(prop&&prop.name)mergeCatalogItem(catalogs.properties,prop.name,record.type);
-  });
+  (Array.isArray(record.properties)?record.properties:[]).forEach(prop=>{if(prop&&prop.name)mergeCatalogItem(catalogs.properties,prop.name,record.type)});
  });
  DEFAULT_TAG_TYPES.forEach(tag=>mergeCatalogItem(catalogs.tags,tag));
  DEFAULT_PROPERTY_TYPES.forEach(prop=>mergeCatalogItem(catalogs.properties,prop));
 }
 function loadCatalogs(sourceRecords=records){
  let saved=null;
- try{
-  const raw=localStorage.getItem(CATALOG_STORAGE_KEY);
-  if(raw!==null)saved=JSON.parse(raw);
- }catch(error){console.warn("Could not load catalogs:",error)}
+ try{const raw=localStorage.getItem(CATALOG_STORAGE_KEY);if(raw!==null)saved=JSON.parse(raw)}catch(error){console.warn("Could not load catalogs:",error)}
  catalogs={
   tags:Array.isArray(saved?.tags)?saved.tags.filter(item=>item&&item.name).map(item=>({name:String(item.name),types:Array.isArray(item.types)?item.types.map(String):[]})):[],
   properties:Array.isArray(saved?.properties)?saved.properties.filter(item=>item&&item.name).map(item=>({name:String(item.name),types:Array.isArray(item.types)?item.types.map(String):[]})):[]
  };
- syncCatalogs(sourceRecords);
- return catalogs;
+ syncCatalogs(sourceRecords);return catalogs;
 }
 function saveCatalogs(){
- try{localStorage.setItem(CATALOG_STORAGE_KEY,JSON.stringify(catalogs));return true}
- catch(error){console.warn("Could not save catalogs:",error);return false}
+ try{localStorage.setItem(CATALOG_STORAGE_KEY,JSON.stringify(catalogs));return true}catch(error){console.warn("Could not save catalogs:",error);return false}
 }
 function allTags(type=""){
- syncCatalogs();
- return unique(catalogs.tags.filter(item=>!type||!item.types.length||item.types.includes(type)).map(item=>item.name));
+ syncCatalogs();return unique(catalogs.tags.filter(item=>!type||!item.types.length||item.types.includes(type)).map(item=>item.name));
 }
 function allProperties(type=""){
- syncCatalogs();
- return unique(catalogs.properties.filter(item=>!type||!item.types.length||item.types.includes(type)).map(item=>item.name));
+ syncCatalogs();return unique(catalogs.properties.filter(item=>!type||!item.types.length||item.types.includes(type)).map(item=>item.name));
 }
 function loadRecords(){
  try{
-  const raw=localStorage.getItem(STORAGE_KEY);
-  if(raw===null)return cloneStarterRecords();
-  const parsed=JSON.parse(raw);
-  if(!Array.isArray(parsed))throw new Error("Invalid saved data");
+  const raw=localStorage.getItem(STORAGE_KEY);if(raw===null)return cloneStarterRecords();
+  const parsed=JSON.parse(raw);if(!Array.isArray(parsed))throw new Error("Invalid saved data");
   return parsed.map(r=>({
-   id:String(r.id||uid()),
-   name:String(r.name||"Untitled"),
-   icon:typeof r.icon==="string"?r.icon:"",
-   type:String(r.type||"Item"),
-   category:String(r.category||""),
-   description:String(r.description||""),
+   id:String(r.id||uid()),name:String(r.name||"Untitled"),icon:typeof r.icon==="string"?r.icon:"",
+   type:String(r.type||"Item"),category:String(r.category||""),subcategory:String(r.subcategory||""),
+   createdAt:String(r.createdAt||""),description:String(r.description||""),
    tags:Array.isArray(r.tags)?r.tags.map(String):[],
    properties:Array.isArray(r.properties)?r.properties.map(p=>({name:String(p.name||""),value:String(p.value||"")})):[],
    related:Array.isArray(r.related)?r.related.map(String):[]
@@ -292,92 +254,111 @@ function loadRecords(){
 function saveRecords(){
  try{
   localStorage.setItem(STORAGE_KEY,JSON.stringify(records));
-  syncCatalogs(records);
-  saveCatalogs();
-  $("status").textContent="Saved in this browser · "+records.length+" records";
-  return true;
+  syncCatalogs(records);saveCatalogs();
+  $("status").textContent="Saved in this browser · "+records.length+" records";return true;
  }catch(error){
   console.error("Could not save records:",error);
   alert("The browser could not save your records. Do not refresh this page until you copy any new information.");
-  $("status").textContent="Save failed · Browser storage unavailable";
-  return false;
+  $("status").textContent="Save failed · Browser storage unavailable";return false;
  }
 }
+</script>
+<script>
 function renderCategories(){
  const types=unique([...TYPES,...records.map(r=>r.type)]);
- const allActive=activeFilters.length===0;
  $("categories").innerHTML=[
-  `<button class="category ${allActive?"active":""}" data-filter="__all__">All</button>`,
+  `<button class="category ${activeFilters.length===0?"active":""}" data-filter="__all__">All</button>`,
   ...types.map(type=>`<button class="category ${activeFilters.includes(type)?"active":""}" data-filter="${esc(type)}">${esc(type)}</button>`)
  ].join("");
- $("categories").querySelectorAll("button").forEach(btn=>{
-  btn.addEventListener("click",()=>{
-   const type=btn.dataset.filter;
-   if(type==="__all__"){
-    activeFilters=[];
-   }else{
-    if(activeFilters.includes(type))activeFilters=activeFilters.filter(t=>t!==type);
-    else activeFilters.push(type);
-   }
-   renderCategories();
-   renderRecords();
-  });
- });
- $("filter-hint").textContent=allActive
-  ?"Showing all types. Select multiple types to combine filters."
-  :"Filtering by: "+activeFilters.join(", ");
+ $("categories").querySelectorAll("button").forEach(btn=>btn.addEventListener("click",()=>{
+  const type=btn.dataset.filter;
+  if(type==="__all__")activeFilters=[];
+  else if(activeFilters.includes(type))activeFilters=activeFilters.filter(t=>t!==type);
+  else activeFilters.push(type);
+  renderCategories();renderRecords();
+ }));
+ $("filter-hint").textContent=activeFilters.length?"Filtering by: "+activeFilters.join(", "):"Showing all types. Select multiple types to combine filters.";
+}
+function renderFilterOptions(){
+ const category=$("filter-category"),subcategory=$("filter-subcategory");
+ const oldCategory=category.value,oldSubcategory=subcategory.value;
+ const categories=unique(records.map(r=>r.category));
+ category.innerHTML='<option value="">All categories</option>'+categories.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("");
+ category.value=categories.includes(oldCategory)?oldCategory:"";
+ const subs=unique(records.filter(r=>!category.value||r.category===category.value).map(r=>r.subcategory||""));
+ subcategory.innerHTML='<option value="">All subcategories</option>'+subs.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join("");
+ subcategory.value=subs.includes(oldSubcategory)?oldSubcategory:"";
+ const properties=allProperties();
+ const property=$("filter-property"),oldProperty=property.value;
+ property.innerHTML='<option value="">Any property</option>'+properties.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join("");
+ property.value=properties.includes(oldProperty)?oldProperty:"";
+ renderFilterTags();
+}
+function renderFilterTags(){
+ const root=$("filter-tags");
+ const tags=allTags();
+ root.innerHTML=tags.map(tag=>`<button type="button" class="filter-chip ${selectedFilterTags.includes(tag)?"active":""}" data-filter-tag="${esc(tag)}">${esc(tag)}</button>`).join("");
+ root.querySelectorAll("[data-filter-tag]").forEach(btn=>btn.addEventListener("click",()=>{
+  const tag=btn.dataset.filterTag;
+  if(selectedFilterTags.includes(tag))selectedFilterTags=selectedFilterTags.filter(t=>t!==tag);
+  else selectedFilterTags.push(tag);
+  renderFilterTags();renderRecords();
+ }));
 }
 function renderRecords(){
  const query=$("search").value.trim().toLowerCase();
- const filtered=records.filter(r=>{
-  const text=[r.name,r.type,r.category,r.description,...r.tags,...r.properties.map(p=>p.name+" "+p.value)].join(" ").toLowerCase();
-  return (!activeFilters.length||activeFilters.includes(r.type))&&text.includes(query);
+ const category=$("filter-category").value;
+ const subcategory=$("filter-subcategory").value;
+ const property=$("filter-property").value;
+ const propertyValue=$("filter-property-value").value.trim().toLowerCase();
+ const sort=$("sort-records").value;
+ let filtered=records.filter(r=>{
+  const text=[r.name,r.type,r.category,r.subcategory||"",r.description,...r.tags,...r.properties.map(p=>p.name+" "+p.value)].join(" ").toLowerCase();
+  const tagsMatch=selectedFilterTags.every(tag=>r.tags.includes(tag));
+  const props=r.properties||[];
+  const propertyMatch=!property||props.some(p=>p.name===property&&(!propertyValue||p.value.toLowerCase().includes(propertyValue)));
+  return (!activeFilters.length||activeFilters.includes(r.type))&&
+   (!category||r.category===category)&&
+   (!subcategory||(r.subcategory||"")===subcategory)&&
+   tagsMatch&&propertyMatch&&text.includes(query);
+ });
+ filtered.sort((a,b)=>{
+  if(sort==="name-desc")return b.name.localeCompare(a.name);
+  if(sort==="type")return a.type.localeCompare(b.type)||a.name.localeCompare(b.name);
+  if(sort==="category")return (a.category||"").localeCompare(b.category||"")||a.name.localeCompare(b.name);
+  if(sort==="newest")return (b.createdAt||"").localeCompare(a.createdAt||"");
+  if(sort==="oldest")return (a.createdAt||"").localeCompare(b.createdAt||"");
+  return a.name.localeCompare(b.name);
  });
  $("count").textContent=filtered.length+" shown";
  if(!filtered.length){
-  $("records").innerHTML='<div class="empty">No records found.<br><br>Try another search or create a new record.</div>';
-  return;
+  $("records").innerHTML='<div class="empty">No records found.<br><br>Try changing your filters or search.</div>';return;
  }
  $("records").innerHTML=filtered.map(r=>`
   <button class="record" data-open="${esc(r.id)}">
    <span class="record-icon">${esc(displayIcon(r))}</span>
-   <span class="record-info">
-    <strong>${esc(r.name)}</strong>
-    <p>${esc(r.type)}${r.category?" · "+esc(r.category):""}${r.tags.length?" · "+esc(r.tags.join(", ")):""}</p>
-   </span>
+   <span class="record-info"><strong>${esc(r.name)}</strong>
+   <p>${esc(r.type)}${r.category?" · "+esc(r.category):""}${r.subcategory?" · "+esc(r.subcategory):""}${r.tags.length?" · "+esc(r.tags.join(", ")):""}</p></span>
    <span class="record-arrow">›</span>
   </button>`).join("");
  $("records").querySelectorAll("[data-open]").forEach(btn=>btn.addEventListener("click",()=>openRecord(btn.dataset.open)));
 }
 function renderHome(){
- $("home").hidden=false;
- $("detail").hidden=true;
- $("editor").hidden=true;
- renderCategories();
- renderRecords();
+ $("home").hidden=false;$("detail").hidden=true;$("editor").hidden=true;
+ renderCategories();renderFilterOptions();renderRecords();
 }
 function openRecord(id){
- const r=findRecord(id);
- if(!r)return;
- currentRecordId=id;
- $("home").hidden=true;
- $("editor").hidden=true;
- $("detail").hidden=false;
- const properties=r.properties.length?r.properties.map(p=>
-  `<div class="field"><span class="field-label">${esc(p.name)}</span>${esc(p.value)}</div>`
- ).join(""):'<p class="muted">No properties defined.</p>';
+ const r=findRecord(id);if(!r)return;
+ currentRecordId=id;$("home").hidden=true;$("editor").hidden=true;$("detail").hidden=false;
+ const properties=r.properties.length?r.properties.map(p=>`<div class="field"><span class="field-label">${esc(p.name)}</span>${esc(p.value)}</div>`).join(""):'<p class="muted">No properties defined.</p>';
  const tags=r.tags.length?r.tags.map(t=>`<span class="chip">${esc(t)}</span>`).join(" "):'<span class="muted">No tags</span>';
  const related=r.related.map(findRecord).filter(Boolean);
  $("detail-content").innerHTML=`
   <p class="eyebrow">${esc(r.type.toUpperCase())}</p>
-  <div class="record-heading">
-   <span class="record-icon">${esc(displayIcon(r))}</span>
-   <div><h2>${esc(r.name)}</h2><p class="muted">${esc(r.category||"Uncategorized")}</p></div>
+  <div class="record-heading"><span class="record-icon">${esc(displayIcon(r))}</span>
+   <div><h2>${esc(r.name)}</h2><p class="muted">${esc(r.category||"Uncategorized")}${r.subcategory?" · "+esc(r.subcategory):""}</p></div>
   </div>
-  <div class="actions">
-   <button id="edit-record" class="primary">Edit Record</button>
-   <button id="delete-record" class="danger">Delete</button>
-  </div>
+  <div class="actions"><button id="edit-record" class="primary">Edit Record</button><button id="delete-record" class="danger">Delete</button></div>
   <div class="panel"><h3>Description</h3><p style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(r.description||"No description.")}</p></div>
   <div class="panel"><h3>Properties</h3>${properties}</div>
   <div class="panel"><h3>Tags</h3><div class="tags">${tags}</div></div>
@@ -387,259 +368,151 @@ function openRecord(id){
  $("detail-related").querySelectorAll("[data-related]").forEach(btn=>btn.addEventListener("click",()=>openRecord(btn.dataset.related)));
 }
 function makeSelect(id,values,selected,allowNew){
- const list=unique(values);
- if(selected&&!list.includes(selected))list.push(selected);
+ const list=unique(values);if(selected&&!list.includes(selected))list.push(selected);
  const options=list.map(v=>`<option value="${esc(v)}" ${v===selected?"selected":""}>${esc(v)}</option>`).join("");
  return `<select id="${id}">${options}${allowNew?'<option value="__new__">+ Create new...</option>':""}</select>`;
 }
 function renderPropertyRow(prop={}){
- const row=document.createElement("div");
- row.className="property-row";
+ const row=document.createElement("div");row.className="property-row";
  row.innerHTML=makeSelect("property-name",allProperties($("f-type").value),prop.name||"",true)+
-  `<input class="property-new-name" hidden maxlength="60" placeholder="New property">`+
+  '<input class="property-new-name" hidden maxlength="60" placeholder="New property">'+
   `<input class="property-value" maxlength="200" placeholder="Value" value="${esc(prop.value||"")}">`+
-  `<button type="button" class="remove" aria-label="Remove property">× Remove</button>`;
- const select=row.querySelector("select");
- const newName=row.querySelector(".property-new-name");
- select.addEventListener("change",()=>{
-  const isNew=select.value==="__new__";
-  newName.hidden=!isNew;
-  if(isNew)newName.focus();
- });
+  '<button type="button" class="remove" aria-label="Remove property">× Remove</button>';
+ const select=row.querySelector("select"),newName=row.querySelector(".property-new-name");
+ select.addEventListener("change",()=>{newName.hidden=select.value!=="__new__";if(!newName.hidden)newName.focus()});
  row.querySelector(".remove").addEventListener("click",()=>row.remove());
  $("property-rows").appendChild(row);
 }
-
-// TAG PICKER
 function renderTagPicker(){
  const root=$("tag-picker");
- const options=allTags($("f-type").value).filter(tag=>
-  !selectedTags.includes(tag)&&tag.toLowerCase().includes(tagSearch.toLowerCase())
- );
+ const options=allTags($("f-type").value).filter(tag=>!selectedTags.includes(tag)&&tag.toLowerCase().includes(tagSearch.toLowerCase()));
  root.innerHTML=`
-  <div class="selected-items">${selectedTags.map(tag=>
-   `<span class="selected-item"><span>${esc(tag)}</span><button type="button" data-remove-tag="${esc(tag)}" aria-label="Remove ${esc(tag)}">×</button></span>`
-  ).join("")}</div>
-  <div class="picker">
-   <button type="button" class="picker-trigger" id="tag-toggle">
-    <span>+ Add tag</span><span class="muted">${tagPickerOpen?"▲":"▼"}</span>
-   </button>
-   ${tagPickerOpen?`
-    <div class="picker-menu">
-     <input class="picker-search" id="tag-search" type="search" placeholder="Search tags..." value="${esc(tagSearch)}" autocomplete="off">
-     <div class="picker-options">
-      ${options.map(tag=>`<button type="button" class="picker-option" data-add-tag="${esc(tag)}">${esc(tag)}</button>`).join("")}
-      ${options.length?"":'<div class="picker-empty">No matching tags.</div>'}
-      <button type="button" class="picker-option create" id="show-create-tag">+ Create new tag</button>
-     </div>
-     ${tagCreateOpen?`
-      <form id="create-tag-form" class="picker-create-form">
-       <input id="new-tag-name" maxlength="60" placeholder="New tag name" required>
-       <button class="primary" type="submit" style="border-radius:9px;padding:0 12px">Add</button>
-      </form>`:""}
-    </div>`:""}
-  </div>`;
- root.querySelector("#tag-toggle").addEventListener("click",()=>{
-  tagPickerOpen=!tagPickerOpen;
-  tagCreateOpen=false;
-  renderTagPicker();
- });
- root.querySelectorAll("[data-remove-tag]").forEach(btn=>btn.addEventListener("click",()=>{
-  selectedTags=selectedTags.filter(t=>t!==btn.dataset.removeTag);
-  renderTagPicker();
- }));
+  <div class="selected-items">${selectedTags.map(tag=>`<span class="selected-item"><span>${esc(tag)}</span><button type="button" data-remove-tag="${esc(tag)}" aria-label="Remove ${esc(tag)}">×</button></span>`).join("")}</div>
+  <div class="picker"><button type="button" class="picker-trigger" id="tag-toggle"><span>+ Add tag</span><span class="muted">${tagPickerOpen?"▲":"▼"}</span></button>
+  ${tagPickerOpen?`<div class="picker-menu"><input class="picker-search" id="tag-search" type="search" placeholder="Search tags..." value="${esc(tagSearch)}" autocomplete="off">
+   <div class="picker-options">${options.map(tag=>`<button type="button" class="picker-option" data-add-tag="${esc(tag)}">${esc(tag)}</button>`).join("")}
+   ${options.length?"":'<div class="picker-empty">No matching tags.</div>'}
+   <button type="button" class="picker-option create" id="show-create-tag">+ Create new tag</button></div>
+   ${tagCreateOpen?`<form id="create-tag-form" class="picker-create-form"><input id="new-tag-name" maxlength="60" placeholder="New tag name" required><button class="primary" type="submit" style="border-radius:9px;padding:0 12px">Add</button></form>`:""}
+  </div>`:""}</div>`;
+ root.querySelector("#tag-toggle").addEventListener("click",()=>{tagPickerOpen=!tagPickerOpen;tagCreateOpen=false;renderTagPicker()});
+ root.querySelectorAll("[data-remove-tag]").forEach(btn=>btn.addEventListener("click",()=>{selectedTags=selectedTags.filter(t=>t!==btn.dataset.removeTag);renderTagPicker()}));
  root.querySelectorAll("[data-add-tag]").forEach(btn=>btn.addEventListener("click",()=>{
   if(!selectedTags.includes(btn.dataset.addTag))selectedTags.push(btn.dataset.addTag);
-  tagSearch="";
-  renderTagPicker();
-  $("tag-search")?.focus();
+  tagSearch="";renderTagPicker();$("tag-search")?.focus();
  }));
  const search=root.querySelector("#tag-search");
  if(search)search.addEventListener("input",()=>{
-  tagSearch=search.value;
-  const start=search.selectionStart;
-  renderTagPicker();
-  const next=$("tag-search");
-  next?.focus();
-  next?.setSelectionRange(start,start);
+  tagSearch=search.value;const start=search.selectionStart;renderTagPicker();
+  const next=$("tag-search");next?.focus();next?.setSelectionRange(start,start);
  });
- root.querySelector("#show-create-tag")?.addEventListener("click",()=>{
-  tagCreateOpen=true;
-  renderTagPicker();
-  $("new-tag-name")?.focus();
- });
+ root.querySelector("#show-create-tag")?.addEventListener("click",()=>{tagCreateOpen=true;renderTagPicker();$("new-tag-name")?.focus()});
  root.querySelector("#create-tag-form")?.addEventListener("submit",event=>{
-  event.preventDefault();
-  const name=$("new-tag-name").value.trim();
-  if(!name)return;
-  const existing=allTags().find(tag=>catalogId(tag)===catalogId(name));
-  const tag=existing||name;
-  mergeCatalogItem(catalogs.tags,tag,$("f-type").value);
-  saveCatalogs();
+  event.preventDefault();const name=$("new-tag-name").value.trim();if(!name)return;
+  const existing=allTags().find(tag=>catalogId(tag)===catalogId(name));const tag=existing||name;
+  mergeCatalogItem(catalogs.tags,tag,$("f-type").value);saveCatalogs();
   if(!selectedTags.includes(tag))selectedTags.push(tag);
-  tagSearch="";
-  tagCreateOpen=false;
-  renderTagPicker();
+  tagSearch="";tagCreateOpen=false;renderTagPicker();
  });
 }
-
-// RELATED RECORDS PICKER
 function renderRelatedPicker(){
  const root=$("related-picker");
- const options=records.filter(r=>
-  r.id!==editingId&&
-  !selectedRelated.includes(r.id)&&
-  (r.name+" "+r.type+" "+r.category).toLowerCase().includes(relatedSearch.toLowerCase())
- );
+ const options=records.filter(r=>r.id!==editingId&&!selectedRelated.includes(r.id)&&(r.name+" "+r.type+" "+r.category+" "+(r.subcategory||"")).toLowerCase().includes(relatedSearch.toLowerCase()));
  root.innerHTML=`
-  <div class="selected-items">${selectedRelated.map(id=>findRecord(id)).filter(Boolean).map(r=>
-   `<span class="selected-item"><span>${esc(displayIcon(r))} ${esc(r.name)} <span class="muted">· ${esc(r.type)}</span></span><button type="button" data-remove-related="${esc(r.id)}" aria-label="Remove ${esc(r.name)}">×</button></span>`
-  ).join("")}</div>
-  <div class="picker">
-   <button type="button" class="picker-trigger" id="related-toggle">
-    <span>+ Add related record</span><span class="muted">${relatedPickerOpen?"▲":"▼"}</span>
-   </button>
-   ${relatedPickerOpen?`
-    <div class="picker-menu">
-     <input class="picker-search" id="related-search" type="search" placeholder="Search records by name, type or category..." value="${esc(relatedSearch)}" autocomplete="off">
-     <div class="picker-options">
-      ${options.map(r=>`<button type="button" class="picker-option" data-add-related="${esc(r.id)}">${esc(displayIcon(r))} ${esc(r.name)} <span class="muted">· ${esc(r.type)}${r.category?" · "+esc(r.category):""}</span></button>`).join("")}
-      ${options.length?"":'<div class="picker-empty">No matching records found.</div>'}
-     </div>
-    </div>`:""}
-  </div>`;
- root.querySelector("#related-toggle").addEventListener("click",()=>{
-  relatedPickerOpen=!relatedPickerOpen;
-  renderRelatedPicker();
-  if(relatedPickerOpen)$("related-search")?.focus();
- });
- root.querySelectorAll("[data-remove-related]").forEach(btn=>btn.addEventListener("click",()=>{
-  selectedRelated=selectedRelated.filter(id=>id!==btn.dataset.removeRelated);
-  renderRelatedPicker();
- }));
- root.querySelectorAll("[data-add-related]").forEach(btn=>btn.addEventListener("click",()=>{
-  if(!selectedRelated.includes(btn.dataset.addRelated))selectedRelated.push(btn.dataset.addRelated);
-  relatedSearch="";
-  renderRelatedPicker();
-  $("related-search")?.focus();
- }));
+  <div class="selected-items">${selectedRelated.map(id=>findRecord(id)).filter(Boolean).map(r=>`<span class="selected-item"><span>${esc(displayIcon(r))} ${esc(r.name)} <span class="muted">· ${esc(r.type)}</span></span><button type="button" data-remove-related="${esc(r.id)}" aria-label="Remove ${esc(r.name)}">×</button></span>`).join("")}</div>
+  <div class="picker"><button type="button" class="picker-trigger" id="related-toggle"><span>+ Add related record</span><span class="muted">${relatedPickerOpen?"▲":"▼"}</span></button>
+  ${relatedPickerOpen?`<div class="picker-menu"><input class="picker-search" id="related-search" type="search" placeholder="Search records by name, type or category..." value="${esc(relatedSearch)}" autocomplete="off">
+   <div class="picker-options">${options.map(r=>`<button type="button" class="picker-option" data-add-related="${esc(r.id)}">${esc(displayIcon(r))} ${esc(r.name)} <span class="muted">· ${esc(r.type)}${r.category?" · "+esc(r.category):""}</span></button>`).join("")}
+   ${options.length?"":'<div class="picker-empty">No matching records found.</div>'}</div></div>`:""}</div>`;
+ root.querySelector("#related-toggle").addEventListener("click",()=>{relatedPickerOpen=!relatedPickerOpen;renderRelatedPicker();if(relatedPickerOpen)$("related-search")?.focus()});
+ root.querySelectorAll("[data-remove-related]").forEach(btn=>btn.addEventListener("click",()=>{selectedRelated=selectedRelated.filter(id=>id!==btn.dataset.removeRelated);renderRelatedPicker()}));
+ root.querySelectorAll("[data-add-related]").forEach(btn=>btn.addEventListener("click",()=>{if(!selectedRelated.includes(btn.dataset.addRelated))selectedRelated.push(btn.dataset.addRelated);relatedSearch="";renderRelatedPicker();$("related-search")?.focus()}));
  const search=root.querySelector("#related-search");
- if(search)search.addEventListener("input",()=>{
-  relatedSearch=search.value;
-  const start=search.selectionStart;
-  renderRelatedPicker();
-  const next=$("related-search");
-  next?.focus();
-  next?.setSelectionRange(start,start);
- });
+ if(search)search.addEventListener("input",()=>{relatedSearch=search.value;const start=search.selectionStart;renderRelatedPicker();const next=$("related-search");next?.focus();next?.setSelectionRange(start,start)});
 }
-
 function showForm(record=null){
  editingId=record?record.id:null;
- $("home").hidden=true;
- $("detail").hidden=true;
- $("editor").hidden=false;
- $("form-title").textContent=record?"Edit Record":"New Record";
- $("form-message").hidden=true;
- $("f-name").value=record?.name||"";
- $("f-icon").value=record?.icon||"";
- $("f-description").value=record?.description||"";
+ $("home").hidden=true;$("detail").hidden=true;$("editor").hidden=false;
+ $("form-title").textContent=record?"Edit Record":"New Record";$("form-message").hidden=true;
+ $("f-name").value=record?.name||"";$("f-icon").value=record?.icon||"";
+ $("f-description").value=record?.description||"";$("f-subcategory").value=record?.subcategory||"";
  const types=unique([...TYPES,...records.map(r=>r.type)]);
  $("f-type").innerHTML=types.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("")+'<option value="__new__">+ Create new type...</option>';
- $("f-type").value=record?.type||"Mob";
- $("f-new-type").value="";
- $("f-new-type").hidden=true;
+ $("f-type").value=record?.type||"Mob";$("f-new-type").value="";$("f-new-type").hidden=true;
  const categories=unique(records.map(r=>r.category).filter(Boolean));
  $("f-category").innerHTML='<option value="">None</option>'+categories.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("")+'<option value="__new__">+ Create new category...</option>';
- $("f-category").value=record?.category||"";
- $("f-new-category").value="";
- $("f-new-category").hidden=true;
+ $("f-category").value=record?.category||"";$("f-new-category").value="";$("f-new-category").hidden=true;
  $("f-type").onchange=()=>{
-  const isNew=$("f-type").value==="__new__";
-  $("f-new-type").hidden=!isNew;
-  if(isNew)$("f-new-type").focus();
+  $("f-new-type").hidden=$("f-type").value!=="__new__";
+  if(!$("f-new-type").hidden)$("f-new-type").focus();
   $("property-rows").innerHTML="";
   (record?.properties?.length?record.properties:[{name:"",value:""}]).forEach(renderPropertyRow);
   renderTagPicker();
  };
  $("f-category").onchange=()=>{
-  const isNew=$("f-category").value==="__new__";
-  $("f-new-category").hidden=!isNew;
-  if(isNew)$("f-new-category").focus();
+  $("f-new-category").hidden=$("f-category").value!=="__new__";
+  if(!$("f-new-category").hidden)$("f-new-category").focus();
  };
  selectedTags=[...(record?.tags||[])];
  selectedRelated=(record?.related||[]).filter(id=>findRecord(id)&&id!==editingId);
- tagPickerOpen=false;
- relatedPickerOpen=false;
- tagCreateOpen=false;
- tagSearch="";
- relatedSearch="";
- renderTagPicker();
- $("property-rows").innerHTML="";
+ tagPickerOpen=false;relatedPickerOpen=false;tagCreateOpen=false;tagSearch="";relatedSearch="";
+ renderTagPicker();$("property-rows").innerHTML="";
  (record?.properties?.length?record.properties:[{name:"",value:""}]).forEach(renderPropertyRow);
  renderRelatedPicker();
 }
 function readChoice(selectId,newInputId,label){
  const value=$(selectId).value;
- if(value==="__new__"){
-  const custom=$(newInputId).value.trim();
-  if(!custom)throw new Error("Enter a name for the new "+label+".");
-  return custom;
- }
+ if(value==="__new__"){const custom=$(newInputId).value.trim();if(!custom)throw new Error("Enter a name for the new "+label+".");return custom}
  return value;
 }
-function showHome(){
- currentRecordId=null;
- renderHome();
-}
+function showHome(){currentRecordId=null;renderHome()}
 function deleteRecord(id){
- const r=findRecord(id);
- if(!r)return;
+ const r=findRecord(id);if(!r)return;
  if(!confirm(`Delete "${r.name}"? This cannot be undone.`))return;
- records=records.filter(x=>x.id!==id);
- records.forEach(x=>x.related=x.related.filter(relatedId=>relatedId!==id));
- saveRecords();
- showHome();
+ records=records.filter(x=>x.id!==id);records.forEach(x=>x.related=x.related.filter(relatedId=>relatedId!==id));
+ saveRecords();showHome();
 }
-
 $("new-record").addEventListener("click",()=>showForm());
 $("back").addEventListener("click",showHome);
 $("cancel-top").addEventListener("click",showHome);
 $("cancel-bottom").addEventListener("click",showHome);
 $("search").addEventListener("input",renderRecords);
 $("add-property").addEventListener("click",()=>renderPropertyRow());
-
+$("filter-category").addEventListener("change",()=>{renderFilterOptions();renderRecords()});
+$("filter-subcategory").addEventListener("change",renderRecords);
+$("filter-property").addEventListener("change",renderRecords);
+$("filter-property-value").addEventListener("input",renderRecords);
+$("sort-records").addEventListener("change",renderRecords);
+$("clear-filters").addEventListener("click",()=>{
+ activeFilters=[];selectedFilterTags=[];
+ $("search").value="";$("filter-category").value="";$("filter-subcategory").value="";
+ $("filter-property").value="";$("filter-property-value").value="";$("sort-records").value="name-asc";
+ renderCategories();renderFilterOptions();renderRecords();
+});
 $("record-form").addEventListener("submit",event=>{
  event.preventDefault();
  try{
-  const name=$("f-name").value.trim();
-  if(!name)throw new Error("Enter a record name.");
+  const name=$("f-name").value.trim();if(!name)throw new Error("Enter a record name.");
   const type=readChoice("f-type","f-new-type","type");
   const category=readChoice("f-category","f-new-category","category");
-  const tags=unique(selectedTags);
-  const properties=[];
+  const tags=unique(selectedTags),properties=[];
   for(const row of $("property-rows").children){
-   const select=row.querySelector("select");
-   const nameInput=row.querySelector(".property-new-name");
-   const valueInput=row.querySelector(".property-value");
-   let propName=select.value==="__new__"?nameInput.value.trim():select.value;
+   const select=row.querySelector("select"),nameInput=row.querySelector(".property-new-name"),valueInput=row.querySelector(".property-value");
+   const propName=select.value==="__new__"?nameInput.value.trim():select.value;
    const value=valueInput.value.trim();
    if(!propName&&!value)continue;
    if(!propName)throw new Error("Choose a property or enter a new property name.");
    if(!value)throw new Error("Enter a value for the property "+propName+".");
    properties.push({name:propName,value});
   }
-  const related=unique(selectedRelated);
-  const id=editingId||uid();
+  const related=unique(selectedRelated),id=editingId||uid(),previous=findRecord(id);
   const updated={
-   id,name,
-   icon:$("f-icon").value.trim(),
-   type,category,
-   description:$("f-description").value.trim(),
-   tags,properties,related
+   id,name,icon:$("f-icon").value.trim(),type,category,
+   subcategory:$("f-subcategory").value.trim(),
+   createdAt:previous?.createdAt||new Date().toISOString(),
+   description:$("f-description").value.trim(),tags,properties,related
   };
-  if(findRecord(id))records=records.map(r=>r.id===id?updated:r);
-  else records.push(updated);
+  if(previous)records=records.map(r=>r.id===id?updated:r);else records.push(updated);
   records.forEach(r=>{
    if(r.id===id)return;
    r.related=r.related.filter(link=>link!==id);
@@ -647,14 +520,9 @@ $("record-form").addEventListener("submit",event=>{
    r.related=unique(r.related);
   });
   if(!saveRecords())return;
-  openRecord(id);
- }catch(error){
-  $("form-message").textContent=error.message;
-  $("form-message").hidden=false;
- }
+  renderFilterOptions();openRecord(id);
+ }catch(error){$("form-message").textContent=error.message;$("form-message").hidden=false}
 });
-
-// Keep the existing storage key and load saved records before rendering.
 records=loadRecords();
 loadCatalogs(records);
 saveCatalogs();
