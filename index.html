@@ -65,7 +65,8 @@ import { filterRecords } from "./js/features/filtering.js";
 import { createViewFeatures } from "./js/features/views.js";
 import { createPropertyEditor } from "./js/features/property-editor.js";
 import { createPickerFeatures } from "./js/features/pickers.js";
- 
+import { createEditorFeatures } from "./js/features/editor.js";
+
 "use strict";
 const DEFAULT_TYPES=["Mob","Item","Material","Area","Recipe","Effect","Skill","NPC","Boss"];
 const DEFAULT_TAGS=["Common","Uncommon","Rare","Epic","Legendary","Craftable","Quest","Optional"];
@@ -124,8 +125,6 @@ const {
   esc,
   catalogNames
 });
-
-
 
 function persistFilters() {
   return persistStoredFilters(savedFilters);
@@ -214,40 +213,17 @@ function renderHome(){
  renderCategories();renderFilterOptions();renderConditionRows();renderSavedFilters();renderRecords();updateFilterToggle();
 }
 
-function showForm(record=null){
- editingId=record?.id||null;
- selectedTags=record?[...record.tags]:[];
- selectedRelated=record?record.related.filter(id=>id!==record.id).filter(getRecord).filter(r=>r.id!==record.id).map(r=>r.id):[];
- tagOpen=false;relatedOpen=false;tagCreateOpen=false;tagSearch="";relatedSearch="";
- $("home").hidden=true;$("detail").hidden=true;$("editor").hidden=false;
- $("form-title").textContent=record?"Edit Record":"New Record";
- $("form-message").hidden=true;
- $("f-name").value=record?.name||"";$("f-icon").value=record?.icon||"";
- $("f-subcategory").value=record?.subcategory||"";$("f-description").value=record?.description||"";
- $("f-new-type").value="";$("f-new-category").value="";
- setupSelect("f-type",uniq([...DEFAULT_TYPES,...records.map(r=>r.type)]),record?.type||"","Choose a type...","f-new-type");
- setupSelect("f-category",uniq(records.map(r=>r.category)),record?.category||"","No category","f-new-category");
- renderPropertyRows(record?.properties||[]);
- renderPicker("tags");renderPicker("related");
- window.scrollTo(0,0);
-}
-function cancelForm(){
- if(currentId&&getRecord(currentId))openRecord(currentId);else renderHome();
-}
 const {
   getRecord,
   deleteRecord
 } = createRecordFeatures({
   getRecords: () => records,
-
   setRecords: nextRecords => {
     records = nextRecords;
   },
-
   saveRecords,
   renderHome,
   expanded,
-
   setCurrentId: id => {
     currentId = id;
   }
@@ -260,31 +236,46 @@ const { renderPicker } = createPickerFeatures({
   catalogNames,
   mergeCatalog,
   saveCatalogs,
-
   getEditingId: () => editingId,
-
   getSelectedTags: () => selectedTags,
   setSelectedTags: value => { selectedTags = value; },
-
   getSelectedRelated: () => selectedRelated,
   setSelectedRelated: value => { selectedRelated = value; },
-
   getTagOpen: () => tagOpen,
   setTagOpen: value => { tagOpen = value; },
-
   getRelatedOpen: () => relatedOpen,
   setRelatedOpen: value => { relatedOpen = value; },
-
   getTagSearch: () => tagSearch,
   setTagSearch: value => { tagSearch = value; },
-
   getRelatedSearch: () => relatedSearch,
   setRelatedSearch: value => { relatedSearch = value; },
-
   getTagCreateOpen: () => tagCreateOpen,
   setTagCreateOpen: value => { tagCreateOpen = value; }
 });
-const { openRecord } = createViewFeatures({
+
+let openRecord;
+const { showForm, cancelForm } = createEditorFeatures({
+  $,
+  uniq,
+  DEFAULT_TYPES,
+  getRecords: () => records,
+  getRecord,
+  getCurrentId: () => currentId,
+  setEditingId: value => { editingId = value; },
+  setSelectedTags: value => { selectedTags = value; },
+  setSelectedRelated: value => { selectedRelated = value; },
+  setTagOpen: value => { tagOpen = value; },
+  setRelatedOpen: value => { relatedOpen = value; },
+  setTagCreateOpen: value => { tagCreateOpen = value; },
+  setTagSearch: value => { tagSearch = value; },
+  setRelatedSearch: value => { relatedSearch = value; },
+  setupSelect,
+  renderPropertyRows,
+  renderPicker,
+  openRecord: id => openRecord(id),
+  renderHome
+});
+openRecord = createViewFeatures({
   $,
   esc,
   iconOf,
@@ -295,7 +286,8 @@ const { openRecord } = createViewFeatures({
   setCurrentId: id => {
     currentId = id;
   }
-});
+}).openRecord;
+
 $("record-form").addEventListener("submit",e=>{
  e.preventDefault();
  const name=$("f-name").value.trim();
