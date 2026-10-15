@@ -63,6 +63,7 @@ import { createRecordFeatures } from "./js/features/records.js";
 import { createCatalogFeatures } from "./js/features/catalogs.js";
 import { filterRecords } from "./js/features/filtering.js";
 import { createViewFeatures } from "./js/features/views.js";
+import { createPropertyEditor } from "./js/features/property-editor.js";
  
 "use strict";
 const DEFAULT_TYPES=["Mob","Item","Material","Area","Recipe","Effect","Skill","NPC","Boss"];
@@ -110,6 +111,17 @@ const {
   getRecords: () => records,
   defaultTags: DEFAULT_TAGS,
   defaultProperties: DEFAULT_PROPS
+});
+const {
+  setupSelect,
+  readSelect,
+  renderPropertyRows,
+  addPropertyRow,
+  readProperties
+} = createPropertyEditor({
+  $,
+  esc,
+  catalogNames
 });
 function persistFilters() {
   return persistStoredFilters(savedFilters);
@@ -198,10 +210,6 @@ function renderHome(){
  renderCategories();renderFilterOptions();renderConditionRows();renderSavedFilters();renderRecords();updateFilterToggle();
 }
 
-  
-function selectOptions(values,current,placeholder){
- return `<option value="">${esc(placeholder)}</option>`+values.map(v=>`<option value="${esc(v)}" ${v===current?"selected":""}>${esc(v)}</option>`).join("")+`<option value="__new__">+ Create new...</option>`;
-}
 function setupSelect(id,values,current,placeholder,newInput){
  const el=$(id);el.innerHTML=selectOptions(values,current,placeholder);
  el.value=values.includes(current)?current:"";
@@ -211,33 +219,7 @@ function setupSelect(id,values,current,placeholder,newInput){
   if(create)$(newInput).focus();
  };
 }
-function readSelect(id,newInput){
- const el=$(id);
- if(el.value==="__new__")return $(newInput).value.trim();
- return el.value;
-}
-function renderPropertyRows(properties=[]){
- $("property-rows").innerHTML="";
- properties.forEach(p=>addPropertyRow(p.name,p.value));
-}
-function addPropertyRow(name="",value=""){
- const row=document.createElement("div");row.className="property-row";
- row.innerHTML=`<select class="property-name">${selectOptions(catalogNames("properties"),name,"Property name")}</select>
- <input class="property-new" placeholder="New property name" hidden>
- <input class="property-value" placeholder="Value" value="${esc(value)}">
- <button type="button" class="remove" aria-label="Remove property">×</button>`;
- const select=row.querySelector(".property-name"),newName=row.querySelector(".property-new");
- select.onchange=()=>{newName.hidden=select.value!=="__new__";if(!newName.hidden)newName.focus()};
- row.querySelector(".remove").onclick=()=>row.remove();
- $("property-rows").appendChild(row);
-}
-function readProperties(){
- return [...$("property-rows").querySelectorAll(".property-row")].map(row=>{
-  const select=row.querySelector(".property-name");
-  const name=select.value==="__new__"?row.querySelector(".property-new").value.trim():select.value;
-  return {name,value:row.querySelector(".property-value").value.trim()};
- }).filter(p=>p.name);
-}
+
 function renderPicker(kind){
  const isTags=kind==="tags",root=$(isTags?"tag-picker":"related-picker");
  const open=isTags?tagOpen:relatedOpen,search=isTags?tagSearch:relatedSearch;
