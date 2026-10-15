@@ -64,6 +64,7 @@ import {
   loadSavedFilters as loadStoredSavedFilters,
   persistFilters as persistStoredFilters
 } from "./js/data/storage.js";
+import { createRecordFeatures } from "./js/features/records.js";
  
 "use strict";
 const DEFAULT_TYPES=["Mob","Item","Material","Area","Recipe","Effect","Skill","NPC","Boss"];
@@ -350,12 +351,24 @@ function showForm(record=null){
 function cancelForm(){
  if(currentId&&getRecord(currentId))openRecord(currentId);else renderHome();
 }
-function deleteRecord(id){
- const r=getRecord(id);if(!r||!confirm(`Delete "${r.name}"? This cannot be undone.`))return;
- records=records.filter(x=>x.id!==id);
- records.forEach(x=>x.related=x.related.filter(rel=>rel!==id));
- expanded.delete(id);saveRecords();currentId=null;renderHome();
-}
+const {
+  getRecord,
+  deleteRecord
+} = createRecordFeatures({
+  getRecords: () => records,
+
+  setRecords: nextRecords => {
+    records = nextRecords;
+  },
+
+  saveRecords,
+  renderHome,
+  expanded,
+
+  setCurrentId: id => {
+    currentId = id;
+  }
+});
 $("record-form").addEventListener("submit",e=>{
  e.preventDefault();
  const name=$("f-name").value.trim();
