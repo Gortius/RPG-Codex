@@ -64,6 +64,7 @@ import { createCatalogFeatures } from "./js/features/catalogs.js";
 import { filterRecords } from "./js/features/filtering.js";
 import { createViewFeatures } from "./js/features/views.js";
 import { createPropertyEditor } from "./js/features/property-editor.js";
+import { createPickerFeatures } from "./js/features/pickers.js";
  
 "use strict";
 const DEFAULT_TYPES=["Mob","Item","Material","Area","Recipe","Effect","Skill","NPC","Boss"];
@@ -123,6 +124,40 @@ const {
   esc,
   catalogNames
 });
+
+const { renderPicker } = createPickerFeatures({
+  $,
+  esc,
+  getRecords: () => records,
+  getRecord,
+  catalogNames,
+  mergeCatalog,
+  saveCatalogs,
+
+  getEditingId: () => editingId,
+
+  getSelectedTags: () => selectedTags,
+  setSelectedTags: value => { selectedTags = value; },
+
+  getSelectedRelated: () => selectedRelated,
+  setSelectedRelated: value => { selectedRelated = value; },
+
+  getTagOpen: () => tagOpen,
+  setTagOpen: value => { tagOpen = value; },
+
+  getRelatedOpen: () => relatedOpen,
+  setRelatedOpen: value => { relatedOpen = value; },
+
+  getTagSearch: () => tagSearch,
+  setTagSearch: value => { tagSearch = value; },
+
+  getRelatedSearch: () => relatedSearch,
+  setRelatedSearch: value => { relatedSearch = value; },
+
+  getTagCreateOpen: () => tagCreateOpen,
+  setTagCreateOpen: value => { tagCreateOpen = value; }
+});
+
 function persistFilters() {
   return persistStoredFilters(savedFilters);
 }
@@ -210,58 +245,6 @@ function renderHome(){
  renderCategories();renderFilterOptions();renderConditionRows();renderSavedFilters();renderRecords();updateFilterToggle();
 }
 
-function renderPicker(kind){
- const isTags=kind==="tags",root=$(isTags?"tag-picker":"related-picker");
- const open=isTags?tagOpen:relatedOpen,search=isTags?tagSearch:relatedSearch;
- const selected=isTags?selectedTags:selectedRelated;
- const options=isTags?catalogNames("tags").filter(t=>t.toLowerCase().includes(search.toLowerCase())):
-  records.filter(r=>r.id!==editingId&&!selected.includes(r.id)&&r.name.toLowerCase().includes(search.toLowerCase()));
- const selectedHtml=selected.map(id=>{
-  const label=isTags?id:(getRecord(id)?.name||"Unknown record");
-  return `<span class="selected-item">${esc(label)} <button type="button" data-unselect="${esc(id)}" aria-label="Remove ${esc(label)}">×</button></span>`;
- }).join("");
- root.innerHTML=`<button type="button" class="picker-trigger" data-toggle-picker>${isTags?"Choose tags":"Choose related records"} <span>${open?"−":"+"}</span></button>
- ${selectedHtml?`<div class="selected-items">${selectedHtml}</div>`:""}
- ${open?`<div class="picker-menu"><input class="picker-search" placeholder="Search..." value="${esc(search)}">
- <div class="picker-options">${options.map(item=>{
-  const id=isTags?item:item.id,label=isTags?item:item.name;
-  return `<button type="button" class="picker-option" data-pick="${esc(id)}">${esc(isTags?"# ":"")}${esc(label)}</button>`;
- }).join("")||'<div class="picker-empty">No matches found.</div>'}
- ${isTags?'<button type="button" class="picker-option create" data-create-tag>+ Create a new tag</button>':""}
- ${isTags&&tagCreateOpen?'<div class="picker-create-form"><input id="new-tag-name" placeholder="New tag name"><button type="button" class="primary" id="confirm-new-tag">Add</button></div>':""}
- </div></div>`:""}`;
- root.querySelector("[data-toggle-picker]").onclick=()=>{
-  if(isTags)tagOpen=!tagOpen;else relatedOpen=!relatedOpen;
-  renderPicker(kind);
- };
- root.querySelectorAll("[data-unselect]").forEach(b=>b.onclick=()=>{
-  if(isTags)selectedTags=selectedTags.filter(x=>x!==b.dataset.unselect);
-  else selectedRelated=selectedRelated.filter(x=>x!==b.dataset.unselect);
-  renderPicker(kind);
- });
- root.querySelectorAll("[data-pick]").forEach(b=>b.onclick=()=>{
-  if(isTags){if(!selectedTags.includes(b.dataset.pick))selectedTags.push(b.dataset.pick);tagSearch=""}
-  else{if(!selectedRelated.includes(b.dataset.pick))selectedRelated.push(b.dataset.pick);relatedSearch=""}
-  renderPicker(kind);
- });
- const input=root.querySelector(".picker-search");
- if(input)input.oninput=()=>{
-  if(isTags)tagSearch=input.value;else relatedSearch=input.value;
-  const pos=input.selectionStart;renderPicker(kind);
-  const next=root.querySelector(".picker-search");next.focus();next.setSelectionRange(pos,pos);
- };
- const createBtn=root.querySelector("[data-create-tag]");
- if(createBtn)createBtn.onclick=()=>{tagCreateOpen=true;renderPicker(kind);$("new-tag-name")?.focus()};
- const confirm=root.querySelector("#confirm-new-tag");
- if(confirm)confirm.onclick=()=>{
-  const name=$("new-tag-name").value.trim();if(!name)return;
-  mergeCatalog("tags",name,$("f-type").value);
-  if(!selectedTags.some(t=>t.toLowerCase()===name.toLowerCase()))selectedTags.push(name);
-  saveCatalogs();tagCreateOpen=false;tagSearch="";renderPicker("tags");
- };
- const newTagInput=root.querySelector("#new-tag-name");
- if(newTagInput)newTagInput.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();confirm.click()}};
-}
 function showForm(record=null){
  editingId=record?.id||null;
  selectedTags=record?[...record.tags]:[];
