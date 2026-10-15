@@ -51,10 +51,21 @@
 </main>
 <footer id="status">Local database · Stored in this browser</footer>
 </div>
-<script>
-  
+<script type="module">
+
+import {
+  loadRecords as loadStoredRecords,
+  saveRecords as saveStoredRecords,
+  loadCatalogs as loadStoredCatalogs,
+  saveCatalogs as saveStoredCatalogs,
+  syncCatalogs as syncStoredCatalogs,
+  mergeCatalog as mergeStoredCatalog,
+  catalogNames as getStoredCatalogNames,
+  loadSavedFilters as loadStoredSavedFilters,
+  persistFilters as persistStoredFilters
+} from "./js/data/storage.js";
+ 
 "use strict";
-const STORAGE_KEY="rpg-codex-records-v2",CATALOG_KEY="rpg-codex-catalogs-v1",SAVED_KEY="rpg-codex-saved-filters-v1";
 const DEFAULT_TYPES=["Mob","Item","Material","Area","Recipe","Effect","Skill","NPC","Boss"];
 const DEFAULT_TAGS=["Common","Uncommon","Rare","Epic","Legendary","Craftable","Quest","Optional"];
 const DEFAULT_PROPS=["Health","Damage","Defense","Armor","Speed","Attack Speed","Cooldown","Duration","Level","Rarity"];
@@ -77,40 +88,47 @@ let tagOpen=false,relatedOpen=false,tagSearch="",relatedSearch="",tagCreateOpen=
 function iconFor(type){return ({Mob:"👾",Item:"⚔️",Material:"💎",Area:"🌍",Recipe:"📜",Effect:"✨",Skill:"🔮",NPC:"🧑",Boss:"☠️"})[type]||"◆"}
 function iconOf(r){return r.icon||iconFor(r.type)}
 function getRecord(id){return records.find(r=>r.id===id)}
-function loadRecords(){
- try{
-  const raw=localStorage.getItem(STORAGE_KEY);if(raw===null)return starter.map(r=>({...r,tags:[...r.tags],properties:r.properties.map(p=>({...p})),related:[...r.related]}));
-  const data=JSON.parse(raw);if(!Array.isArray(data))throw Error("Invalid data");
-  return data.map(r=>({id:String(r.id||uid()),name:String(r.name||"Untitled"),icon:r.icon||"",type:r.type||"Item",category:r.category||"",subcategory:r.subcategory||"",createdAt:r.createdAt||"",description:r.description||"",tags:Array.isArray(r.tags)?r.tags.map(String):[],properties:Array.isArray(r.properties)?r.properties.map(p=>({name:String(p.name||""),value:String(p.value||"")})):[],related:Array.isArray(r.related)?r.related.map(String):[]}));
- }catch(e){console.error(e);return starter.map(r=>({...r,tags:[...r.tags],properties:r.properties.map(p=>({...p})),related:[...r.related]}))}
+function loadRecords() {
+  return loadStoredRecords(starter, uid);
 }
-function saveRecords(){
- try{localStorage.setItem(STORAGE_KEY,JSON.stringify(records));syncCatalogs();saveCatalogs();$("status").textContent="Saved in this browser · "+records.length+" records";return true}
- catch(e){alert("Could not save data in this browser.");return false}
+function saveRecords() {
+  if (!saveStoredRecords(records)) return false;
+
+  syncCatalogs();
+  saveCatalogs();
+
+  $("status").textContent =
+    "Saved in this browser · " + records.length + " records";
+
+  return true;
 }
-function syncCatalogs(){
- if(!catalogs||!Array.isArray(catalogs.tags)||!Array.isArray(catalogs.properties))catalogs={tags:[],properties:[]};
- records.forEach(r=>{r.tags.forEach(t=>mergeCatalog("tags",t,r.type));r.properties.forEach(p=>mergeCatalog("properties",p.name,r.type))});
- DEFAULT_TAGS.forEach(t=>mergeCatalog("tags",t,""));DEFAULT_PROPS.forEach(p=>mergeCatalog("properties",p,""));
+function syncCatalogs() {
+  syncStoredCatalogs(
+    records,
+    catalogs,
+    DEFAULT_TAGS,
+    DEFAULT_PROPS
+  );
 }
-function mergeCatalog(kind,name,type){
- name=String(name||"").trim();if(!name)return;
- let found=catalogs[kind].find(x=>x.name.toLowerCase()===name.toLowerCase());
- if(!found)catalogs[kind].push({name,types:type?[type]:[]});
- else if(type&&!found.types.includes(type))found.types.push(type);
+function mergeCatalog(kind, name, type) {
+  mergeStoredCatalog(catalogs, kind, name, type);
 }
-function loadCatalogs(){
- try{let c=JSON.parse(localStorage.getItem(CATALOG_KEY)||"{}");catalogs={tags:Array.isArray(c.tags)?c.tags:[],properties:Array.isArray(c.properties)?c.properties:[]}}
- catch{catalogs={tags:[],properties:[]}}
- syncCatalogs();saveCatalogs();
+function loadCatalogs() {
+  catalogs = loadStoredCatalogs();
+  syncCatalogs();
+  saveCatalogs();
 }
-function saveCatalogs(){try{localStorage.setItem(CATALOG_KEY,JSON.stringify(catalogs))}catch{}}
+function saveCatalogs() {
+  saveStoredCatalogs(catalogs);
+}
 function catalogNames(kind){syncCatalogs();return uniq(catalogs[kind].map(x=>x.name))}
-function loadSavedFilters(){
- try{savedFilters=JSON.parse(localStorage.getItem(SAVED_KEY)||"[]");if(!Array.isArray(savedFilters))savedFilters=[]}catch{savedFilters=[]}
- renderSavedFilters();
+function loadSavedFilters() {
+  savedFilters = loadStoredSavedFilters();
+  renderSavedFilters();
 }
-function persistFilters(){try{localStorage.setItem(SAVED_KEY,JSON.stringify(savedFilters));return true}catch{alert("Could not save filters.");return false}}
+function persistFilters() {
+  return persistStoredFilters(savedFilters);
+}
 function filterState(){return {query:$("search").value,types:[...activeTypes],category:$("filter-category").value,subcategory:$("filter-subcategory").value,tags:[...activeTags],sort:$("sort-records").value,conditions:conditions.map(c=>({...c}))}}
 function applyFilterState(s){
  activeTypes=s.types||[];activeTags=s.tags||[];$("search").value=s.query||"";
