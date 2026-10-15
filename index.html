@@ -61,6 +61,7 @@ import {
 } from "./js/data/storage.js";
 import { createRecordFeatures } from "./js/features/records.js";
 import { createCatalogFeatures } from "./js/features/catalogs.js";
+import { filterRecords } from "./js/features/filtering.js";
  
 "use strict";
 const DEFAULT_TYPES=["Mob","Item","Material","Area","Recipe","Effect","Skill","NPC","Boss"];
@@ -172,7 +173,6 @@ function renderConditionRows(){
   row.querySelector(".remove").onclick=()=>{conditions.splice(i,1);renderConditionRows();renderRecords();updateFilterToggle()};
  });
 }
-function num(v){if(!String(v).trim()||!/^[-+]?(?:\d+\.?\d*|\.\d+)$/.test(String(v).trim()))return null;return Number(v)}
 function conditionMatches(r,c){
  if(!c.property||!c.value.trim())return true;
  const p=r.properties.find(x=>x.name===c.property);if(!p)return false;
@@ -183,14 +183,17 @@ function conditionMatches(r,c){
  if(na===null||nb===null)return false;
  return c.operator===">"?na>nb:c.operator===">="?na>=nb:c.operator==="<"?na<nb:c.operator==="<="?na<=nb:true;
 }
-function renderRecords(){
- const q=$("search").value.trim().toLowerCase(),cat=$("filter-category").value,sub=$("filter-subcategory").value,sort=$("sort-records").value;
- let list=records.filter(r=>{
-  const text=[r.name,r.type,r.category,r.subcategory,r.description,...r.tags,...r.properties.map(p=>p.name+" "+p.value)].join(" ").toLowerCase();
-  return (!activeTypes.length||activeTypes.includes(r.type))&&(!cat||r.category===cat)&&(!sub||r.subcategory===sub)&&activeTags.every(t=>r.tags.includes(t))&&conditions.every(c=>conditionMatches(r,c))&&text.includes(q);
- });
- list.sort((a,b)=>sort==="name-desc"?b.name.localeCompare(a.name):sort==="type"?a.type.localeCompare(b.type)||a.name.localeCompare(b.name):sort==="category"?(a.category||"").localeCompare(b.category||"")||a.name.localeCompare(b.name):sort==="newest"?(b.createdAt||"").localeCompare(a.createdAt||""):sort==="oldest"?(a.createdAt||"").localeCompare(b.createdAt||""):a.name.localeCompare(b.name));
- $("count").textContent=list.length+" shown";
+function renderRecords() {
+  const list = filterRecords(records, {
+    query: $("search").value,
+    types: activeTypes,
+    category: $("filter-category").value,
+    subcategory: $("filter-subcategory").value,
+    tags: activeTags,
+    conditions,
+    sort: $("sort-records").value
+  });
+  $("count").textContent = list.length + " shown";
  if(!list.length){$("records").innerHTML='<div class="empty">No records found.<br><br>Try changing your filters or search.</div>';return}
  $("records").innerHTML=list.map(r=>`<div class="record-card">
  <button class="record" data-open="${esc(r.id)}"><span class="record-icon">${esc(iconOf(r))}</span><span class="record-info"><strong>${esc(r.name)}</strong><p>${esc(r.type)}${r.category?" · "+esc(r.category):""}${r.subcategory?" · "+esc(r.subcategory):""}${r.tags.length?" · "+esc(r.tags.join(", ")):""}</p></span><span class="record-arrow">›</span></button>
