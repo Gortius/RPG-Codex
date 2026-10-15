@@ -56,15 +56,11 @@
 import {
   loadRecords as loadStoredRecords,
   saveRecords as saveStoredRecords,
-  loadCatalogs as loadStoredCatalogs,
-  saveCatalogs as saveStoredCatalogs,
-  syncCatalogs as syncStoredCatalogs,
-  mergeCatalog as mergeStoredCatalog,
-  catalogNames as getStoredCatalogNames,
   loadSavedFilters as loadStoredSavedFilters,
   persistFilters as persistStoredFilters
 } from "./js/data/storage.js";
 import { createRecordFeatures } from "./js/features/records.js";
+import { createCatalogFeatures } from "./js/features/catalogs.js";
  
 "use strict";
 const DEFAULT_TYPES=["Mob","Item","Material","Area","Recipe","Effect","Skill","NPC","Boss"];
@@ -82,7 +78,7 @@ const starter=[
 {id:"sample-effect",name:"Slowness",type:"Effect",category:"Debuff",description:"Reduces the affected target's movement speed.",tags:["Debuff"],properties:[{name:"Duration",value:"3 seconds"}],related:[]},
 {id:"sample-recipe",name:"Leaf Bow Recipe",type:"Recipe",category:"Beginning Hole",description:"Crafting recipe for the Leaf Bow.",tags:["Craftable"],properties:[{name:"Material Cost",value:"Vines + Wood"}],related:["sample-item"]}
 ];
-let records=[],catalogs={tags:[],properties:[]},savedFilters=[];
+let records=[],savedFilters=[];
 let activeTypes=[],activeTags=[],conditions=[],expanded=new Set();
 let filtersOpen=false,editingId=null,currentId=null,selectedTags=[],selectedRelated=[];
 let tagOpen=false,relatedOpen=false,tagSearch="",relatedSearch="",tagCreateOpen=false;
@@ -102,30 +98,17 @@ function saveRecords() {
 
   return true;
 }
-function syncCatalogs() {
-  syncStoredCatalogs(
-    records,
-    catalogs,
-    DEFAULT_TAGS,
-    DEFAULT_PROPS
-  );
-}
-function mergeCatalog(kind, name, type) {
-  mergeStoredCatalog(catalogs, kind, name, type);
-}
-function loadCatalogs() {
-  catalogs = loadStoredCatalogs();
-  syncCatalogs();
-  saveCatalogs();
-}
-function saveCatalogs() {
-  saveStoredCatalogs(catalogs);
-}
-function catalogNames(kind){syncCatalogs();return uniq(catalogs[kind].map(x=>x.name))}
-function loadSavedFilters() {
-  savedFilters = loadStoredSavedFilters();
-  renderSavedFilters();
-}
+const {
+  syncCatalogs,
+  mergeCatalog,
+  loadCatalogs,
+  saveCatalogs,
+  catalogNames
+} = createCatalogFeatures({
+  getRecords: () => records,
+  defaultTags: DEFAULT_TAGS,
+  defaultProperties: DEFAULT_PROPS
+});
 function persistFilters() {
   return persistStoredFilters(savedFilters);
 }
@@ -424,7 +407,7 @@ $("clear-filters").onclick=()=>{
  $("search").value="";$("filter-category").value="";$("filter-subcategory").value="";
  $("sort-records").value="name-asc";renderHome();
 };
-records=loadRecords();loadCatalogs();loadSavedFilters();renderHome();
+records=loadRecords();alogs();loadSavedFilters();renderHome();
 </script>
 </body>
 </html>
