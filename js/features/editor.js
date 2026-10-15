@@ -4,6 +4,7 @@
 export function createEditorFeatures({
   $,
   uniq,
+  DEFAULT_TYPES,
   getRecords,
   getRecord,
   getCurrentId,
@@ -57,7 +58,7 @@ export function createEditorFeatures({
 
     setupSelect(
       "f-type",
-      uniq(["Mob", "Item", "Material", "Area", "Recipe", "Effect", "Skill", "NPC", "Boss", ...getRecords().map(r => r.type)]),
+      uniq([...DEFAULT_TYPES, ...getRecords().map(r => r.type)]),
       record?.type || "",
       "Choose a type...",
       "f-new-type"
