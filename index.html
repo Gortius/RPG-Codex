@@ -173,16 +173,6 @@ function renderConditionRows(){
   row.querySelector(".remove").onclick=()=>{conditions.splice(i,1);renderConditionRows();renderRecords();updateFilterToggle()};
  });
 }
-function conditionMatches(r,c){
- if(!c.property||!c.value.trim())return true;
- const p=r.properties.find(x=>x.name===c.property);if(!p)return false;
- const a=String(p.value).trim(),b=c.value.trim(),na=num(a),nb=num(b);
- if(c.operator==="contains")return a.toLowerCase().includes(b.toLowerCase());
- if(c.operator==="=")return na!==null&&nb!==null?na===nb:a.toLowerCase()===b.toLowerCase();
- if(c.operator==="!=")return na!==null&&nb!==null?na!==nb:a.toLowerCase()!==b.toLowerCase();
- if(na===null||nb===null)return false;
- return c.operator===">"?na>nb:c.operator===">="?na>=nb:c.operator==="<"?na<nb:c.operator==="<="?na<=nb:true;
-}
 function renderRecords() {
   const list = filterRecords(records, {
     query: $("search").value,
