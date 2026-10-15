@@ -407,7 +407,10 @@ $("clear-filters").onclick=()=>{
  $("search").value="";$("filter-category").value="";$("filter-subcategory").value="";
  $("sort-records").value="name-asc";renderHome();
 };
-records=loadRecords();alogs();loadSavedFilters();renderHome();
+records = loadRecords();
+loadCatalogs();
+savedFilters = loadStoredSavedFilters();
+renderHome();
 </script>
 </body>
 </html>
