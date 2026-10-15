@@ -129,7 +129,7 @@ const { renderPicker } = createPickerFeatures({
   $,
   esc,
   getRecords: () => records,
-  getRecord,
+  getRecord: (...args) => getRecord(...args),
   catalogNames,
   mergeCatalog,
   saveCatalogs,
