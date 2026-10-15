@@ -210,16 +210,6 @@ function renderHome(){
  renderCategories();renderFilterOptions();renderConditionRows();renderSavedFilters();renderRecords();updateFilterToggle();
 }
 
-function setupSelect(id,values,current,placeholder,newInput){
- const el=$(id);el.innerHTML=selectOptions(values,current,placeholder);
- el.value=values.includes(current)?current:"";
- el.onchange=()=>{
-  const create=el.value==="__new__";
-  $(newInput).hidden=!create;
-  if(create)$(newInput).focus();
- };
-}
-
 function renderPicker(kind){
  const isTags=kind==="tags",root=$(isTags?"tag-picker":"related-picker");
  const open=isTags?tagOpen:relatedOpen,search=isTags?tagSearch:relatedSearch;
