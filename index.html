@@ -88,7 +88,6 @@ let filtersOpen=false,editingId=null,currentId=null,selectedTags=[],selectedRela
 let tagOpen=false,relatedOpen=false,tagSearch="",relatedSearch="",tagCreateOpen=false;
 function iconFor(type){return ({Mob:"👾",Item:"⚔️",Material:"💎",Area:"🌍",Recipe:"📜",Effect:"✨",Skill:"🔮",NPC:"🧑",Boss:"☠️"})[type]||"◆"}
 function iconOf(r){return r.icon||iconFor(r.type)}
-function getRecord(id){return records.find(r=>r.id===id)}
 function loadRecords() {
   return loadStoredRecords(starter, uid);
 }
