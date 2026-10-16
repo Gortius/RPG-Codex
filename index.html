@@ -69,6 +69,7 @@ import { createEditorFeatures } from "./js/features/editor.js";
 import { createRecordFormFeature } from "./js/features/record-form.js";
 import { createRecordListFeature } from "./js/features/record-list.js";
 import { createFilterUIFeatures } from "./js/features/filter-ui.js";
+import { createSavedFiltersFeature } from "./js/features/saved-filters.js";
  
 "use strict";
 const DEFAULT_TYPES=["Mob","Item","Material","Area","Recipe","Effect","Skill","NPC","Boss"];
@@ -139,13 +140,7 @@ function applyFilterState(s){
  $("filter-subcategory").value=s.subcategory||"";$("sort-records").value=s.sort||"name-asc";
  conditions=(s.conditions||[]).map(c=>({...c}));renderConditionRows();renderCategories();renderRecords();updateFilterToggle();
 }
-function saveCurrentFilter(){
- const name=prompt("Name this filter:");if(!name||!name.trim())return;
- const old=savedFilters.find(f=>f.name.toLowerCase()===name.trim().toLowerCase());
- const entry={id:old?.id||uid(),name:name.trim(),state:filterState()};
- savedFilters=old?savedFilters.map(f=>f.id===old.id?entry:f):[...savedFilters,entry];
- if(persistFilters()){renderSavedFilters();$("saved-filters").value=entry.id}
-}
+
 
 const { renderRecords } = createRecordListFeature({
   $,
@@ -184,6 +179,21 @@ const {
   getFiltersOpen: () => filtersOpen,
   getSavedFilters: () => savedFilters,
   renderRecords: () => renderRecords()
+});
+
+const {
+  saveCurrentFilter,
+  applySelectedFilter,
+  deleteSelectedFilter
+} = createSavedFiltersFeature({
+  $,
+  getSavedFilters: () => savedFilters,
+  setSavedFilters: value => { savedFilters = value; },
+  uid,
+  getFilterState: () => filterState(),
+  applyFilterState: state => applyFilterState(state),
+  persistFilters: () => persistFilters(),
+  renderSavedFilters: () => renderSavedFilters()
 });
 
 function renderHome(){
@@ -294,17 +304,9 @@ $("filter-category").onchange=()=>{renderFilterOptions();renderRecords();updateF
 $("filter-subcategory").onchange=()=>{renderRecords();updateFilterToggle()};
 $("sort-records").onchange=renderRecords;
 $("add-filter-condition").onclick=()=>{conditions.push({property:"",operator:"contains",value:""});renderConditionRows();renderRecords();updateFilterToggle()};
-$("save-filter").onclick=saveCurrentFilter;
-$("apply-saved-filter").onclick=()=>{
- const f=savedFilters.find(x=>x.id===$("saved-filters").value);if(f)applyFilterState(f.state);
-};
-$("delete-saved-filter").onclick=()=>{
- const id=$("saved-filters").value;if(!id)return;
- const f=savedFilters.find(x=>x.id===id);
- if(f&&confirm(`Delete saved filter "${f.name}"?`)){
-  savedFilters=savedFilters.filter(x=>x.id!==id);persistFilters();renderSavedFilters();
- }
-};
+$("save-filter").onclick = saveCurrentFilter;
+$("apply-saved-filter").onclick = applySelectedFilter;
+$("delete-saved-filter").onclick = deleteSelectedFilter;
 $("clear-filters").onclick=()=>{
  activeTypes=[];activeTags=[];conditions=[];
  $("search").value="";$("filter-category").value="";$("filter-subcategory").value="";
