@@ -68,7 +68,8 @@ import { createPickerFeatures } from "./js/features/pickers.js";
 import { createEditorFeatures } from "./js/features/editor.js";
 import { createRecordFormFeature } from "./js/features/record-form.js";
 import { createRecordListFeature } from "./js/features/record-list.js";
-
+import { createFilterUIFeatures } from "./js/features/filter-ui.js";
+ 
 "use strict";
 const DEFAULT_TYPES=["Mob","Item","Material","Area","Recipe","Effect","Skill","NPC","Boss"];
 const DEFAULT_TAGS=["Common","Uncommon","Rare","Epic","Legendary","Craftable","Quest","Optional"];
@@ -138,58 +139,12 @@ function applyFilterState(s){
  $("filter-subcategory").value=s.subcategory||"";$("sort-records").value=s.sort||"name-asc";
  conditions=(s.conditions||[]).map(c=>({...c}));renderConditionRows();renderCategories();renderRecords();updateFilterToggle();
 }
-function renderSavedFilters(){
- $("saved-filters").innerHTML='<option value="">Choose a saved filter...</option>'+savedFilters.map(f=>`<option value="${esc(f.id)}">${esc(f.name)}</option>`).join("");
-}
 function saveCurrentFilter(){
  const name=prompt("Name this filter:");if(!name||!name.trim())return;
  const old=savedFilters.find(f=>f.name.toLowerCase()===name.trim().toLowerCase());
  const entry={id:old?.id||uid(),name:name.trim(),state:filterState()};
  savedFilters=old?savedFilters.map(f=>f.id===old.id?entry:f):[...savedFilters,entry];
  if(persistFilters()){renderSavedFilters();$("saved-filters").value=entry.id}
-}
-function updateFilterToggle(){
- const count=activeTypes.length+activeTags.length+($("filter-category").value?1:0)+($("filter-subcategory").value?1:0)+conditions.filter(c=>c.property&&c.value.trim()).length;
- $("toggle-filters").textContent=(filtersOpen?"Hide filters":"Show filters")+(count?" · "+count+" active":"");
- $("advanced-filter-content").hidden=!filtersOpen;
-}
-function renderCategories(){
- const types=uniq([...DEFAULT_TYPES,...records.map(r=>r.type)]);
- $("categories").innerHTML=`<button class="category ${!activeTypes.length?"active":""}" data-type="*">All</button>`+types.map(t=>`<button class="category ${activeTypes.includes(t)?"active":""}" data-type="${esc(t)}">${esc(t)}</button>`).join("");
- $("categories").querySelectorAll("[data-type]").forEach(b=>b.onclick=()=>{
-  const t=b.dataset.type;if(t==="*")activeTypes=[];else activeTypes=activeTypes.includes(t)?activeTypes.filter(x=>x!==t):[...activeTypes,t];
-  renderCategories();renderRecords();updateFilterToggle();
- });
- $("filter-hint").textContent=activeTypes.length?"Filtering by: "+activeTypes.join(", "):"Showing all types. Select multiple types to combine filters.";
-}
-function renderFilterOptions(){
- const cat=$("filter-category"),sub=$("filter-subcategory"),oldCat=cat.value,oldSub=sub.value;
- const cats=uniq(records.map(r=>r.category));cat.innerHTML='<option value="">All categories</option>'+cats.map(c=>`<option>${esc(c)}</option>`).join("");
- cat.value=cats.includes(oldCat)?oldCat:"";
- const subs=uniq(records.filter(r=>!cat.value||r.category===cat.value).map(r=>r.subcategory));
- sub.innerHTML='<option value="">All subcategories</option>'+subs.map(s=>`<option>${esc(s)}</option>`).join("");
- sub.value=subs.includes(oldSub)?oldSub:"";renderFilterTags();
-}
-function renderFilterTags(){
- $("filter-tags").innerHTML=catalogNames("tags").map(t=>`<button class="filter-chip ${activeTags.includes(t)?"active":""}" data-tag="${esc(t)}">${esc(t)}</button>`).join("");
- $("filter-tags").querySelectorAll("[data-tag]").forEach(b=>b.onclick=()=>{
-  const t=b.dataset.tag;activeTags=activeTags.includes(t)?activeTags.filter(x=>x!==t):[...activeTags,t];
-  renderFilterTags();renderRecords();updateFilterToggle();
- });
-}
-const operators=[["contains","Contains"],["=","Equal (=)"],["!=","Not equal (≠)"],[">","Greater than (>)"],[">=","Greater/equal (≥)"],["<","Less than (<)"],["<=","Less/equal (≤)"]];
-function renderConditionRows(){
- $("property-conditions").innerHTML=conditions.map((c,i)=>`<div class="condition-row" data-i="${i}">
- <select class="prop"><option value="">Property...</option>${catalogNames("properties").map(p=>`<option value="${esc(p)}" ${p===c.property?"selected":""}>${esc(p)}</option>`).join("")}</select>
- <select class="op">${operators.map(([v,l])=>`<option value="${v}" ${v===c.operator?"selected":""}>${l}</option>`).join("")}</select>
- <input class="val" value="${esc(c.value)}" placeholder="Value"><button class="remove" type="button">×</button></div>`).join("");
- $("property-conditions").querySelectorAll(".condition-row").forEach(row=>{
-  const i=+row.dataset.i;
-  row.querySelector(".prop").onchange=e=>{conditions[i].property=e.target.value;renderRecords();updateFilterToggle()};
-  row.querySelector(".op").onchange=e=>{conditions[i].operator=e.target.value;renderRecords();updateFilterToggle()};
-  row.querySelector(".val").oninput=e=>{conditions[i].value=e.target.value;renderRecords();updateFilterToggle()};
-  row.querySelector(".remove").onclick=()=>{conditions.splice(i,1);renderConditionRows();renderRecords();updateFilterToggle()};
- });
 }
 
 const { renderRecords } = createRecordListFeature({
@@ -205,6 +160,30 @@ const { renderRecords } = createRecordListFeature({
   }),
   expanded,
   openRecord: id => openRecord(id)
+});
+
+const {
+  renderCategories,
+  renderFilterTags,
+  renderFilterOptions,
+  renderConditionRows,
+  renderSavedFilters,
+  updateFilterToggle
+} = createFilterUIFeatures({
+  $,
+  esc,
+  uniq,
+  defaultTypes: DEFAULT_TYPES,
+  getRecords: () => records,
+  catalogNames,
+  getActiveTypes: () => activeTypes,
+  setActiveTypes: value => { activeTypes = value; },
+  getActiveTags: () => activeTags,
+  setActiveTags: value => { activeTags = value; },
+  getConditions: () => conditions,
+  getFiltersOpen: () => filtersOpen,
+  getSavedFilters: () => savedFilters,
+  renderRecords: () => renderRecords()
 });
 
 function renderHome(){
