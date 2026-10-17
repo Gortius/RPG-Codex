@@ -1,4 +1,3 @@
-
 "use strict";
 
 export function createViewFeatures({
@@ -17,6 +16,7 @@ export function createViewFeatures({
 
     setCurrentId(id);
 
+    $("dashboard").hidden = true;
     $("home").hidden = true;
     $("editor").hidden = true;
     $("detail").hidden = false;
