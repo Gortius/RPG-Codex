@@ -16,6 +16,7 @@ import { createRecordListFeature } from "./features/record-list.js";
 import { createFilterUIFeatures } from "./features/filter-ui.js";
 import { createSavedFiltersFeature } from "./features/saved-filters.js";
 import { createDashboardFeature } from "./features/dashboard.js";
+import { createClickFeedbackFeature } from "./features/click-feedback.js";
  
 "use strict";
 const DEFAULT_TYPES=["Mob","Item","Material","Area","Recipe","Effect","Skill","NPC","Boss"];
@@ -278,6 +279,7 @@ $("clear-filters").onclick=()=>{
  $("search").value="";$("filter-category").value="";$("filter-subcategory").value="";
  $("sort-records").value="name-asc";renderHome();
 };
+createClickFeedbackFeature();
 records = loadRecords();
 loadCatalogs();
 savedFilters = loadStoredSavedFilters();
