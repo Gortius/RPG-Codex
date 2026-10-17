@@ -1,4 +1,3 @@
-
 "use strict";
 
 export function createEditorFeatures({
@@ -41,6 +40,7 @@ export function createEditorFeatures({
     setTagSearch("");
     setRelatedSearch("");
 
+    $("dashboard").hidden = true;
     $("home").hidden = true;
     $("detail").hidden = true;
     $("editor").hidden = false;
