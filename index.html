@@ -9,46 +9,220 @@
 </head>
 <body>
 <div class="app">
-<header><div class="brand"><div class="logo">R</div><div><h1>RPG Codex</h1><p class="sub">Game Development Database</p></div></div><span class="sub">PROTOTYPE</span></header>
+<header>
+  <div class="brand">
+    <div class="logo">R</div>
+    <div><h1>RPG Codex</h1><p class="sub">Game Development Database</p></div>
+  </div>
+  <span class="sub">PROTOTYPE</span>
+</header>
+
 <main>
 <section id="home">
- <p class="eyebrow">YOUR WORKSPACE</p><h2>Game Database</h2><p class="muted">Everything connected, in one place.</p>
- <div class="toolbar"><input id="search" type="search" placeholder="Search records..." autocomplete="off"><button id="new-record" class="primary">+ New Record</button></div>
- <div class="section-title"><h3>Types</h3></div><div id="categories" class="categories"></div><p class="filter-hint" id="filter-hint">Showing all types.</p>
- <div class="panel">
-  <div class="filter-heading"><h3 style="margin:0">Advanced Filters</h3><button id="toggle-filters" class="secondary" type="button">Show filters</button></div>
-  <div id="advanced-filter-content" hidden>
-   <div class="filter-grid">
-    <div class="filter-group"><label for="filter-category">Category</label><select id="filter-category"><option value="">All categories</option></select></div>
-    <div class="filter-group"><label for="filter-subcategory">Subcategory</label><select id="filter-subcategory"><option value="">All subcategories</option></select></div>
-    <div class="filter-group"><label>Tags</label><div id="filter-tags" class="filter-chip-row"></div></div>
-    <div class="filter-group"><label for="sort-records">Sort by</label><select id="sort-records"><option value="name-asc">Name A–Z</option><option value="name-desc">Name Z–A</option><option value="type">Type</option><option value="category">Category</option><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select></div>
-   </div>
-   <div class="filter-group"><div class="filter-heading"><label style="margin:0">Property conditions</label><button id="add-filter-condition" type="button" class="secondary">+ Add condition</button></div><p class="hint">All conditions must match. Numeric operators work with numeric values.</p><div id="property-conditions"></div></div>
-   <div class="filter-group"><label for="saved-filters">Saved filters</label><div class="saved-filter-row"><select id="saved-filters"><option value="">Choose a saved filter...</option></select><button id="apply-saved-filter" class="secondary" type="button">Apply</button><button id="save-filter" class="primary" type="button">Save current</button><button id="delete-saved-filter" class="danger" type="button">Delete</button></div></div>
-   <button type="button" id="clear-filters" class="secondary" style="margin-top:14px">Clear filters</button>
+
+  <nav class="page-nav" aria-label="Main navigation">
+    <button id="nav-dashboard" class="nav-button active" type="button">Overview</button>
+    <button id="nav-records" class="nav-button" type="button">Records</button>
+  </nav>
+
+  <div id="dashboard-view">
+    <p class="eyebrow">YOUR WORKSPACE</p>
+    <h2>Dashboard</h2>
+    <p class="muted">A quick overview of your game database.</p>
+
+    <div class="dashboard-stats">
+      <button id="stat-total" class="stat-card" type="button">
+        <span class="stat-label">Total records</span>
+        <strong id="stat-total-value">0</strong>
+        <span class="stat-note">Across your database</span>
+      </button>
+      <button id="stat-types" class="stat-card" type="button">
+        <span class="stat-label">Types used</span>
+        <strong id="stat-types-value">0</strong>
+        <span class="stat-note">Different record types</span>
+      </button>
+      <button id="stat-no-description" class="stat-card" type="button">
+        <span class="stat-label">No description</span>
+        <strong id="stat-no-description-value">0</strong>
+        <span class="stat-note">Records to complete</span>
+      </button>
+      <button id="stat-no-properties" class="stat-card" type="button">
+        <span class="stat-label">No properties</span>
+        <strong id="stat-no-properties-value">0</strong>
+        <span class="stat-note">Records to review</span>
+      </button>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="panel dashboard-panel">
+        <div class="section-title compact"><h3>Records by Type</h3></div>
+        <div id="dashboard-types" class="dashboard-type-list"></div>
+      </div>
+
+      <div class="panel dashboard-panel">
+        <div class="section-title compact">
+          <h3>Needs Attention</h3>
+          <span id="dashboard-attention-count" class="muted"></span>
+        </div>
+        <div id="dashboard-attention" class="dashboard-record-list"></div>
+      </div>
+    </div>
+
+    <div class="panel dashboard-panel">
+      <div class="section-title compact">
+        <h3>Recently Added</h3>
+        <button id="dashboard-all-records" class="secondary" type="button">View all</button>
+      </div>
+      <div id="dashboard-recent" class="dashboard-record-list"></div>
+    </div>
+
+    <div class="dashboard-actions">
+      <button id="dashboard-new-record" class="primary" type="button">+ New Record</button>
+    </div>
   </div>
- </div>
- <div class="section-title"><h3>Records</h3><span id="count" class="muted"></span></div><div id="records" class="records"></div>
+
+  <div id="records-view" hidden>
+    <p class="eyebrow">YOUR WORKSPACE</p>
+    <h2>Game Database</h2>
+    <p class="muted">Everything connected, in one place.</p>
+
+    <div class="toolbar">
+      <input id="search" type="search" placeholder="Search records..." autocomplete="off">
+      <button id="new-record" class="primary" type="button">+ New Record</button>
+    </div>
+
+    <div class="section-title"><h3>Types</h3></div>
+    <div id="categories" class="categories"></div>
+    <p class="filter-hint" id="filter-hint">Showing all types.</p>
+
+    <div class="panel">
+      <div class="filter-heading">
+        <h3 style="margin:0">Advanced Filters</h3>
+        <button id="toggle-filters" class="secondary" type="button">Show filters</button>
+      </div>
+
+      <div id="advanced-filter-content" hidden>
+        <div class="filter-grid">
+          <div class="filter-group">
+            <label for="filter-category">Category</label>
+            <select id="filter-category"><option value="">All categories</option></select>
+          </div>
+          <div class="filter-group">
+            <label for="filter-subcategory">Subcategory</label>
+            <select id="filter-subcategory"><option value="">All subcategories</option></select>
+          </div>
+          <div class="filter-group">
+            <label>Tags</label>
+            <div id="filter-tags" class="filter-chip-row"></div>
+          </div>
+          <div class="filter-group">
+            <label for="sort-records">Sort by</label>
+            <select id="sort-records">
+              <option value="name-asc">Name A–Z</option>
+              <option value="name-desc">Name Z–A</option>
+              <option value="type">Type</option>
+              <option value="category">Category</option>
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <div class="filter-heading">
+            <label style="margin:0">Property conditions</label>
+            <button id="add-filter-condition" type="button" class="secondary">+ Add condition</button>
+          </div>
+          <p class="hint">All conditions must match. Numeric operators work with numeric values.</p>
+          <div id="property-conditions"></div>
+        </div>
+
+        <div class="filter-group">
+          <label for="saved-filters">Saved filters</label>
+          <div class="saved-filter-row">
+            <select id="saved-filters"><option value="">Choose a saved filter...</option></select>
+            <button id="apply-saved-filter" class="secondary" type="button">Apply</button>
+            <button id="save-filter" class="primary" type="button">Save current</button>
+            <button id="delete-saved-filter" class="danger" type="button">Delete</button>
+          </div>
+        </div>
+
+        <button type="button" id="clear-filters" class="secondary" style="margin-top:14px">Clear filters</button>
+      </div>
+    </div>
+
+    <div class="section-title">
+      <h3>Records</h3>
+      <span id="count" class="muted"></span>
+    </div>
+    <div id="records" class="records"></div>
+  </div>
 </section>
-<section id="detail" hidden><button id="back" class="back">← Back to records</button><div id="detail-content"></div></section>
+
+<section id="detail" hidden>
+  <button id="back" class="back" type="button">← Back to records</button>
+  <div id="detail-content"></div>
+</section>
+
 <section id="editor" hidden>
- <button id="cancel-top" class="back">← Cancel</button><p class="eyebrow">RECORD EDITOR</p><h2 id="form-title">New Record</h2><p class="muted" style="margin-bottom:22px">Define the record and connect it to your database.</p>
- <div id="form-message" class="notice" hidden></div>
- <form id="record-form">
-  <div class="form-field"><label for="f-name">Name *</label><input id="f-name" required maxlength="100" placeholder="e.g. Leaf Bow"></div>
-  <div class="form-field"><label for="f-icon">Icon / Emoji</label><input id="f-icon" maxlength="16" placeholder="e.g. ⚔️, 🐉, 🌲"><p class="hint">Leave empty to use the default icon.</p></div>
-  <div class="form-field"><label for="f-type">Type *</label><select id="f-type" required></select><input id="f-new-type" hidden maxlength="50" placeholder="New type name" style="margin-top:8px"></div>
-  <div class="form-field"><label for="f-category">Category</label><select id="f-category"></select><input id="f-new-category" hidden maxlength="60" placeholder="New category name" style="margin-top:8px"></div>
-  <div class="form-field"><label for="f-subcategory">Subcategory</label><input id="f-subcategory" maxlength="60" placeholder="e.g. Swords"></div>
-  <div class="form-field"><label for="f-description">Description</label><textarea id="f-description" maxlength="3000" placeholder="Describe this record..."></textarea></div>
-  <div class="form-field"><label>Tags</label><div id="tag-picker"></div><p class="hint">Search the list or create a new tag.</p></div>
-  <div class="form-field"><label>Properties</label><div id="property-rows"></div><button type="button" id="add-property" class="secondary">+ Add Property</button><p class="hint">Choose an existing property or create a new one.</p></div>
-  <div class="form-field"><label>Related Records</label><div id="related-picker"></div><p class="hint">Search existing records and add links.</p></div>
-  <div class="actions"><button type="submit" class="primary">Save Record</button><button type="button" id="cancel-bottom" class="secondary">Cancel</button></div>
- </form>
+  <button id="cancel-top" class="back" type="button">← Cancel</button>
+  <p class="eyebrow">RECORD EDITOR</p>
+  <h2 id="form-title">New Record</h2>
+  <p class="muted" style="margin-bottom:22px">Define the record and connect it to your database.</p>
+  <div id="form-message" class="notice" hidden></div>
+
+  <form id="record-form">
+    <div class="form-field">
+      <label for="f-name">Name *</label>
+      <input id="f-name" required maxlength="100" placeholder="e.g. Leaf Bow">
+    </div>
+    <div class="form-field">
+      <label for="f-icon">Icon / Emoji</label>
+      <input id="f-icon" maxlength="16" placeholder="e.g. ⚔️, 🐉, 🌲">
+      <p class="hint">Leave empty to use the default icon.</p>
+    </div>
+    <div class="form-field">
+      <label for="f-type">Type *</label>
+      <select id="f-type" required></select>
+      <input id="f-new-type" hidden maxlength="50" placeholder="New type name" style="margin-top:8px">
+    </div>
+    <div class="form-field">
+      <label for="f-category">Category</label>
+      <select id="f-category"></select>
+      <input id="f-new-category" hidden maxlength="60" placeholder="New category name" style="margin-top:8px">
+    </div>
+    <div class="form-field">
+      <label for="f-subcategory">Subcategory</label>
+      <input id="f-subcategory" maxlength="60" placeholder="e.g. Swords">
+    </div>
+    <div class="form-field">
+      <label for="f-description">Description</label>
+      <textarea id="f-description" maxlength="3000" placeholder="Describe this record..."></textarea>
+    </div>
+    <div class="form-field">
+      <label>Tags</label>
+      <div id="tag-picker"></div>
+      <p class="hint">Search the list or create a new tag.</p>
+    </div>
+    <div class="form-field">
+      <label>Properties</label>
+      <div id="property-rows"></div>
+      <button type="button" id="add-property" class="secondary">+ Add Property</button>
+      <p class="hint">Choose an existing property or create a new one.</p>
+    </div>
+    <div class="form-field">
+      <label>Related Records</label>
+      <div id="related-picker"></div>
+      <p class="hint">Search existing records and add links.</p>
+    </div>
+    <div class="actions">
+      <button type="submit" class="primary">Save Record</button>
+      <button type="button" id="cancel-bottom" class="secondary">Cancel</button>
+    </div>
+  </form>
 </section>
 </main>
+
 <footer id="status">Local database · Stored in this browser</footer>
 </div>
 <script type="module" src="./js/app.js"></script>
