@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -36,16 +35,19 @@
         <strong id="stat-total-value">0</strong>
         <span class="stat-note">Across your database</span>
       </button>
+
       <button id="stat-types" class="stat-card" type="button">
         <span class="stat-label">Types used</span>
         <strong id="stat-types-value">0</strong>
         <span class="stat-note">Different record types</span>
       </button>
+
       <button id="stat-no-description" class="stat-card" type="button">
         <span class="stat-label">No description</span>
         <strong id="stat-no-description-value">0</strong>
         <span class="stat-note">Records to complete</span>
       </button>
+
       <button id="stat-no-properties" class="stat-card" type="button">
         <span class="stat-label">No properties</span>
         <strong id="stat-no-properties-value">0</strong>
@@ -55,7 +57,9 @@
 
     <div class="dashboard-grid">
       <div class="panel dashboard-panel">
-        <div class="section-title compact"><h3>Records by Type</h3></div>
+        <div class="section-title compact">
+          <h3>Records by Type</h3>
+        </div>
         <div id="dashboard-types" class="dashboard-type-list"></div>
       </div>
 
@@ -91,7 +95,10 @@
       <button id="new-record" class="primary" type="button">+ New Record</button>
     </div>
 
-    <div class="section-title"><h3>Types</h3></div>
+    <div class="section-title">
+      <h3>Types</h3>
+    </div>
+
     <div id="categories" class="categories"></div>
     <p class="filter-hint" id="filter-hint">Showing all types.</p>
 
@@ -105,16 +112,23 @@
         <div class="filter-grid">
           <div class="filter-group">
             <label for="filter-category">Category</label>
-            <select id="filter-category"><option value="">All categories</option></select>
+            <select id="filter-category">
+              <option value="">All categories</option>
+            </select>
           </div>
+
           <div class="filter-group">
             <label for="filter-subcategory">Subcategory</label>
-            <select id="filter-subcategory"><option value="">All subcategories</option></select>
+            <select id="filter-subcategory">
+              <option value="">All subcategories</option>
+            </select>
           </div>
+
           <div class="filter-group">
             <label>Tags</label>
             <div id="filter-tags" class="filter-chip-row"></div>
           </div>
+
           <div class="filter-group">
             <label for="sort-records">Sort by</label>
             <select id="sort-records">
@@ -133,21 +147,28 @@
             <label style="margin:0">Property conditions</label>
             <button id="add-filter-condition" type="button" class="secondary">+ Add condition</button>
           </div>
+
           <p class="hint">All conditions must match. Numeric operators work with numeric values.</p>
           <div id="property-conditions"></div>
         </div>
 
         <div class="filter-group">
           <label for="saved-filters">Saved filters</label>
+
           <div class="saved-filter-row">
-            <select id="saved-filters"><option value="">Choose a saved filter...</option></select>
+            <select id="saved-filters">
+              <option value="">Choose a saved filter...</option>
+            </select>
+
             <button id="apply-saved-filter" class="secondary" type="button">Apply</button>
             <button id="save-filter" class="primary" type="button">Save current</button>
             <button id="delete-saved-filter" class="danger" type="button">Delete</button>
           </div>
         </div>
 
-        <button type="button" id="clear-filters" class="secondary" style="margin-top:14px">Clear filters</button>
+        <button type="button" id="clear-filters" class="secondary" style="margin-top:14px">
+          Clear filters
+        </button>
       </div>
     </div>
 
@@ -155,8 +176,10 @@
       <h3>Records</h3>
       <span id="count" class="muted"></span>
     </div>
+
     <div id="records" class="records"></div>
   </div>
+
 </section>
 
 <section id="detail" hidden>
@@ -166,9 +189,13 @@
 
 <section id="editor" hidden>
   <button id="cancel-top" class="back" type="button">← Cancel</button>
+
   <p class="eyebrow">RECORD EDITOR</p>
   <h2 id="form-title">New Record</h2>
-  <p class="muted" style="margin-bottom:22px">Define the record and connect it to your database.</p>
+  <p class="muted" style="margin-bottom:22px">
+    Define the record and connect it to your database.
+  </p>
+
   <div id="form-message" class="notice" hidden></div>
 
   <form id="record-form">
@@ -176,55 +203,66 @@
       <label for="f-name">Name *</label>
       <input id="f-name" required maxlength="100" placeholder="e.g. Leaf Bow">
     </div>
+
     <div class="form-field">
       <label for="f-icon">Icon / Emoji</label>
       <input id="f-icon" maxlength="16" placeholder="e.g. ⚔️, 🐉, 🌲">
       <p class="hint">Leave empty to use the default icon.</p>
     </div>
+
     <div class="form-field">
       <label for="f-type">Type *</label>
       <select id="f-type" required></select>
       <input id="f-new-type" hidden maxlength="50" placeholder="New type name" style="margin-top:8px">
     </div>
+
     <div class="form-field">
       <label for="f-category">Category</label>
       <select id="f-category"></select>
       <input id="f-new-category" hidden maxlength="60" placeholder="New category name" style="margin-top:8px">
     </div>
+
     <div class="form-field">
       <label for="f-subcategory">Subcategory</label>
       <input id="f-subcategory" maxlength="60" placeholder="e.g. Swords">
     </div>
+
     <div class="form-field">
       <label for="f-description">Description</label>
       <textarea id="f-description" maxlength="3000" placeholder="Describe this record..."></textarea>
     </div>
+
     <div class="form-field">
       <label>Tags</label>
       <div id="tag-picker"></div>
       <p class="hint">Search the list or create a new tag.</p>
     </div>
+
     <div class="form-field">
       <label>Properties</label>
       <div id="property-rows"></div>
       <button type="button" id="add-property" class="secondary">+ Add Property</button>
       <p class="hint">Choose an existing property or create a new one.</p>
     </div>
+
     <div class="form-field">
       <label>Related Records</label>
       <div id="related-picker"></div>
       <p class="hint">Search existing records and add links.</p>
     </div>
+
     <div class="actions">
       <button type="submit" class="primary">Save Record</button>
       <button type="button" id="cancel-bottom" class="secondary">Cancel</button>
     </div>
   </form>
 </section>
+
 </main>
 
 <footer id="status">Local database · Stored in this browser</footer>
 </div>
+
 <script type="module" src="./js/app.js"></script>
 </body>
 </html>
