@@ -15,8 +15,6 @@ import { createRecordFormFeature } from "./features/record-form.js";
 import { createRecordListFeature } from "./features/record-list.js";
 import { createFilterUIFeatures } from "./features/filter-ui.js";
 import { createSavedFiltersFeature } from "./features/saved-filters.js";
-import { createDashboardFeature } from "./features/dashboard.js";
-import { createClickFeedbackFeature } from "./features/click-feedback.js";
  
 "use strict";
 const DEFAULT_TYPES=["Mob","Item","Material","Area","Recipe","Effect","Skill","NPC","Boss"];
@@ -144,7 +142,6 @@ const {
 });
 
 function renderHome(){
- $("dashboard").hidden=true;
  $("home").hidden=false;$("detail").hidden=true;$("editor").hidden=true;
  renderCategories();renderFilterOptions();renderConditionRows();renderSavedFilters();renderRecords();updateFilterToggle();
 }
@@ -242,25 +239,6 @@ createRecordFormFeature({
   openRecord: id => openRecord(id)
 });
 
-const { showDashboard } = createDashboardFeature({
-  $,
-  esc,
-  iconOf,
-  getRecords: () => records,
-  openRecord: id => openRecord(id),
-  showRecordsOfType: type => {
-    activeTypes = [type];
-    activeTags = [];
-    conditions = [];
-    $("search").value = "";
-    $("filter-category").value = "";
-    $("filter-subcategory").value = "";
-    renderHome();
-  },
-  startNewRecord: () => { currentId = null; showForm(); },
-  showRecords: () => renderHome()
-});
-
 $("new-record").onclick=()=>{currentId=null;showForm()};
 $("add-property").onclick=()=>addPropertyRow();
 $("back").onclick=()=>{currentId=null;renderHome()};
@@ -279,8 +257,7 @@ $("clear-filters").onclick=()=>{
  $("search").value="";$("filter-category").value="";$("filter-subcategory").value="";
  $("sort-records").value="name-asc";renderHome();
 };
-createClickFeedbackFeature();
 records = loadRecords();
 loadCatalogs();
 savedFilters = loadStoredSavedFilters();
-showDashboard();
+renderHome();
