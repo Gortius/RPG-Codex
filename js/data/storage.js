@@ -5,8 +5,10 @@ export const STORAGE_KEY = "rpg-codex-records-v2";
 export const CATALOG_KEY = "rpg-codex-catalogs-v1";
 export const SAVED_KEY = "rpg-codex-saved-filters-v1";
 
-// Impede que dados existentes sejam sobrescritos após uma falha de leitura.
-let storageReadFailed = false;
+// Bloqueiam gravações quando os dados existentes não puderam ser lidos.
+let recordsReadFailed = false;
+let catalogsReadFailed = false;
+let filtersReadFailed = false;
 
 function cloneStarter(starter) {
   return starter.map(record => ({
@@ -23,9 +25,8 @@ export function loadRecords(starter, uid) {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
 
-    // Primeira execução: não existem registros salvos.
     if (raw === null) {
-      storageReadFailed = false;
+      recordsReadFailed = false;
       return cloneStarter(starter);
     }
 
@@ -76,10 +77,10 @@ export function loadRecords(starter, uid) {
       };
     });
 
-    storageReadFailed = false;
+    recordsReadFailed = false;
     return records;
   } catch (error) {
-    storageReadFailed = true;
+    recordsReadFailed = true;
 
     console.error("RPG Codex: failed to load saved records.", error);
 
@@ -91,14 +92,12 @@ export function loadRecords(starter, uid) {
       "after investigating the problem."
     );
 
-    // Os exemplos são apenas uma visualização temporária.
-    // Nunca devem substituir automaticamente os dados que falharam.
     return cloneStarter(starter);
   }
 }
 
 export function saveRecords(records) {
-  if (storageReadFailed) {
+  if (recordsReadFailed) {
     alert(
       "Records were not saved because the previous data could not be read. " +
       "Reload the app and resolve the loading problem before trying again."
@@ -126,7 +125,7 @@ export function mergeCatalog(catalogs, kind, name, type = "") {
   name = String(name || "").trim();
   if (!name) return;
 
-  let found = catalogs[kind].find(
+  const found = catalogs[kind].find(
     item => item.name.toLowerCase() === name.toLowerCase()
   );
 
@@ -188,6 +187,8 @@ export function loadCatalogs() {
     const raw = localStorage.getItem(CATALOG_KEY);
 
     if (raw === null) {
+      catalogsReadFailed = false;
+
       return {
         tags: [],
         properties: []
@@ -204,18 +205,29 @@ export function loadCatalogs() {
       throw new Error("The saved catalogs have an invalid structure.");
     }
 
+    if (
+      (catalogs.tags !== undefined && !Array.isArray(catalogs.tags)) ||
+      (catalogs.properties !== undefined &&
+        !Array.isArray(catalogs.properties))
+    ) {
+      throw new Error("The saved catalog lists are invalid.");
+    }
+
+    catalogsReadFailed = false;
+
     return {
-      tags: Array.isArray(catalogs.tags) ? catalogs.tags : [],
-      properties: Array.isArray(catalogs.properties)
-        ? catalogs.properties
-        : []
+      tags: catalogs.tags || [],
+      properties: catalogs.properties || []
     };
   } catch (error) {
+    catalogsReadFailed = true;
+
     console.error("RPG Codex: failed to load catalogs.", error);
 
     alert(
       "The saved tag/property catalog could not be read. " +
-      "The catalog was not intentionally overwritten by this load."
+      "Saving the catalog has been blocked to protect its existing data. " +
+      "Keep your backup and reload the app after investigating the problem."
     );
 
     return {
@@ -226,6 +238,13 @@ export function loadCatalogs() {
 }
 
 export function saveCatalogs(catalogs) {
+  if (catalogsReadFailed) {
+    console.warn(
+      "RPG Codex: catalog save blocked because loading previously failed."
+    );
+    return false;
+  }
+
   try {
     localStorage.setItem(CATALOG_KEY, JSON.stringify(catalogs));
     return true;
@@ -252,6 +271,7 @@ export function loadSavedFilters() {
     const raw = localStorage.getItem(SAVED_KEY);
 
     if (raw === null) {
+      filtersReadFailed = false;
       return [];
     }
 
@@ -261,13 +281,17 @@ export function loadSavedFilters() {
       throw new Error("The saved filters are not a valid array.");
     }
 
+    filtersReadFailed = false;
     return data;
   } catch (error) {
+    filtersReadFailed = true;
+
     console.error("RPG Codex: failed to load saved filters.", error);
 
     alert(
       "The saved filters could not be read. " +
-      "Their existing browser data has not been intentionally replaced."
+      "Saving filters has been blocked to protect their existing data. " +
+      "Keep your backup and reload the app after investigating the problem."
     );
 
     return [];
@@ -275,6 +299,13 @@ export function loadSavedFilters() {
 }
 
 export function persistFilters(savedFilters) {
+  if (filtersReadFailed) {
+    console.warn(
+      "RPG Codex: filter save blocked because loading previously failed."
+    );
+    return false;
+  }
+
   try {
     localStorage.setItem(SAVED_KEY, JSON.stringify(savedFilters));
     return true;
