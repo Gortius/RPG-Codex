@@ -49,14 +49,21 @@ export function createEditorFeatures({
 
     $("f-name").value = record?.name || "";
     $("f-icon").value = record?.icon || "";
-    $("f-icon-color").value = record?.iconColor || "#B9A0FF";
-    $("icon-color-hex").value = record?.iconColor || "#B9A0FF";
+
+    const savedColor = record?.iconColor || "#B9A0FF";
+    $("f-icon-color").value = savedColor;
+    $("icon-color-hex").value = savedColor;
 
     const iconMode = $("icon-mode");
     if (iconMode) {
-      iconMode.value = record?.icon?.startsWith("lucide:") ? "existing" : "custom";
+      iconMode.value = record?.icon?.startsWith("lucide:")
+        ? "existing"
+        : "custom";
       iconMode.dispatchEvent(new Event("change"));
     }
+
+    // Atualiza a cor interna da prévia e os controles HSL/HEX.
+    $("f-icon-color").dispatchEvent(new Event("input"));
 
     $("f-subcategory").value = record?.subcategory || "";
     $("f-description").value = record?.description || "";
