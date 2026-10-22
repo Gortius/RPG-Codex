@@ -13,7 +13,6 @@ export function createRecordFormFeature({
   uniq,
   uid,
   getRecord,
-  syncCatalogs,
   saveRecords,
   setCurrentId,
   openRecord
@@ -64,26 +63,22 @@ export function createRecordFormFeature({
       createdAt: existing?.createdAt || new Date().toISOString()
     };
 
-    if (existing) {
-      setRecords(records.map(r => r.id === editingId ? record : r));
-    } else {
-      records.push(record);
+    // Build a new array without modifying the original list.
+    const nextRecords = existing
+      ? records.map(r => r.id === editingId ? record : r)
+      : [...records, record];
+
+    setRecords(nextRecords);
+
+    // Only open the record if saving succeeded.
+    if (!saveRecords()) {
       setRecords(records);
+      alert(
+        "The record could not be saved. Your previous data remains loaded. " +
+        "The form will stay open so you can try again or copy your changes."
+      );
+      return;
     }
-
-    // Preserve existing incoming relationships.
-    getRecords().forEach(r => {
-      if (
-        r.id !== record.id &&
-        r.related.includes(record.id) &&
-        !record.related.includes(r.id)
-      ) {
-        // Existing incoming relationships remain intact.
-      }
-    });
-
-    syncCatalogs();
-    saveRecords();
 
     setCurrentId(record.id);
     openRecord(record.id);
