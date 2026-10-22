@@ -1,4 +1,3 @@
-
 "use strict";
 
 export const STORAGE_KEY = "rpg-codex-records-v2";
@@ -10,8 +9,11 @@ export const ACTIVE_PROJECT_KEY = "rpg-codex-active-project-v1";
 export const TRASH_KEY = "rpg-codex-trash-v1";
 
 export function getActiveProjectId() {
-  try { return localStorage.getItem(ACTIVE_PROJECT_KEY) || "default"; }
-  catch { return "default"; }
+  try {
+    return localStorage.getItem(ACTIVE_PROJECT_KEY) || "default";
+  } catch {
+    return "default";
+  }
 }
 
 export function setActiveProjectId(id) {
@@ -27,9 +29,20 @@ export function loadProjects() {
   try {
     const parsed = JSON.parse(localStorage.getItem(PROJECTS_KEY) || "null");
     if (Array.isArray(parsed) && parsed.length) return parsed;
-  } catch (error) { console.warn("Could not read projects list", error); }
-  const projects = [{ id: "default", name: "My RPG Database", createdAt: new Date().toISOString() }];
-  try { localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects)); } catch {}
+  } catch (error) {
+    console.warn("Could not read projects list", error);
+  }
+
+  const projects = [{
+    id: "default",
+    name: "My RPG Database",
+    createdAt: new Date().toISOString()
+  }];
+
+  try {
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+  } catch {}
+
   return projects;
 }
 
@@ -41,7 +54,9 @@ export function loadTrash() {
   try {
     const data = JSON.parse(localStorage.getItem(scopedKey(TRASH_KEY)) || "[]");
     return Array.isArray(data) ? data : [];
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 export function saveTrash(items) {
@@ -50,50 +65,126 @@ export function saveTrash(items) {
 
 export function exportProjectBundle() {
   return {
-    format: "rpg-codex-backup", version: 1, exportedAt: new Date().toISOString(),
+    format: "rpg-codex-backup",
+    version: 1,
+    exportedAt: new Date().toISOString(),
     projectId: getActiveProjectId(),
     records: JSON.parse(localStorage.getItem(scopedKey(STORAGE_KEY)) || "[]"),
-    catalogs: JSON.parse(localStorage.getItem(scopedKey(CATALOG_KEY)) || '{"tags":[],"properties":[]}'),
+    catalogs: JSON.parse(
+      localStorage.getItem(scopedKey(CATALOG_KEY)) ||
+      '{"tags":[],"properties":[]}'
+    ),
     savedFilters: JSON.parse(localStorage.getItem(scopedKey(SAVED_KEY)) || "[]"),
     trash: loadTrash()
   };
 }
 
 export function importProjectBundle(bundle, { replace = false } = {}) {
-  if (!bundle || bundle.format !== "rpg-codex-backup" || bundle.version !== 1 || !Array.isArray(bundle.records)) {
+  if (
+    !bundle ||
+    bundle.format !== "rpg-codex-backup" ||
+    bundle.version !== 1 ||
+    !Array.isArray(bundle.records)
+  ) {
     throw new Error("This file is not a valid RPG Codex backup.");
   }
+
   const incoming = bundle.records;
-  if (incoming.some(r => !r || typeof r !== "object" || !r.id || !r.name || !r.type)) {
+
+  if (incoming.some(r =>
+    !r || typeof r !== "object" || !r.id || !r.name || !r.type
+  )) {
     throw new Error("The backup contains an invalid record.");
   }
-  const existing = JSON.parse(localStorage.getItem(scopedKey(STORAGE_KEY)) || "[]");
+
+  const existing = JSON.parse(
+    localStorage.getItem(scopedKey(STORAGE_KEY)) || "[]"
+  );
+
   let records;
-  if (replace) records = incoming;
-  else {
+
+  if (replace) {
+    records = incoming;
+  } else {
     const ids = new Set(existing.map(r => String(r.id)));
-    const names = new Set(existing.map(r => `${String(r.type).toLowerCase()}::${String(r.name).toLowerCase()}`));
+    const names = new Set(
+      existing.map(r =>
+        `${String(r.type).toLowerCase()}::${String(r.name).toLowerCase()}`
+      )
+    );
+
     records = [...existing];
+
     incoming.forEach(r => {
-      const key = `${String(r.type).toLowerCase()}::${String(r.name).toLowerCase()}`;
+      const key =
+        `${String(r.type).toLowerCase()}::${String(r.name).toLowerCase()}`;
+
       if (ids.has(String(r.id)) || names.has(key)) {
-        const copy = { ...r, id: `${r.id}-import-${Math.random().toString(36).slice(2, 7)}` };
-        records.push(copy); ids.add(String(copy.id)); names.add(key);
-      } else { records.push(r); ids.add(String(r.id)); names.add(key); }
+        const copy = {
+          ...r,
+          id: `${r.id}-import-${Math.random().toString(36).slice(2, 7)}`
+        };
+
+        records.push(copy);
+        ids.add(String(copy.id));
+        names.add(key);
+      } else {
+        records.push(r);
+        ids.add(String(r.id));
+        names.add(key);
+      }
     });
   }
+
   localStorage.setItem(scopedKey(STORAGE_KEY), JSON.stringify(records));
+
   if (bundle.catalogs && typeof bundle.catalogs === "object") {
-    const current = JSON.parse(localStorage.getItem(scopedKey(CATALOG_KEY)) || '{"tags":[],"properties":[]}');
+    const current = JSON.parse(
+      localStorage.getItem(scopedKey(CATALOG_KEY)) ||
+      '{"tags":[],"properties":[]}'
+    );
+
     const mergeList = key => {
-      const map = new Map((replace ? [] : (current[key] || [])).map(x => [String(x.name).toLowerCase(), x]));
-      (bundle.catalogs[key] || []).forEach(x => { if (x && x.name) map.set(String(x.name).toLowerCase(), x); });
+      const map = new Map(
+        (replace ? [] : (current[key] || [])).map(x => [
+          String(x.name).toLowerCase(),
+          x
+        ])
+      );
+
+      (bundle.catalogs[key] || []).forEach(x => {
+        if (x && x.name) map.set(String(x.name).toLowerCase(), x);
+      });
+
       return [...map.values()];
     };
-    localStorage.setItem(scopedKey(CATALOG_KEY), JSON.stringify({ tags: mergeList("tags"), properties: mergeList("properties") }));
+
+    localStorage.setItem(
+      scopedKey(CATALOG_KEY),
+      JSON.stringify({
+        tags: mergeList("tags"),
+        properties: mergeList("properties")
+      })
+    );
   }
-  if (Array.isArray(bundle.savedFilters)) localStorage.setItem(scopedKey(SAVED_KEY), JSON.stringify(replace ? bundle.savedFilters : [...JSON.parse(localStorage.getItem(scopedKey(SAVED_KEY)) || "[]"), ...bundle.savedFilters]));
-  if (Array.isArray(bundle.trash)) saveTrash(replace ? bundle.trash : [...loadTrash(), ...bundle.trash]);
+
+  if (Array.isArray(bundle.savedFilters)) {
+    const currentFilters = JSON.parse(
+      localStorage.getItem(scopedKey(SAVED_KEY)) || "[]"
+    );
+
+    localStorage.setItem(
+      scopedKey(SAVED_KEY),
+      JSON.stringify(
+        replace ? bundle.savedFilters : [...currentFilters, ...bundle.savedFilters]
+      )
+    );
+  }
+
+  if (Array.isArray(bundle.trash)) {
+    saveTrash(replace ? bundle.trash : [...loadTrash(), ...bundle.trash]);
+  }
+
   return records.length;
 }
 
@@ -137,6 +228,9 @@ export function loadRecords(starter, uid) {
         id: String(record.id || uid()),
         name: String(record.name || "Untitled"),
         icon: record.icon || "",
+        iconColor: /^#[0-9a-f]{6}$/i.test(String(record.iconColor || ""))
+          ? String(record.iconColor).toUpperCase()
+          : "#B9A0FF",
         type: record.type || "Item",
         category: record.category || "",
         subcategory: record.subcategory || "",
@@ -152,9 +246,7 @@ export function loadRecords(starter, uid) {
                 typeof property !== "object" ||
                 Array.isArray(property)
               ) {
-                throw new Error(
-                  "A saved property has an invalid structure."
-                );
+                throw new Error("A saved property has an invalid structure.");
               }
 
               return {
@@ -254,19 +346,11 @@ export function syncCatalogs(
     );
 
     record.properties.forEach(property =>
-      mergeCatalog(
-        catalogs,
-        "properties",
-        property.name,
-        record.type
-      )
+      mergeCatalog(catalogs, "properties", property.name, record.type)
     );
   });
 
-  defaultTags.forEach(tag =>
-    mergeCatalog(catalogs, "tags", tag)
-  );
-
+  defaultTags.forEach(tag => mergeCatalog(catalogs, "tags", tag));
   defaultProperties.forEach(property =>
     mergeCatalog(catalogs, "properties", property)
   );
@@ -280,20 +364,12 @@ export function loadCatalogs() {
 
     if (raw === null) {
       catalogsReadFailed = false;
-
-      return {
-        tags: [],
-        properties: []
-      };
+      return { tags: [], properties: [] };
     }
 
     const catalogs = JSON.parse(raw);
 
-    if (
-      !catalogs ||
-      typeof catalogs !== "object" ||
-      Array.isArray(catalogs)
-    ) {
+    if (!catalogs || typeof catalogs !== "object" || Array.isArray(catalogs)) {
       throw new Error("The saved catalogs have an invalid structure.");
     }
 
@@ -322,10 +398,7 @@ export function loadCatalogs() {
       "Keep your backup and reload the app after investigating the problem."
     );
 
-    return {
-      tags: [],
-      properties: []
-    };
+    return { tags: [], properties: [] };
   }
 }
 
@@ -342,7 +415,6 @@ export function saveCatalogs(catalogs) {
     return true;
   } catch (error) {
     console.error("RPG Codex: failed to save catalogs.", error);
-
     alert("Could not save the tag/property catalog in this browser.");
     return false;
   }
@@ -403,7 +475,6 @@ export function persistFilters(savedFilters) {
     return true;
   } catch (error) {
     console.error("RPG Codex: failed to save filters.", error);
-
     alert("Could not save filters in this browser.");
     return false;
   }
