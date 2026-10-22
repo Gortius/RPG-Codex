@@ -1,4 +1,3 @@
-
 "use strict";
 
 export function createRecordFormFeature({
@@ -48,11 +47,13 @@ export function createRecordFormFeature({
 
     const properties = readProperties();
     const existing = editingId ? getRecord(editingId) : null;
+    const iconColor = $("f-icon-color")?.value || "#B9A0FF";
 
     const record = {
       id: editingId || uid(),
       name,
       icon: $("f-icon").value.trim(),
+      iconColor,
       type,
       category,
       subcategory: $("f-subcategory").value.trim(),
@@ -67,7 +68,6 @@ export function createRecordFormFeature({
       ? records.map(r => r.id === editingId ? record : r)
       : [...records, record];
 
-    // Hide any previous inline error.
     const message = $("form-message");
     message.hidden = true;
     message.textContent = "";
@@ -75,7 +75,6 @@ export function createRecordFormFeature({
     setRecords(nextRecords);
 
     if (!saveRecords()) {
-      // Restore the previous in-memory state.
       setRecords(records);
 
       message.textContent =
