@@ -14,7 +14,8 @@ export function createRecordFeatures({
   }
 
   function deleteRecord(id) {
-    const record = getRecord(id);
+    const originalRecords = getRecords();
+    const record = originalRecords.find(item => item.id === id);
 
     if (
       !record ||
@@ -23,19 +24,23 @@ export function createRecordFeatures({
       return;
     }
 
-    const remaining = getRecords().filter(
-      item => item.id !== id
-    );
+    // Build the next state without mutating the original records.
+    const nextRecords = originalRecords
+      .filter(item => item.id !== id)
+      .map(item => ({
+        ...item,
+        related: item.related.filter(relatedId => relatedId !== id)
+      }));
 
-    remaining.forEach(item => {
-      item.related = item.related.filter(
-        relatedId => relatedId !== id
-      );
-    });
+    setRecords(nextRecords);
 
-    setRecords(remaining);
+    // Restore the original state if persistence fails.
+    if (!saveRecords()) {
+      setRecords(originalRecords);
+      return;
+    }
+
     expanded.delete(id);
-    saveRecords();
     setCurrentId(null);
     renderHome();
   }
