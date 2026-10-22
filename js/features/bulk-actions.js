@@ -88,6 +88,12 @@ export function createBulkActionsFeature({
     updatePanel();
   }
 
+  function startSelectionMode() {
+  selectionMode = true;
+  updateRecordStyles();
+  updatePanel();
+  }
+  
   function exitSelectionMode() {
     selectionMode = false;
     selected.clear();
@@ -544,7 +550,8 @@ export function createBulkActionsFeature({
   });
 
   return {
-    clearSelection: exitSelectionMode,
-    getSelectedIds: () => [...selected]
-  };
-}
+  clearSelection: exitSelectionMode,
+  startSelectionMode,
+  pasteClipboard,
+  getSelectedIds: () => [...selected]
+};
