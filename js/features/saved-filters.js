@@ -16,11 +16,12 @@ export function createSavedFiltersFeature({
 
     if (!name || !name.trim()) return;
 
-    const savedFilters = getSavedFilters();
+    const originalFilters = getSavedFilters();
     const normalizedName = name.trim();
 
-    const old = savedFilters.find(
-      filter => filter.name.toLowerCase() === normalizedName.toLowerCase()
+    const old = originalFilters.find(
+      filter =>
+        filter.name.toLowerCase() === normalizedName.toLowerCase()
     );
 
     const entry = {
@@ -30,17 +31,20 @@ export function createSavedFiltersFeature({
     };
 
     const nextFilters = old
-      ? savedFilters.map(filter =>
+      ? originalFilters.map(filter =>
           filter.id === old.id ? entry : filter
         )
-      : [...savedFilters, entry];
+      : [...originalFilters, entry];
 
     setSavedFilters(nextFilters);
 
-    if (persistFilters()) {
-      renderSavedFilters();
-      $("saved-filters").value = entry.id;
+    if (!persistFilters()) {
+      setSavedFilters(originalFilters);
+      return;
     }
+
+    renderSavedFilters();
+    $("saved-filters").value = entry.id;
   }
 
   function applySelectedFilter() {
@@ -50,7 +54,7 @@ export function createSavedFiltersFeature({
       entry => entry.id === selectedId
     );
 
-    if (filter) {
+    if (filter && filter.state) {
       applyFilterState(filter.state);
     }
   }
@@ -60,21 +64,31 @@ export function createSavedFiltersFeature({
 
     if (!selectedId) return;
 
-    const filter = getSavedFilters().find(
+    const originalFilters = getSavedFilters();
+
+    const filter = originalFilters.find(
       entry => entry.id === selectedId
     );
 
     if (
-      filter &&
-      confirm(`Delete saved filter "${filter.name}"?`)
+      !filter ||
+      !confirm(`Delete saved filter "${filter.name}"?`)
     ) {
-      setSavedFilters(
-        getSavedFilters().filter(entry => entry.id !== selectedId)
-      );
-
-      persistFilters();
-      renderSavedFilters();
+      return;
     }
+
+    const nextFilters = originalFilters.filter(
+      entry => entry.id !== selectedId
+    );
+
+    setSavedFilters(nextFilters);
+
+    if (!persistFilters()) {
+      setSavedFilters(originalFilters);
+      return;
+    }
+
+    renderSavedFilters();
   }
 
   return {
