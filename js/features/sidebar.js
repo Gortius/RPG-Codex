@@ -485,9 +485,6 @@ function setupSidebar() {
 
   // Clicking a project-management action closes the sidebar but leaves the
   // in-page modal open and usable.
-  manageButton?.addEventListener("click", () => {
-    closeSidebar({ returnFocus: false });
-  });
 
   trashButton?.addEventListener("click", () => {
     closeSidebar({ returnFocus: false });
