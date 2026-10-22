@@ -63,20 +63,26 @@ export function createRecordFormFeature({
       createdAt: existing?.createdAt || new Date().toISOString()
     };
 
-    // Build a new array without modifying the original list.
     const nextRecords = existing
       ? records.map(r => r.id === editingId ? record : r)
       : [...records, record];
 
+    // Hide any previous inline error.
+    const message = $("form-message");
+    message.hidden = true;
+    message.textContent = "";
+
     setRecords(nextRecords);
 
-    // Only open the record if saving succeeded.
     if (!saveRecords()) {
+      // Restore the previous in-memory state.
       setRecords(records);
-      alert(
-        "The record could not be saved. Your previous data remains loaded. " +
-        "The form will stay open so you can try again or copy your changes."
-      );
+
+      message.textContent =
+        "The record was not saved. Your previous data remains loaded. " +
+        "Your changes are still in the form so you can try again.";
+
+      message.hidden = false;
       return;
     }
 
