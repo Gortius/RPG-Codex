@@ -1,4 +1,3 @@
-
 "use strict";
 
 export function createEditorFeatures({
@@ -50,6 +49,15 @@ export function createEditorFeatures({
 
     $("f-name").value = record?.name || "";
     $("f-icon").value = record?.icon || "";
+    $("f-icon-color").value = record?.iconColor || "#B9A0FF";
+    $("icon-color-hex").value = record?.iconColor || "#B9A0FF";
+
+    const iconMode = $("icon-mode");
+    if (iconMode) {
+      iconMode.value = record?.icon?.startsWith("lucide:") ? "existing" : "custom";
+      iconMode.dispatchEvent(new Event("change"));
+    }
+
     $("f-subcategory").value = record?.subcategory || "";
     $("f-description").value = record?.description || "";
 
