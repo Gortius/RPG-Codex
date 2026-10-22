@@ -1,9 +1,10 @@
 "use strict";
 
 export const ICON_GROUPS = {
-  Combat: ["swords","sword","shield","shield-check","axe","bow-arrow","crosshair","target","flame","bomb","skull","heart","heart-pulse","zap","footprints","hand","fist","hammer","wand-sparkles","circle-dot"],
+  
+  Combat: ["swords","sword","shield","shield-check","axe","bow-arrow","crosshair","target","flame","bomb","skull","heart","heart-pulse","zap","footprints","hand","hammer","wand-sparkles","circle-dot"],
+  Crafting: ["gem","diamond","pickaxe","anvil","wrench","settings","flask-conical","beaker","cooking-pot","package","box","layers","component","nut"],
   Characters: ["user","users","user-round","ghost","bug","bird","cat","dog","rabbit","rat","fish","turtle","snail","bot","crown"],
-  Crafting: ["gem","diamond","pickaxe","screwdriver","anvil","wrench","settings","flask-conical","beaker","cooking-pot","package","box","layers","component","nut"],
   World: ["map","map-pin","compass","mountain","trees","tree-pine","flower-2","sprout","waves","cloud","sun","moon","star","castle","tent"],
   Magic: ["sparkles","wand","orbit","atom","circle-help","eye","eye-off","moon-star","sun-moon","rainbow","snowflake","wind","droplets","cloud-lightning","infinity"],
   General: ["file-text","book-open","scroll-text","bookmark","flag","key-round","lock-keyhole","unlock-keyhole","door-open","archive","database","folder","folder-open","search","filter","tag","clock","calendar","check-circle","circle-plus"]
