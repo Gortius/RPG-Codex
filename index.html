@@ -16,8 +16,6 @@
   <div class="header-tools">
     <select id="project-switcher" aria-label="Active project" title="Active project"></select>
     <button id="project-manage" class="secondary" type="button">Projects</button>
-    <button id="backup-export" class="secondary" type="button">Export</button>
-    <button id="backup-import" class="secondary" type="button">Import</button>
     <button id="trash-open" class="secondary" type="button">Trash</button>
     <input id="backup-file" type="file" accept="application/json,.json" hidden>
   </div>
@@ -25,7 +23,6 @@
 
 <main>
 <section id="home">
-
   <nav class="page-nav" aria-label="Main navigation">
     <button id="nav-dashboard" class="nav-button active" type="button">Overview</button>
     <button id="nav-records" class="nav-button" type="button">Records</button>
@@ -42,19 +39,16 @@
         <strong id="stat-total-value">0</strong>
         <span class="stat-note">Across your database</span>
       </button>
-
       <button id="stat-types" class="stat-card" type="button">
         <span class="stat-label">Types used</span>
         <strong id="stat-types-value">0</strong>
         <span class="stat-note">Different record types</span>
       </button>
-
       <button id="stat-no-description" class="stat-card" type="button">
         <span class="stat-label">No description</span>
         <strong id="stat-no-description-value">0</strong>
         <span class="stat-note">Records to complete</span>
       </button>
-
       <button id="stat-no-properties" class="stat-card" type="button">
         <span class="stat-label">No properties</span>
         <strong id="stat-no-properties-value">0</strong>
@@ -64,12 +58,9 @@
 
     <div class="dashboard-grid">
       <div class="panel dashboard-panel">
-        <div class="section-title compact">
-          <h3>Records by Type</h3>
-        </div>
+        <div class="section-title compact"><h3>Records by Type</h3></div>
         <div id="dashboard-types" class="dashboard-type-list"></div>
       </div>
-
       <div class="panel dashboard-panel">
         <div class="section-title compact">
           <h3>Needs Attention</h3>
@@ -102,10 +93,7 @@
       <button id="new-record" class="primary" type="button">+ New Record</button>
     </div>
 
-    <div class="section-title">
-      <h3>Types</h3>
-    </div>
-
+    <div class="section-title"><h3>Types</h3></div>
     <div id="categories" class="categories"></div>
     <p class="filter-hint" id="filter-hint">Showing all types.</p>
 
@@ -119,23 +107,16 @@
         <div class="filter-grid">
           <div class="filter-group">
             <label for="filter-category">Category</label>
-            <select id="filter-category">
-              <option value="">All categories</option>
-            </select>
+            <select id="filter-category"><option value="">All categories</option></select>
           </div>
-
           <div class="filter-group">
             <label for="filter-subcategory">Subcategory</label>
-            <select id="filter-subcategory">
-              <option value="">All subcategories</option>
-            </select>
+            <select id="filter-subcategory"><option value="">All subcategories</option></select>
           </div>
-
           <div class="filter-group">
             <label>Tags</label>
             <div id="filter-tags" class="filter-chip-row"></div>
           </div>
-
           <div class="filter-group">
             <label for="sort-records">Sort by</label>
             <select id="sort-records">
@@ -154,19 +135,14 @@
             <label style="margin:0">Property conditions</label>
             <button id="add-filter-condition" type="button" class="secondary">+ Add condition</button>
           </div>
-
           <p class="hint">All conditions must match. Numeric operators work with numeric values.</p>
           <div id="property-conditions"></div>
         </div>
 
         <div class="filter-group">
           <label for="saved-filters">Saved filters</label>
-
           <div class="saved-filter-row">
-            <select id="saved-filters">
-              <option value="">Choose a saved filter...</option>
-            </select>
-
+            <select id="saved-filters"><option value="">Choose a saved filter...</option></select>
             <button id="apply-saved-filter" class="secondary" type="button">Apply</button>
             <button id="save-filter" class="primary" type="button">Save current</button>
             <button id="delete-saved-filter" class="danger" type="button">Delete</button>
@@ -183,10 +159,8 @@
       <h3>Records</h3>
       <span id="count" class="muted"></span>
     </div>
-
     <div id="records" class="records"></div>
   </div>
-
 </section>
 
 <section id="detail" hidden>
@@ -196,13 +170,9 @@
 
 <section id="editor" hidden>
   <button id="cancel-top" class="back" type="button">← Cancel</button>
-
   <p class="eyebrow">RECORD EDITOR</p>
   <h2 id="form-title">New Record</h2>
-  <p class="muted" style="margin-bottom:22px">
-    Define the record and connect it to your database.
-  </p>
-
+  <p class="muted" style="margin-bottom:22px">Define the record and connect it to your database.</p>
   <div id="form-message" class="notice" hidden></div>
 
   <form id="record-form">
@@ -212,11 +182,41 @@
     </div>
 
     <div class="form-field">
-      <label for="f-icon">Record icon</label>
-      <input id="f-icon" maxlength="80" placeholder="Choose an icon below or enter an emoji">
-      <input id="icon-search" type="search" placeholder="Search 100 minimalist icons..." autocomplete="off" style="margin-top:8px">
-      <div id="icon-picker" class="icon-picker" aria-label="Icon library"></div>
-      <p class="hint">Choose a vector icon or type an emoji. Empty uses the record type default.</p>
+      <label for="icon-mode">Icon mode</label>
+      <select id="icon-mode">
+        <option value="custom">Custom (emoji or text)</option>
+        <option value="existing">Existing icon (vector)</option>
+      </select>
+
+      <div id="custom-icon-section">
+        <label for="f-icon">Custom icon</label>
+        <input id="f-icon" maxlength="80" placeholder="Type an emoji or short text">
+      </div>
+
+      <div id="existing-icon-section" hidden>
+        <label for="icon-search">Choose a vector icon</label>
+        <input id="icon-search" type="search" placeholder="Search 100 minimalist icons..." autocomplete="off">
+        <div id="icon-picker" class="icon-picker" aria-label="Icon library"></div>
+      </div>
+
+      <div class="icon-color-editor">
+        <label for="f-icon-color">Icon color</label>
+        <div class="icon-color-preview-row">
+          <div id="icon-preview" class="icon-preview" aria-label="Icon preview"></div>
+          <input id="f-icon-color" type="color" value="#B9A0FF" aria-label="Choose icon color">
+          <input id="icon-color-hex" type="text" value="#B9A0FF" maxlength="7" aria-label="Hex color" spellcheck="false">
+        </div>
+
+        <label for="icon-hue">Hue</label>
+        <input id="icon-hue" type="range" min="0" max="359" value="260">
+
+        <label for="icon-saturation">Saturation</label>
+        <input id="icon-saturation" type="range" min="0" max="100" value="100">
+
+        <label for="icon-lightness">Lightness</label>
+        <input id="icon-lightness" type="range" min="0" max="100" value="81">
+      </div>
+      <p class="hint">The icon color is saved with the record and shown throughout the app. Empty custom icons use the record type default.</p>
     </div>
 
     <div class="form-field">
@@ -266,7 +266,6 @@
     </div>
   </form>
 </section>
-
 </main>
 
 <footer id="status">Local database · Stored in this browser</footer>
@@ -276,17 +275,9 @@
 <script type="module">
   import("./js/app.js").catch(error => {
     console.error("RPG Codex failed to start:", error);
-
     const status = document.getElementById("status");
-
-    if (status) {
-      status.textContent = "App failed to load: " + error.message;
-    }
-
-    alert(
-      "RPG Codex failed to start. " +
-      "Press F12, open Console, and copy the first red error."
-    );
+    if (status) status.textContent = "App failed to load: " + error.message;
+    alert("RPG Codex failed to start. Press F12, open Console, and copy the first red error.");
   });
 </script>
 </body>
