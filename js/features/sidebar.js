@@ -441,6 +441,7 @@ function setupSidebar() {
 
   // The project dropdown is created by enhancements.js after a click.
   // Decorate its action buttons with icons when it appears.
+ 
   const projectMenuObserver = new MutationObserver(() => {
     const menu = $("projects-dropdown");
     if (!menu) return;
@@ -453,11 +454,12 @@ function setupSidebar() {
       import: "upload"
     };
 
+    let changed = false;
+
     menu.querySelectorAll("[data-project-action]").forEach(button => {
       if (button.dataset.sidebarIconAdded === "true") return;
 
-      const action = button.dataset.projectAction;
-      const icon = icons[action];
+      const icon = icons[button.dataset.projectAction];
       if (!icon) return;
 
       const label = button.textContent.trim()
@@ -468,15 +470,18 @@ function setupSidebar() {
         `<span>${escapeHTML(label)}</span>`;
 
       button.dataset.sidebarIconAdded = "true";
+      changed = true;
     });
 
-    paintSidebarIcons(menu);
+    // Renderiza ícones somente quando algum botão foi realmente alterado.
+    if (changed) paintSidebarIcons(menu);
   });
 
   projectMenuObserver.observe(document.body, {
     childList: true,
     subtree: true
   });
+
 
   // Clicking a project-management action closes the sidebar but leaves the
   // in-page modal open and usable.
