@@ -63,7 +63,11 @@ function hslToHex(h, s, l) {
   const k = n => (n + h / 30) % 12;
   const a = s * Math.min(l, 1 - l);
   const f = n => {
-    const color = l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    const color = l - a * Math.max(
+      -1,
+      Math.min(k(n) - 3, Math.min(9 - k(n), 1))
+    );
+
     return Math.round(255 * color).toString(16).padStart(2, "0");
   };
 
@@ -79,6 +83,7 @@ function hexToHsl(hex) {
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   const delta = max - min;
+
   let h = 0;
   let s = 0;
   const l = (max + min) / 2;
@@ -92,6 +97,7 @@ function hexToHsl(hex) {
   }
 
   if (h < 0) h += 360;
+
   return {
     h: Math.round(h),
     s: Math.round(s * 100),
@@ -135,6 +141,7 @@ export function mountIconPicker({ $ }) {
     if (colorHex) colorHex.value = selectedColor;
 
     const hsl = hexToHsl(selectedColor);
+
     if (hue) hue.value = String(hsl.h);
     if (saturation) saturation.value = String(hsl.s);
     if (lightness) lightness.value = String(hsl.l);
@@ -145,6 +152,7 @@ export function mountIconPicker({ $ }) {
 
   function render() {
     const query = search.value.trim().toLowerCase();
+
     const icons = ICONS.filter(icon =>
       !query ||
       icon.name.includes(query) ||
