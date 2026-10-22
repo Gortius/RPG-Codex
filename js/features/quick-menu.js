@@ -91,8 +91,8 @@ export function createQuickMenu({
       position: fixed;
       z-index: 1200;
       top: 100px;
-      right: 14px;
-      left: auto;
+      left: 14px;
+      right: auto;
       width: 254px;
       max-height: calc(100vh - 124px);
       display: flex;
@@ -115,13 +115,14 @@ export function createQuickMenu({
     }
 
     #quick-menu.quick-menu:not(.open) {
-      transform: translateX(calc(100% + 14px));
+      transform: translateX(calc(-100% - 14px));
     }
 
     #quick-menu .quick-menu-toggle {
       position: absolute;
       top: 10px;
-      left: -36px;
+      left: auto;
+      right: -36px;
       display: grid;
       place-items: center;
       flex: none;
@@ -130,8 +131,8 @@ export function createQuickMenu({
       height: 40px;
       padding: 0;
       border: 1px solid var(--border);
-      border-right: 0;
-      border-radius: 10px 0 0 10px;
+      border-left: 0;
+      border-radius: 0 10px 10px 0;
       background: var(--panel);
       color: var(--text);
       transform: none;
@@ -141,11 +142,12 @@ export function createQuickMenu({
     #quick-menu .quick-menu-toggle svg {
       width: 19px;
       height: 19px;
+      transform: rotate(180deg);
       transition: transform .2s ease;
     }
 
     #quick-menu.open .quick-menu-toggle svg {
-      transform: rotate(180deg);
+      transform: rotate(0deg);
     }
 
     #quick-menu .quick-menu-content {
@@ -278,8 +280,8 @@ export function createQuickMenu({
     @media (max-width: 760px) {
       #quick-menu.quick-menu {
         top: 82px;
-        right: 8px;
-        left: auto;
+        left: 8px;
+        right: auto;
         bottom: auto;
         width: min(254px, calc(100vw - 54px));
         max-height: calc(100vh - 98px);
@@ -381,7 +383,6 @@ export function createQuickMenu({
 
         if (original) original.click();
 
-        // Re-read the actual active state after the main filter has updated.
         renderTypes();
         paintIcons(typesPanel);
       });
@@ -450,8 +451,6 @@ export function createQuickMenu({
         break;
 
       case "types": {
-        // Open the whole panel first, so the type list is never hidden
-        // behind the collapsed-panel styles.
         setOpen(true);
 
         if (typesPanel.hidden) {
@@ -484,7 +483,6 @@ export function createQuickMenu({
     }
   });
 
-  // Update the dropdown when the existing type filters change.
   const categoriesObserver = new MutationObserver(() => {
     if (!typesPanel.hidden) renderTypes();
   });
