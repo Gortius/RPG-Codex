@@ -20,7 +20,7 @@ export function createQuickMenu({
 
   menu.innerHTML = `
     <button type="button" class="quick-menu-toggle"
-      data-action="toggle" title="Show or hide shortcuts"
+      data-action="toggle" title="Show shortcuts"
       aria-label="Show shortcuts" aria-expanded="false">
       <i data-lucide="chevron-left" aria-hidden="true"></i>
     </button>
@@ -28,26 +28,22 @@ export function createQuickMenu({
     <div class="quick-menu-content">
       <p class="quick-menu-heading">RECORD SHORTCUTS</p>
 
-      <button type="button" data-action="new"
-        title="New record">
+      <button type="button" data-action="new" title="New record">
         <i data-lucide="plus-circle" aria-hidden="true"></i>
         <span class="shortcut-label">New record</span>
       </button>
 
-      <button type="button" data-action="paste"
-        title="Paste records">
+      <button type="button" data-action="paste" title="Paste records">
         <i data-lucide="clipboard-paste" aria-hidden="true"></i>
         <span class="shortcut-label">Paste</span>
       </button>
 
-      <button type="button" data-action="select"
-        title="Selection mode">
+      <button type="button" data-action="select" title="Selection mode">
         <i data-lucide="list-checks" aria-hidden="true"></i>
         <span class="shortcut-label">Select records</span>
       </button>
 
-      <button type="button" data-action="expand"
-        title="Expand or collapse all previews">
+      <button type="button" data-action="expand" title="Expand or collapse previews">
         <i data-lucide="chevrons-up-down" aria-hidden="true"></i>
         <span class="shortcut-label">Toggle details</span>
       </button>
@@ -81,7 +77,7 @@ export function createQuickMenu({
         <span class="shortcut-label">List view</span>
       </button>
 
-      <button type="button" data-action="grid" title="Compact grid view">
+      <button type="button" data-action="grid" title="Grid view">
         <i data-lucide="grid-2x2" aria-hidden="true"></i>
         <span class="shortcut-label">Grid view</span>
       </button>
@@ -91,79 +87,97 @@ export function createQuickMenu({
   const style = document.createElement("style");
   style.id = "quick-menu-styles";
   style.textContent = `
-    .quick-menu {
+    #quick-menu.quick-menu {
       position: fixed;
       z-index: 1200;
-      top: 50%;
-      right: 0;
-      width: 232px;
-      max-height: calc(100vh - 36px);
+      top: 100px;
+      right: 14px;
+      left: auto;
+      width: 254px;
+      max-height: calc(100vh - 124px);
       display: flex;
       flex-direction: column;
-      padding: 8px;
+      align-items: stretch;
+      gap: 0;
+      padding: 9px;
       overflow: visible;
+      box-sizing: border-box;
       background: var(--panel);
       border: 1px solid var(--border);
-      border-right: 0;
-      border-radius: 14px 0 0 14px;
-      box-shadow: 0 12px 40px #0004;
-      transform: translate(0, -50%);
+      border-radius: 14px;
+      box-shadow: 0 12px 40px #0005;
+      transform: translateX(0);
       transition: transform .2s ease;
     }
 
-    .quick-menu:not(.open) {
-      transform: translate(calc(100% - 43px), -50%);
+    #quick-menu.quick-menu[hidden] {
+      display: none !important;
     }
 
-    .quick-menu-toggle {
+    #quick-menu.quick-menu:not(.open) {
+      transform: translateX(calc(100% + 14px));
+    }
+
+    #quick-menu .quick-menu-toggle {
       position: absolute;
-      top: 12px;
-      left: 0;
+      top: 10px;
+      left: -36px;
       display: grid;
       place-items: center;
-      width: 34px;
-      height: 38px;
+      flex: none;
+      width: 36px;
+      min-height: 40px;
+      height: 40px;
       padding: 0;
       border: 1px solid var(--border);
-      border-left: 0;
-      border-radius: 9px 0 0 9px;
+      border-right: 0;
+      border-radius: 10px 0 0 10px;
       background: var(--panel);
       color: var(--text);
-      transform: translateX(-100%);
+      transform: none;
+      cursor: pointer;
     }
 
-    .quick-menu-toggle svg {
+    #quick-menu .quick-menu-toggle svg {
       width: 19px;
       height: 19px;
       transition: transform .2s ease;
     }
 
-    .quick-menu.open .quick-menu-toggle svg {
+    #quick-menu.open .quick-menu-toggle svg {
       transform: rotate(180deg);
     }
 
-    .quick-menu-content {
+    #quick-menu .quick-menu-content {
       display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      align-items: stretch;
       gap: 5px;
       min-width: 0;
-      max-height: calc(100vh - 54px);
+      max-height: calc(100vh - 144px);
+      overflow-x: hidden;
       overflow-y: auto;
     }
 
-    .quick-menu-heading {
-      margin: 5px 8px 8px;
+    #quick-menu .quick-menu-heading {
+      display: block;
+      margin: 5px 8px 9px;
       color: var(--muted);
       font-size: 10px;
       font-weight: 750;
       letter-spacing: .12em;
     }
 
-    .quick-menu-content > button:not(.quick-menu-toggle) {
+    #quick-menu .quick-menu-content > button {
       display: flex;
+      flex-direction: row;
       align-items: center;
+      justify-content: flex-start;
       gap: 10px;
       width: 100%;
-      min-height: 41px;
+      min-width: 0;
+      min-height: 40px;
+      height: auto;
       padding: 9px 10px;
       border: 1px solid transparent;
       border-radius: 9px;
@@ -173,41 +187,50 @@ export function createQuickMenu({
       cursor: pointer;
     }
 
-    .quick-menu-content > button:hover,
-    .quick-menu-content > button.active {
+    #quick-menu .quick-menu-content > button:hover,
+    #quick-menu .quick-menu-content > button.active {
       border-color: var(--border);
       background: #252130;
       color: var(--accent);
     }
 
-    .quick-menu-content > button > svg {
+    #quick-menu .quick-menu-content > button > svg {
+      display: block;
       flex: 0 0 18px;
       width: 18px;
       height: 18px;
     }
 
-    .quick-menu-content .shortcut-label {
+    #quick-menu .shortcut-label {
+      display: block;
       flex: 1;
       min-width: 0;
+      color: inherit;
       font-size: 12px;
+      line-height: 1.35;
+      text-align: left;
+      white-space: normal;
     }
 
-    .quick-menu-chevron {
+    #quick-menu .quick-menu-chevron {
+      flex: 0 0 14px !important;
       width: 14px !important;
       height: 14px !important;
       margin-left: auto;
     }
 
-    .quick-menu-divider {
+    #quick-menu .quick-menu-divider {
+      display: block;
+      flex: none;
       height: 1px;
       margin: 5px 3px;
       background: var(--border);
     }
 
-    .quick-menu-types {
+    #quick-menu .quick-menu-types {
       display: grid;
       gap: 4px;
-      max-height: 240px;
+      max-height: 260px;
       overflow-y: auto;
       padding: 5px;
       border: 1px solid var(--border);
@@ -215,15 +238,19 @@ export function createQuickMenu({
       background: #17171e;
     }
 
-    .quick-menu-types[hidden] {
+    #quick-menu .quick-menu-types[hidden] {
       display: none !important;
     }
 
-    .quick-menu-types button {
+    #quick-menu .quick-menu-types button {
       display: flex;
+      flex-direction: row;
       align-items: center;
+      justify-content: flex-start;
       gap: 8px;
       width: 100%;
+      min-height: 35px;
+      height: auto;
       padding: 8px;
       border: 1px solid transparent;
       border-radius: 7px;
@@ -234,68 +261,44 @@ export function createQuickMenu({
       cursor: pointer;
     }
 
-    .quick-menu-types button:hover,
-    .quick-menu-types button.active {
+    #quick-menu .quick-menu-types button:hover,
+    #quick-menu .quick-menu-types button.active {
       border-color: var(--border);
       background: #292532;
     }
 
-    .quick-menu-types .type-check {
-      width: 15px;
-      flex: 0 0 15px;
+    #quick-menu .quick-menu-types .type-check {
+      display: block;
+      flex: 0 0 16px;
+      width: 16px;
       color: var(--accent);
       text-align: center;
     }
 
-    .quick-menu:not(.open) .quick-menu-heading,
-    .quick-menu:not(.open) .quick-menu-content > button .shortcut-label,
-    .quick-menu:not(.open) .quick-menu-chevron,
-    .quick-menu:not(.open) .quick-menu-divider,
-    .quick-menu:not(.open) .quick-menu-types {
-      display: none;
-    }
-
-    .quick-menu:not(.open) .quick-menu-content > button:not(.quick-menu-toggle) {
-      justify-content: center;
-      padding: 10px 0;
-    }
-
-    .quick-menu:not(.open) .quick-menu-content > button:not(.quick-menu-toggle) svg {
-      flex-basis: 20px;
-      width: 20px;
-      height: 20px;
-    }
-
     @media (max-width: 760px) {
-      .quick-menu {
-        top: auto;
-        right: 0;
-        bottom: 18px;
-        max-height: calc(100vh - 36px);
-        transform: none;
+      #quick-menu.quick-menu {
+        top: 82px;
+        right: 8px;
+        left: auto;
+        bottom: auto;
+        width: min(254px, calc(100vw - 54px));
+        max-height: calc(100vh - 98px);
       }
 
-      .quick-menu:not(.open) {
-        transform: translateX(calc(100% - 43px));
-      }
-
-      .quick-menu-toggle {
-        top: 8px;
-      }
-
-      .quick-menu-content {
-        max-height: calc(100vh - 70px);
+      #quick-menu .quick-menu-content {
+        max-height: calc(100vh - 118px);
       }
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .quick-menu,
-      .quick-menu-toggle svg {
+      #quick-menu.quick-menu,
+      #quick-menu .quick-menu-toggle svg {
         transition: none;
       }
     }
   `;
 
+  document.head.querySelector("#quick-menu-styles")?.remove();
   document.head.append(style);
   document.body.append(menu);
 
@@ -332,8 +335,21 @@ export function createQuickMenu({
   function updateViewButtons() {
     menu.querySelectorAll('[data-action="list"], [data-action="grid"]')
       .forEach(button => {
-        button.classList.toggle("active", button.dataset.action === getViewMode());
+        button.classList.toggle(
+          "active",
+          button.dataset.action === getViewMode()
+        );
       });
+  }
+
+  function escapeHTML(value) {
+    return String(value ?? "").replace(/[&<>"']/g, char => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    }[char]));
   }
 
   function renderTypes() {
@@ -346,14 +362,13 @@ export function createQuickMenu({
       const type = sourceButton.dataset.type;
       const selected = sourceButton.classList.contains("active");
       const label = sourceButton.textContent.trim();
-      const isAll = type === "*";
 
       return `
-        <button type="button" data-type="${type.replace(/&/g, "&amp;").replace(/"/g, "&quot;")}"
+        <button type="button"
+          data-type="${escapeHTML(type)}"
           class="${selected ? "active" : ""}">
           <span class="type-check">${selected ? "✓" : ""}</span>
-          <span>${label.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>
-          ${isAll ? '<span class="type-all-label"> </span>' : ""}
+          <span>${escapeHTML(label)}</span>
         </button>
       `;
     }).join("");
@@ -364,7 +379,9 @@ export function createQuickMenu({
         const original = [...categories.querySelectorAll("[data-type]")]
           .find(item => item.dataset.type === type);
 
-        original?.click();
+        if (original) original.click();
+
+        // Re-read the actual active state after the main filter has updated.
         renderTypes();
         paintIcons(typesPanel);
       });
@@ -415,11 +432,16 @@ export function createQuickMenu({
       }
 
       case "search":
+        setOpen(true);
         $("search")?.focus();
-        $("search")?.scrollIntoView({ behavior: "smooth", block: "center" });
+        $("search")?.scrollIntoView({
+          behavior: "smooth",
+          block: "center"
+        });
         break;
 
       case "filters":
+        setOpen(true);
         $("toggle-filters")?.click();
         $("advanced-filter-content")?.scrollIntoView({
           behavior: "smooth",
@@ -427,12 +449,26 @@ export function createQuickMenu({
         });
         break;
 
-      case "types":
-        if (typesPanel.hidden) renderTypes();
-        typesPanel.hidden = !typesPanel.hidden;
-        typesButton.setAttribute("aria-expanded", String(!typesPanel.hidden));
+      case "types": {
+        // Open the whole panel first, so the type list is never hidden
+        // behind the collapsed-panel styles.
+        setOpen(true);
+
+        if (typesPanel.hidden) {
+          renderTypes();
+          typesPanel.hidden = false;
+        } else {
+          typesPanel.hidden = true;
+        }
+
+        typesButton.setAttribute(
+          "aria-expanded",
+          String(!typesPanel.hidden)
+        );
+
         paintIcons(typesPanel);
         break;
+      }
 
       case "list":
         setViewMode("list");
@@ -448,7 +484,7 @@ export function createQuickMenu({
     }
   });
 
-  // Keep the type dropdown synchronized when the main type filters change.
+  // Update the dropdown when the existing type filters change.
   const categoriesObserver = new MutationObserver(() => {
     if (!typesPanel.hidden) renderTypes();
   });
