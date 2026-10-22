@@ -17,6 +17,7 @@ import { createRecordListFeature } from "./features/record-list.js";
 import { createFilterUIFeatures } from "./features/filter-ui.js";
 import { createSavedFiltersFeature } from "./features/saved-filters.js";
 import { createBulkActionsFeature } from "./features/bulk-actions.js";
+import { createQuickMenu } from "./features/quick-menu.js";
 
 "use strict";
 
@@ -157,6 +158,7 @@ const starter = [
 
 let records = [];
 let savedFilters = [];
+let viewMode = "list";
 
 let activeTypes = [];
 let activeTags = [];
@@ -286,9 +288,9 @@ const { renderRecords } = createRecordListFeature({
     conditions
   }),
   expanded,
-  openRecord: id => openRecord(id)
+  openRecord: id => openRecord(id),
+  getViewMode: () => viewMode
 });
-
 const {
   renderCategories,
   renderFilterTags,
@@ -749,7 +751,7 @@ records = loadRecords();
 loadCatalogs();
 savedFilters = loadStoredSavedFilters();
 
-createBulkActionsFeature({
+const bulkActions = createBulkActionsFeature({
   $,
   esc,
   uid,
@@ -760,6 +762,21 @@ createBulkActionsFeature({
   saveRecords,
   renderHome,
   catalogNames
+});
+
+createQuickMenu({
+  $,
+  showForm,
+  setCurrentId: value => {
+    currentId = value;
+  },
+  bulkActions,
+  expanded,
+  renderRecords,
+  getViewMode: () => viewMode,
+  setViewMode: value => {
+    viewMode = value;
+  }
 });
 
 renderDashboard();
