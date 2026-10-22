@@ -16,6 +16,7 @@ import { createRecordFormFeature } from "./features/record-form.js";
 import { createRecordListFeature } from "./features/record-list.js";
 import { createFilterUIFeatures } from "./features/filter-ui.js";
 import { createSavedFiltersFeature } from "./features/saved-filters.js";
+import { createBulkActionsFeature } from "./features/bulk-actions.js";
 
 "use strict";
 
@@ -747,5 +748,18 @@ $("clear-filters").onclick = () => {
 records = loadRecords();
 loadCatalogs();
 savedFilters = loadStoredSavedFilters();
+
+createBulkActionsFeature({
+  $,
+  esc,
+  uid,
+  getRecords: () => records,
+  setRecords: nextRecords => {
+    records = nextRecords;
+  },
+  saveRecords,
+  renderHome,
+  catalogNames
+});
 
 renderDashboard();
