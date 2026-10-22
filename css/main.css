@@ -921,3 +921,24 @@ main{padding:24px 24px 24px 100px}
     grid-template-columns:repeat(auto-fill,minmax(62px,1fr));
   }
 }
+/* Centralização do conteúdo com o Quick Menu à esquerda */
+
+.app {
+  width: min(100%, 1200px);
+  max-width: 1200px;
+  margin-inline: auto;
+}
+
+main {
+  padding: 24px;
+}
+
+@media (max-width: 760px) {
+  .app {
+    width: 100%;
+  }
+
+  main {
+    padding: 20px 12px 24px;
+  }
+}
