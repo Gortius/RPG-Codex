@@ -1,4 +1,3 @@
-
 "use strict";
 
 export function createBulkActionsFeature({
@@ -13,10 +12,15 @@ export function createBulkActionsFeature({
 }) {
   const selected = new Set();
 
+  let selectionMode = false;
   let clipboard = null;
   let undoSnapshot = null;
   let undoLabel = "";
+  let holdTimer = null;
+  let holdTarget = null;
+  let suppressClickId = null;
 
+  const HOLD_DURATION = 450;
   const clone = value => JSON.parse(JSON.stringify(value));
 
   function uniqueName(base, records) {
@@ -40,9 +44,98 @@ export function createBulkActionsFeature({
     return getRecords().filter(record => ids.has(record.id));
   }
 
-  function rememberUndo(records, label) {
-    undoSnapshot = clone(records);
-    undoLabel = label;
+  function updatePanel() {
+    const panel = $("bulk-actions-panel");
+    const layout = $("bulk-layout");
+
+    if (!panel || !layout) return;
+
+    layout.classList.toggle("selection-mode", selectionMode);
+    panel.hidden = !selectionMode;
+
+    $("bulk-count").textContent =
+      `${selectedRecords().length} selected`;
+
+    $("bulk-delete").disabled = selected.size === 0;
+    $("bulk-duplicate").disabled = selected.size === 0;
+    $("bulk-copy").disabled = selected.size === 0;
+    $("bulk-cut").disabled = selected.size === 0;
+    $("bulk-edit").disabled = selected.size === 0;
+    $("bulk-clear-selection").disabled = selected.size === 0;
+
+    $("bulk-select-visible").disabled =
+      !$("records").querySelector("[data-open]");
+
+    $("bulk-paste").disabled = !clipboard;
+    $("bulk-undo").disabled = !undoSnapshot;
+
+    $("bulk-undo").textContent = undoSnapshot
+      ? `Undo: ${undoLabel}`
+      : "Undo last operation";
+
+    const remove =
+      $("bulk-property-operation").value === "remove";
+
+    $("bulk-property-value").disabled = remove;
+  }
+
+  function enterSelectionMode(id) {
+    selectionMode = true;
+    selected.add(id);
+    suppressClickId = id;
+
+    updateRecordStyles();
+    updatePanel();
+  }
+
+  function exitSelectionMode() {
+    selectionMode = false;
+    selected.clear();
+    suppressClickId = null;
+
+    updateRecordStyles();
+    updatePanel();
+  }
+
+  function toggleSelected(id) {
+    if (selected.has(id)) {
+      selected.delete(id);
+    } else {
+      selected.add(id);
+    }
+
+    // Keep selection mode active until the user explicitly exits.
+    updateRecordStyles();
+    updatePanel();
+  }
+
+  function updateRecordStyles() {
+    $("records").querySelectorAll(".record-card").forEach(card => {
+      const button = card.querySelector("[data-open]");
+      if (!button) return;
+
+      const isSelected = selected.has(button.dataset.open);
+
+      card.classList.toggle("bulk-selected", isSelected);
+      button.setAttribute("aria-pressed", String(isSelected));
+    });
+  }
+
+  function selectVisible() {
+    selectionMode = true;
+
+    $("records").querySelectorAll("[data-open]").forEach(button => {
+      selected.add(button.dataset.open);
+    });
+
+    updateRecordStyles();
+    updatePanel();
+  }
+
+  function clearSelection() {
+    selected.clear();
+    updateRecordStyles();
+    updatePanel();
   }
 
   function commit(nextRecords, label) {
@@ -56,77 +149,16 @@ export function createBulkActionsFeature({
       return false;
     }
 
-    rememberUndo(previousRecords, label);
+    undoSnapshot = clone(previousRecords);
+    undoLabel = label;
+
     selected.clear();
+    selectionMode = false;
+
     renderHome();
     updatePanel();
+
     return true;
-  }
-
-  function updatePanel() {
-    const count = selectedRecords().length;
-
-    $("bulk-count").textContent =
-      `${count} selected`;
-
-    $("bulk-delete").disabled = count === 0;
-    $("bulk-duplicate").disabled = count === 0;
-    $("bulk-copy").disabled = count === 0;
-    $("bulk-cut").disabled = count === 0;
-    $("bulk-select-visible").disabled =
-      !getRecords().length;
-
-    $("bulk-paste").disabled = !clipboard;
-    $("bulk-edit").disabled = count === 0;
-    $("bulk-clear-selection").disabled = count === 0;
-
-    $("bulk-undo").disabled = !undoSnapshot;
-
-    $("bulk-undo").textContent = undoSnapshot
-      ? `Undo: ${undoLabel}`
-      : "Undo last operation";
-  }
-
-  function decorateRecords() {
-    const cards = $("records").querySelectorAll(".record-card");
-
-    cards.forEach(card => {
-      const openButton = card.querySelector("[data-open]");
-      const actions = card.querySelector(".record-actions");
-
-      if (!openButton || !actions) return;
-
-      const id = openButton.dataset.open;
-
-      if (!card.querySelector("[data-bulk-check]")) {
-        const label = document.createElement("label");
-        label.className = "bulk-select-label";
-        label.innerHTML =
-          `<input type="checkbox" data-bulk-check="${esc(id)}">` +
-          "<span>Select</span>";
-
-        actions.prepend(label);
-      }
-
-      const checkbox = card.querySelector("[data-bulk-check]");
-
-      checkbox.checked = selected.has(id);
-    });
-
-    updatePanel();
-  }
-
-  function selectVisible() {
-    $("records")
-      .querySelectorAll("[data-open]")
-      .forEach(button => selected.add(button.dataset.open));
-
-    decorateRecords();
-  }
-
-  function clearSelection() {
-    selected.clear();
-    decorateRecords();
   }
 
   function deleteSelected() {
@@ -137,9 +169,7 @@ export function createBulkActionsFeature({
     if (!confirm(
       `Delete ${chosen.length} selected record(s)? ` +
       "Links to these records will also be removed."
-    )) {
-      return;
-    }
+    )) return;
 
     const ids = new Set(chosen.map(record => record.id));
 
@@ -147,8 +177,7 @@ export function createBulkActionsFeature({
       .filter(record => !ids.has(record.id))
       .map(record => ({
         ...record,
-        related: (record.related || [])
-          .filter(id => !ids.has(id))
+        related: (record.related || []).filter(id => !ids.has(id))
       }));
 
     commit(nextRecords, `Delete ${chosen.length} records`);
@@ -163,11 +192,10 @@ export function createBulkActionsFeature({
 
     chosen.forEach(record => {
       const copy = clone(record);
-
       copy.id = uid();
       copy.name = uniqueName(record.name, nextRecords);
 
-      // Relationships intentionally continue pointing to originals.
+      // Relations continue pointing to the original records.
       nextRecords.push(copy);
     });
 
@@ -184,6 +212,9 @@ export function createBulkActionsFeature({
       records: clone(chosen)
     };
 
+    $("bulk-message").textContent =
+      `${chosen.length} record(s) copied. Use Paste to create copies.`;
+
     updatePanel();
   }
 
@@ -196,6 +227,9 @@ export function createBulkActionsFeature({
       mode: "cut",
       ids: chosen.map(record => record.id)
     };
+
+    $("bulk-message").textContent =
+      `${chosen.length} record(s) marked to move. Use Paste to move them to the end of the list.`;
 
     updatePanel();
   }
@@ -216,9 +250,11 @@ export function createBulkActionsFeature({
       }
 
       const remaining = records.filter(record => !ids.has(record.id));
-      const nextRecords = [...remaining, ...moving];
 
-      if (commit(nextRecords, `Move ${moving.length} records`)) {
+      if (commit(
+        [...remaining, ...moving],
+        `Move ${moving.length} records`
+      )) {
         clipboard = null;
       }
 
@@ -231,10 +267,8 @@ export function createBulkActionsFeature({
 
       clipboard.records.forEach(original => {
         const copy = clone(original);
-
         copy.id = uid();
         copy.name = uniqueName(original.name, nextRecords);
-
         nextRecords.push(copy);
       });
 
@@ -272,15 +306,17 @@ export function createBulkActionsFeature({
       if (!chosenIds.has(record.id)) return record;
 
       const properties = [...(record.properties || [])];
+      const normalizedName = name.toLowerCase();
+
       const index = properties.findIndex(
-        property => property.name.toLowerCase() === name.toLowerCase()
+        property => property.name.toLowerCase() === normalizedName
       );
 
       if (operation === "remove") {
         return {
           ...record,
           properties: properties.filter(
-            property => property.name.toLowerCase() !== name.toLowerCase()
+            property => property.name.toLowerCase() !== normalizedName
           )
         };
       }
@@ -322,6 +358,7 @@ export function createBulkActionsFeature({
     undoSnapshot = null;
     undoLabel = "";
     selected.clear();
+    selectionMode = false;
 
     renderHome();
     updatePanel();
@@ -330,9 +367,17 @@ export function createBulkActionsFeature({
   function createPanel() {
     if ($("bulk-actions-panel")) return;
 
-    const panel = document.createElement("section");
+    const records = $("records");
+    const parent = records.parentNode;
+
+    const layout = document.createElement("div");
+    layout.id = "bulk-layout";
+    layout.className = "bulk-layout";
+
+    const panel = document.createElement("aside");
     panel.id = "bulk-actions-panel";
     panel.className = "panel bulk-panel";
+    panel.hidden = true;
 
     panel.innerHTML = `
       <div class="bulk-heading">
@@ -340,28 +385,30 @@ export function createBulkActionsFeature({
           <h3>Bulk actions</h3>
           <p class="muted" id="bulk-count">0 selected</p>
         </div>
-        <button id="bulk-select-visible" class="secondary" type="button">
-          Select visible
-        </button>
+        <button id="bulk-exit" class="secondary" type="button"
+          aria-label="Exit selection mode">Done</button>
       </div>
 
+      <p class="hint">
+        Select records by tapping them. Hold a record to enter selection mode.
+      </p>
+
+      <button id="bulk-select-visible" class="secondary bulk-full"
+        type="button">Select visible</button>
+
+      <button id="bulk-clear-selection" class="secondary bulk-full"
+        type="button">Clear selection</button>
+
       <div class="bulk-buttons">
-        <button id="bulk-clear-selection" class="secondary" type="button">
-          Clear selection
-        </button>
         <button id="bulk-copy" class="secondary" type="button">Copy</button>
         <button id="bulk-cut" class="secondary" type="button">Cut</button>
         <button id="bulk-paste" class="secondary" type="button">Paste</button>
-        <button id="bulk-duplicate" class="secondary" type="button">
-          Duplicate
-        </button>
-        <button id="bulk-delete" class="danger" type="button">
-          Delete selected
-        </button>
+        <button id="bulk-duplicate" class="secondary" type="button">Duplicate</button>
+        <button id="bulk-delete" class="danger" type="button">Delete selected</button>
       </div>
 
       <div class="bulk-edit">
-        <h4>Edit a property on selected records</h4>
+        <h4>Edit a property</h4>
 
         <label for="bulk-property-name">Property</label>
         <input id="bulk-property-name" list="bulk-property-options"
@@ -377,16 +424,18 @@ export function createBulkActionsFeature({
         <label for="bulk-property-value">Value</label>
         <input id="bulk-property-value" placeholder="Property value">
 
-        <button id="bulk-edit" class="primary" type="button">
+        <button id="bulk-edit" class="primary bulk-full" type="button">
           Apply to selected
         </button>
       </div>
 
       <div class="bulk-undo-row">
-        <button id="bulk-undo" class="secondary" type="button">
+        <button id="bulk-undo" class="secondary bulk-full" type="button">
           Undo last operation
         </button>
       </div>
+
+      <p id="bulk-message" class="hint" aria-live="polite"></p>
 
       <p class="hint">
         Copy creates new records when pasted. Cut and paste moves records
@@ -395,9 +444,11 @@ export function createBulkActionsFeature({
       </p>
     `;
 
-    const records = $("records");
-    records.parentNode.insertBefore(panel, records);
+    // Put the record list and the contextual panel inside one layout.
+    parent.insertBefore(layout, records);
+    layout.append(records, panel);
 
+    $("bulk-exit").onclick = exitSelectionMode;
     $("bulk-select-visible").onclick = selectVisible;
     $("bulk-clear-selection").onclick = clearSelection;
     $("bulk-delete").onclick = deleteSelected;
@@ -408,49 +459,92 @@ export function createBulkActionsFeature({
     $("bulk-edit").onclick = editSelectedProperty;
     $("bulk-undo").onclick = undoLastOperation;
 
-    $("bulk-property-operation").onchange = () => {
-      const remove = $("bulk-property-operation").value === "remove";
-      $("bulk-property-value").disabled = remove;
-    };
+    $("bulk-property-operation").addEventListener("change", () => {
+      updatePanel();
+    });
 
     $("bulk-property-options").innerHTML = catalogNames("properties")
       .map(name => `<option value="${esc(name)}"></option>`)
       .join("");
 
-    panel.addEventListener("change", event => {
-      const checkbox = event.target.closest("[data-bulk-check]");
-
-      if (!checkbox) return;
-
-      const id = checkbox.dataset.bulkCheck;
-
-      if (checkbox.checked) {
-        selected.add(id);
-      } else {
-        selected.delete(id);
-      }
-
-      updatePanel();
-    });
-
     updatePanel();
+  }
+
+  function cancelHold() {
+    if (holdTimer !== null) {
+      clearTimeout(holdTimer);
+      holdTimer = null;
+    }
+
+    holdTarget = null;
+  }
+
+  function onPointerDown(event) {
+    if (event.button !== undefined && event.button !== 0) return;
+
+    const button = event.target.closest("[data-open]");
+    if (!button) return;
+
+    if (selectionMode) return;
+
+    cancelHold();
+
+    const id = button.dataset.open;
+    holdTarget = id;
+
+    holdTimer = setTimeout(() => {
+      holdTimer = null;
+      enterSelectionMode(id);
+    }, HOLD_DURATION);
+  }
+
+  function onPointerUp() {
+    cancelHold();
+  }
+
+  function onClickCapture(event) {
+    const button = event.target.closest("[data-open]");
+    if (!button) return;
+
+    const id = button.dataset.open;
+
+    if (suppressClickId === id) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      suppressClickId = null;
+      return;
+    }
+
+    if (!selectionMode) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    toggleSelected(id);
   }
 
   createPanel();
 
+  const records = $("records");
+
+  records.addEventListener("pointerdown", onPointerDown, true);
+  document.addEventListener("pointerup", onPointerUp, true);
+  document.addEventListener("pointercancel", onPointerUp, true);
+  records.addEventListener("click", onClickCapture, true);
+
+  // Keep selection state in sync when filtering or sorting rerenders the list.
   const observer = new MutationObserver(() => {
-    decorateRecords();
+    updateRecordStyles();
+    updatePanel();
   });
 
-  observer.observe($("records"), {
+  observer.observe(records, {
     childList: true,
     subtree: true
   });
 
-  decorateRecords();
-
   return {
-    clearSelection,
+    clearSelection: exitSelectionMode,
     getSelectedIds: () => [...selected]
   };
 }
