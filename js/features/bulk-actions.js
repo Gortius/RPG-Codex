@@ -555,3 +555,4 @@ export function createBulkActionsFeature({
   pasteClipboard,
   getSelectedIds: () => [...selected]
 };
+}
