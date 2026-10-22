@@ -463,3 +463,138 @@ button.primary:not(:disabled):active{
     animation:none!important;
   }
 }
+/* Contextual bulk selection */
+
+.bulk-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.bulk-layout.selection-mode {
+  grid-template-columns: minmax(0, 1fr) 280px;
+}
+
+.bulk-layout > .records {
+  min-width: 0;
+}
+
+.bulk-panel {
+  position: sticky;
+  top: 16px;
+  min-width: 0;
+  margin-top: 0;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+.bulk-panel[hidden] {
+  display: none !important;
+}
+
+.bulk-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.bulk-heading h3 {
+  margin: 0 0 5px;
+}
+
+.bulk-heading .secondary {
+  flex-shrink: 0;
+  padding: 7px 10px;
+}
+
+.bulk-full {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.bulk-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.bulk-buttons button {
+  min-width: 0;
+  padding: 9px 7px;
+  overflow-wrap: anywhere;
+}
+
+.bulk-buttons button:last-child {
+  grid-column: 1 / -1;
+}
+
+.bulk-edit {
+  display: grid;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.bulk-edit h4 {
+  margin: 0 0 4px;
+}
+
+.bulk-edit label {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.bulk-edit input,
+.bulk-edit select {
+  min-width: 0;
+}
+
+.bulk-undo-row {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.bulk-selected {
+  border-color: var(--accent) !important;
+  background: #211d2b;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.bulk-selected > .record {
+  background: #252130;
+}
+
+.bulk-message {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .bulk-layout.selection-mode {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bulk-panel {
+    position: static;
+    grid-row: 1;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .bulk-layout > .records {
+    grid-row: 2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bulk-selected {
+    transition: none;
+  }
+}
