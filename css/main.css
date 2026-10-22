@@ -807,3 +807,21 @@ main {
     min-height: 112px;
   }
 }
+
+/* Workspace tools and minimalist record icon library */
+.header-tools{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}
+.header-tools select{max-width:190px;min-width:130px}
+.header-tools button{white-space:nowrap}
+.vector-icon{display:inline-flex;width:1.1em;height:1.1em;vertical-align:middle;align-items:center;justify-content:center;stroke:currentColor;stroke-width:1.8}
+.vector-icon svg,.icon-choice svg{width:19px;height:19px;stroke-width:1.7}
+.record-icon .vector-icon{width:23px;height:23px}
+.dashboard-type-icon .vector-icon{width:20px;height:20px}
+.icon-picker{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;max-height:260px;overflow:auto;padding:8px;border:1px solid var(--border,#393442);border-radius:10px;margin-top:8px}
+.icon-choice{display:flex;min-width:0;min-height:58px;flex-direction:column;align-items:center;justify-content:center;gap:5px;border:1px solid transparent;border-radius:8px;background:var(--panel,#201d26);color:var(--text,#f5f3f7);cursor:pointer;padding:7px 3px}
+.icon-choice small{font-size:10px;overflow-wrap:anywhere;text-align:center;opacity:.8}
+.icon-choice:hover,.icon-choice.selected{border-color:var(--accent,#a78bfa);background:rgba(167,139,250,.12)}
+@media(max-width:760px){.header-tools{width:100%;justify-content:flex-start}.header-tools select{flex:1;min-width:110px;max-width:none}.header-tools button{font-size:12px;padding:8px}.icon-picker{grid-template-columns:repeat(auto-fill,minmax(62px,1fr))}}
+.icon-picker{display:block}
+.icon-group{margin-bottom:12px}
+.icon-group>strong{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;opacity:.72;margin:4px 0 7px}
+.icon-group-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px}

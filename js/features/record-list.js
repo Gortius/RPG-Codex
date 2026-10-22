@@ -48,7 +48,7 @@ export function createRecordListFeature({
               type="button"
               data-open="${esc(record.id)}"
               aria-pressed="false">
-              <span class="record-icon">${esc(iconOf(record))}</span>
+              <span class="record-icon">${iconOf(record)}</span>
               <strong class="compact-record-name">${esc(record.name)}</strong>
               <span class="compact-record-category">${esc(category)}</span>
             </button>
@@ -62,7 +62,7 @@ export function createRecordListFeature({
             type="button"
             data-open="${esc(record.id)}"
             aria-pressed="false">
-            <span class="record-icon">${esc(iconOf(record))}</span>
+            <span class="record-icon">${iconOf(record)}</span>
 
             <span class="record-info">
               <strong>${esc(record.name)}</strong>
@@ -96,6 +96,7 @@ export function createRecordListFeature({
       `;
     }).join("");
 
+    try { window.lucide?.createIcons?.({ root: container }); } catch {}
     container.querySelectorAll("[data-open]").forEach(button => {
       button.onclick = () => openRecord(button.dataset.open);
     });

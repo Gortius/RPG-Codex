@@ -2,8 +2,11 @@ import {
   loadRecords as loadStoredRecords,
   saveRecords as saveStoredRecords,
   loadSavedFilters as loadStoredSavedFilters,
-  persistFilters as persistStoredFilters
+  persistFilters as persistStoredFilters,
+  loadProjects, saveProjects, getActiveProjectId, setActiveProjectId,
+  exportProjectBundle, importProjectBundle, loadTrash, saveTrash
 } from "./data/storage.js";
+import { iconMarkup, paintIcons, mountIconPicker } from "./features/icon-library.js";
 
 import { createRecordFeatures } from "./features/records.js";
 import { createCatalogFeatures } from "./features/catalogs.js";
@@ -159,6 +162,7 @@ const starter = [
 let records = [];
 let savedFilters = [];
 let viewMode = "list";
+try { viewMode = localStorage.getItem("rpg-codex-view-mode-v1") || "list"; } catch {}
 
 let activeTypes = [];
 let activeTags = [];
@@ -180,20 +184,14 @@ let tagCreateOpen = false;
 
 function iconFor(type) {
   return ({
-    Mob: "👾",
-    Item: "⚔️",
-    Material: "💎",
-    Area: "🌍",
-    Recipe: "📜",
-    Effect: "✨",
-    Skill: "🔮",
-    NPC: "🧑",
-    Boss: "☠️"
-  })[type] || "◆";
+    Mob: "lucide:bug", Item: "lucide:swords", Material: "lucide:gem",
+    Area: "lucide:map", Recipe: "lucide:scroll-text", Effect: "lucide:sparkles",
+    Skill: "lucide:wand-sparkles", NPC: "lucide:user-round", Boss: "lucide:skull"
+  })[type] || "lucide:circle";
 }
 
 function iconOf(record) {
-  return record.icon || iconFor(record.type);
+  return iconMarkup(record.icon || iconFor(record.type));
 }
 
 function loadRecords() {
@@ -353,6 +351,7 @@ function renderHome() {
   renderSavedFilters();
   renderRecords();
   updateFilterToggle();
+  paintIcons();
 }
 
 function dashboardRecordMarkup(record, detail) {
@@ -362,7 +361,7 @@ function dashboardRecordMarkup(record, detail) {
       type="button"
       data-dashboard-open="${esc(record.id)}"
     >
-      <span class="record-icon">${esc(iconOf(record))}</span>
+      <span class="record-icon">${iconOf(record)}</span>
 
       <span class="dashboard-record-info">
         <strong>${esc(record.name)}</strong>
@@ -413,7 +412,7 @@ function renderDashboard() {
         type="button"
         data-dashboard-type="${esc(type)}"
       >
-        <span class="dashboard-type-icon">${esc(iconFor(type))}</span>
+        <span class="dashboard-type-icon">${iconMarkup(iconFor(type))}</span>
         <span class="dashboard-type-name">${esc(type)}</span>
         <span class="dashboard-type-count">${count}</span>
         <span class="dashboard-bar">
@@ -500,6 +499,7 @@ function renderDashboard() {
       };
     });
 
+  paintIcons();
   ["dashboard-attention", "dashboard-recent"].forEach(id => {
     $(id)
       .querySelectorAll("[data-dashboard-open]")
@@ -747,6 +747,100 @@ $("clear-filters").onclick = () => {
   renderHome();
 };
 
+function downloadJson(filename, data) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url; anchor.download = filename; anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function setupWorkspaceTools() {
+  const switcher = $("project-switcher");
+  if (!switcher) return;
+  let projects = loadProjects();
+  const active = getActiveProjectId();
+  if (!projects.some(project => project.id === active)) setActiveProjectId("default");
+  function renderProjects() {
+    projects = loadProjects();
+    switcher.innerHTML = projects.map(project => `<option value="${esc(project.id)}">${esc(project.name)}</option>`).join("");
+    switcher.value = getActiveProjectId();
+  }
+  renderProjects();
+  switcher.onchange = () => {
+    if (switcher.value === getActiveProjectId()) return;
+    setActiveProjectId(switcher.value);
+    location.reload();
+  };
+  $("project-manage").onclick = () => {
+    const action = prompt("Projects: type NEW to create, RENAME to rename this project, or DELETE to remove this project.");
+    if (!action) return;
+    const normalized = action.trim().toLowerCase();
+    if (normalized === "new") {
+      const name = prompt("Name for the new project:");
+      if (!name || !name.trim()) return;
+      const id = "p-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7);
+      projects.push({ id, name: name.trim(), createdAt: new Date().toISOString() });
+      saveProjects(projects); setActiveProjectId(id); location.reload();
+    } else if (normalized === "rename") {
+      const project = projects.find(item => item.id === getActiveProjectId());
+      const name = prompt("New project name:", project?.name || "");
+      if (project && name?.trim()) { project.name = name.trim(); saveProjects(projects); renderProjects(); }
+    } else if (normalized === "delete") {
+      const id = getActiveProjectId();
+      if (id === "default") { alert("The original project cannot be deleted. You can clear its records from the database manually after exporting a backup."); return; }
+      const project = projects.find(item => item.id === id);
+      if (!confirm(`Delete project “${project?.name}” and all its local data? Export a backup first if needed.`)) return;
+      ["rpg-codex-records-v2", "rpg-codex-catalogs-v1", "rpg-codex-saved-filters-v1", "rpg-codex-trash-v1"].forEach(key => localStorage.removeItem(`${key}::${id}`));
+      projects = projects.filter(item => item.id !== id); saveProjects(projects); setActiveProjectId("default"); location.reload();
+    } else alert("Choose NEW, RENAME, or DELETE.");
+  };
+  $("backup-export").onclick = () => {
+    try {
+      const bundle = exportProjectBundle();
+      bundle.records = records;
+      downloadJson(`rpg-codex-${getActiveProjectId()}-backup.json`, bundle);
+    }
+    catch (error) { alert("Could not create backup: " + error.message); }
+  };
+  $("backup-import").onclick = () => $("backup-file").click();
+  $("backup-file").onchange = async event => {
+    const file = event.target.files?.[0]; if (!file) return;
+    try {
+      const bundle = JSON.parse(await file.text());
+      const replace = confirm("Import mode: OK replaces the current project's records; Cancel merges the backup with the current records and protects existing entries.");
+      if (!confirm(`Import ${Array.isArray(bundle.records) ? bundle.records.length : 0} records into “${switcher.selectedOptions[0]?.textContent || "this project"}”?`)) return;
+      importProjectBundle(bundle, { replace });
+      alert("Import complete. The app will reload to show the imported data."); location.reload();
+    } catch (error) { alert("Import failed: " + error.message); }
+    finally { event.target.value = ""; }
+  };
+  $("trash-open").onclick = () => {
+    const trash = loadTrash();
+    if (!trash.length) { alert("The trash is empty."); return; }
+    const menu = trash.map((item, i) => `${i + 1}. ${item.record?.name || "Unnamed record"}`).join("\n");
+    const choice = prompt(`Trash (${trash.length} items)\n${menu}\n\nType a number to restore, or EMPTY to permanently delete all items.`);
+    if (!choice) return;
+    if (choice.trim().toLowerCase() === "empty") {
+      if (confirm("Permanently delete every item in the trash? This cannot be undone.")) { saveTrash([]); alert("Trash emptied."); }
+      return;
+    }
+    const index = Number(choice) - 1;
+    if (!Number.isInteger(index) || index < 0 || index >= trash.length) { alert("Invalid selection."); return; }
+    const item = trash[index];
+    if (records.some(record => record.id === item.record.id)) { alert("A record with this ID already exists. Export a backup and resolve the conflict before restoring."); return; }
+    const previousRecords = records;
+    const restored = { ...item.record };
+    delete restored._trashedAt; delete restored._linkedFrom;
+    records = [...records, restored].map(record => ({ ...record, related: [...(record.related || [])] }));
+    (item.linkedFrom || item.record._linkedFrom || []).forEach(id => { const linked = records.find(record => record.id === id); if (linked && !linked.related.includes(restored.id)) linked.related.push(restored.id); });
+    if (!saveRecords()) { records = previousRecords; return; }
+    trash.splice(index, 1);
+    try { saveTrash(trash); } catch (error) { console.error("Could not update trash", error); }
+    renderHome(); alert("Record restored.");
+  };
+}
+
 records = loadRecords();
 loadCatalogs();
 savedFilters = loadStoredSavedFilters();
@@ -776,7 +870,10 @@ createQuickMenu({
   getViewMode: () => viewMode,
   setViewMode: value => {
     viewMode = value;
+    try { localStorage.setItem("rpg-codex-view-mode-v1", value); } catch {}
   }
 });
 
+mountIconPicker({ $ });
+setupWorkspaceTools();
 renderDashboard();

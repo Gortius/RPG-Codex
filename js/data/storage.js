@@ -5,6 +5,98 @@ export const STORAGE_KEY = "rpg-codex-records-v2";
 export const CATALOG_KEY = "rpg-codex-catalogs-v1";
 export const SAVED_KEY = "rpg-codex-saved-filters-v1";
 
+export const PROJECTS_KEY = "rpg-codex-projects-v1";
+export const ACTIVE_PROJECT_KEY = "rpg-codex-active-project-v1";
+export const TRASH_KEY = "rpg-codex-trash-v1";
+
+export function getActiveProjectId() {
+  try { return localStorage.getItem(ACTIVE_PROJECT_KEY) || "default"; }
+  catch { return "default"; }
+}
+
+export function setActiveProjectId(id) {
+  localStorage.setItem(ACTIVE_PROJECT_KEY, String(id || "default"));
+}
+
+function scopedKey(base) {
+  const id = getActiveProjectId();
+  return id === "default" ? base : `${base}::${id}`;
+}
+
+export function loadProjects() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(PROJECTS_KEY) || "null");
+    if (Array.isArray(parsed) && parsed.length) return parsed;
+  } catch (error) { console.warn("Could not read projects list", error); }
+  const projects = [{ id: "default", name: "My RPG Database", createdAt: new Date().toISOString() }];
+  try { localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects)); } catch {}
+  return projects;
+}
+
+export function saveProjects(projects) {
+  localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+}
+
+export function loadTrash() {
+  try {
+    const data = JSON.parse(localStorage.getItem(scopedKey(TRASH_KEY)) || "[]");
+    return Array.isArray(data) ? data : [];
+  } catch { return []; }
+}
+
+export function saveTrash(items) {
+  localStorage.setItem(scopedKey(TRASH_KEY), JSON.stringify(items));
+}
+
+export function exportProjectBundle() {
+  return {
+    format: "rpg-codex-backup", version: 1, exportedAt: new Date().toISOString(),
+    projectId: getActiveProjectId(),
+    records: JSON.parse(localStorage.getItem(scopedKey(STORAGE_KEY)) || "[]"),
+    catalogs: JSON.parse(localStorage.getItem(scopedKey(CATALOG_KEY)) || '{"tags":[],"properties":[]}'),
+    savedFilters: JSON.parse(localStorage.getItem(scopedKey(SAVED_KEY)) || "[]"),
+    trash: loadTrash()
+  };
+}
+
+export function importProjectBundle(bundle, { replace = false } = {}) {
+  if (!bundle || bundle.format !== "rpg-codex-backup" || bundle.version !== 1 || !Array.isArray(bundle.records)) {
+    throw new Error("This file is not a valid RPG Codex backup.");
+  }
+  const incoming = bundle.records;
+  if (incoming.some(r => !r || typeof r !== "object" || !r.id || !r.name || !r.type)) {
+    throw new Error("The backup contains an invalid record.");
+  }
+  const existing = JSON.parse(localStorage.getItem(scopedKey(STORAGE_KEY)) || "[]");
+  let records;
+  if (replace) records = incoming;
+  else {
+    const ids = new Set(existing.map(r => String(r.id)));
+    const names = new Set(existing.map(r => `${String(r.type).toLowerCase()}::${String(r.name).toLowerCase()}`));
+    records = [...existing];
+    incoming.forEach(r => {
+      const key = `${String(r.type).toLowerCase()}::${String(r.name).toLowerCase()}`;
+      if (ids.has(String(r.id)) || names.has(key)) {
+        const copy = { ...r, id: `${r.id}-import-${Math.random().toString(36).slice(2, 7)}` };
+        records.push(copy); ids.add(String(copy.id)); names.add(key);
+      } else { records.push(r); ids.add(String(r.id)); names.add(key); }
+    });
+  }
+  localStorage.setItem(scopedKey(STORAGE_KEY), JSON.stringify(records));
+  if (bundle.catalogs && typeof bundle.catalogs === "object") {
+    const current = JSON.parse(localStorage.getItem(scopedKey(CATALOG_KEY)) || '{"tags":[],"properties":[]}');
+    const mergeList = key => {
+      const map = new Map((replace ? [] : (current[key] || [])).map(x => [String(x.name).toLowerCase(), x]));
+      (bundle.catalogs[key] || []).forEach(x => { if (x && x.name) map.set(String(x.name).toLowerCase(), x); });
+      return [...map.values()];
+    };
+    localStorage.setItem(scopedKey(CATALOG_KEY), JSON.stringify({ tags: mergeList("tags"), properties: mergeList("properties") }));
+  }
+  if (Array.isArray(bundle.savedFilters)) localStorage.setItem(scopedKey(SAVED_KEY), JSON.stringify(replace ? bundle.savedFilters : [...JSON.parse(localStorage.getItem(scopedKey(SAVED_KEY)) || "[]"), ...bundle.savedFilters]));
+  if (Array.isArray(bundle.trash)) saveTrash(replace ? bundle.trash : [...loadTrash(), ...bundle.trash]);
+  return records.length;
+}
+
 // Bloqueiam gravações quando os dados existentes não puderam ser lidos.
 let recordsReadFailed = false;
 let catalogsReadFailed = false;
@@ -23,11 +115,11 @@ function cloneStarter(starter) {
 
 export function loadRecords(starter, uid) {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(scopedKey(STORAGE_KEY));
 
     if (raw === null) {
       recordsReadFailed = false;
-      return cloneStarter(starter);
+      return getActiveProjectId() === "default" ? cloneStarter(starter) : [];
     }
 
     const data = JSON.parse(raw);
@@ -107,7 +199,7 @@ export function saveRecords(records) {
   }
 
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    localStorage.setItem(scopedKey(STORAGE_KEY), JSON.stringify(records));
     return true;
   } catch (error) {
     console.error("RPG Codex: failed to save records.", error);
@@ -184,7 +276,7 @@ export function syncCatalogs(
 
 export function loadCatalogs() {
   try {
-    const raw = localStorage.getItem(CATALOG_KEY);
+    const raw = localStorage.getItem(scopedKey(CATALOG_KEY));
 
     if (raw === null) {
       catalogsReadFailed = false;
@@ -246,7 +338,7 @@ export function saveCatalogs(catalogs) {
   }
 
   try {
-    localStorage.setItem(CATALOG_KEY, JSON.stringify(catalogs));
+    localStorage.setItem(scopedKey(CATALOG_KEY), JSON.stringify(catalogs));
     return true;
   } catch (error) {
     console.error("RPG Codex: failed to save catalogs.", error);
@@ -268,7 +360,7 @@ export function catalogNames(catalogs, kind) {
 
 export function loadSavedFilters() {
   try {
-    const raw = localStorage.getItem(SAVED_KEY);
+    const raw = localStorage.getItem(scopedKey(SAVED_KEY));
 
     if (raw === null) {
       filtersReadFailed = false;
@@ -307,7 +399,7 @@ export function persistFilters(savedFilters) {
   }
 
   try {
-    localStorage.setItem(SAVED_KEY, JSON.stringify(savedFilters));
+    localStorage.setItem(scopedKey(SAVED_KEY), JSON.stringify(savedFilters));
     return true;
   } catch (error) {
     console.error("RPG Codex: failed to save filters.", error);

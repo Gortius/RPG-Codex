@@ -46,7 +46,7 @@ export function createDashboardFeature({
 
   const recordButton = (r, meta = "") =>
     `<button type="button" class="dash-record" data-open="${esc(r.id)}">
-      <span>${esc(iconOf(r))}</span>
+      <span>${iconOf(r)}</span>
       <strong>${esc(r.name)}</strong>
       <span class="muted">${esc(r.type)}</span>
       ${meta ? `<span class="meta">${esc(meta)}</span>` : ""}

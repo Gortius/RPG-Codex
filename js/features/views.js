@@ -47,7 +47,7 @@ export function createViewFeatures({
 
     const relationList = arr => arr.length
       ? arr.map(x =>
-          `<div class="relationship-item"><button type="button" data-related="${esc(x.id)}">${esc(iconOf(x))} ${esc(x.name)} <span class="relation-type">· ${esc(x.type)}</span></button></div>`
+          `<div class="relationship-item"><button type="button" data-related="${esc(x.id)}">${iconOf(x)} ${esc(x.name)} <span class="relation-type">· ${esc(x.type)}</span></button></div>`
         ).join("")
       : '<p class="muted">None</p>';
 
@@ -55,7 +55,7 @@ export function createViewFeatures({
       <p class="eyebrow">${esc(r.type.toUpperCase())}</p>
 
       <div class="record-heading">
-        <span class="record-icon">${esc(iconOf(r))}</span>
+        <span class="record-icon">${iconOf(r)}</span>
         <div>
           <h2>${esc(r.name)}</h2>
           <p class="muted">
@@ -113,6 +113,7 @@ export function createViewFeatures({
         button.onclick = () => openRecord(button.dataset.related);
       });
 
+    try { window.lucide?.createIcons?.({ root: $("detail-content") }); } catch {}
     window.scrollTo(0, 0);
   }
 
