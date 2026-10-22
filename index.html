@@ -273,6 +273,21 @@
 </div>
 
 <script src="https://unpkg.com/lucide@latest"></script>
-<script type="module" src="./js/app.js"></script>
+<script type="module">
+  import("./js/app.js").catch(error => {
+    console.error("RPG Codex failed to start:", error);
+
+    const status = document.getElementById("status");
+
+    if (status) {
+      status.textContent = "App failed to load: " + error.message;
+    }
+
+    alert(
+      "RPG Codex failed to start. " +
+      "Press F12, open Console, and copy the first red error."
+    );
+  });
+</script>
 </body>
 </html>
