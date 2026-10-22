@@ -25,39 +25,18 @@ import { createQuickMenu } from "./features/quick-menu.js";
 "use strict";
 
 const DEFAULT_TYPES = [
-  "Mob",
-  "Item",
-  "Material",
-  "Area",
-  "Recipe",
-  "Effect",
-  "Skill",
-  "NPC",
-  "Boss"
+  "Mob", "Item", "Material", "Area", "Recipe",
+  "Effect", "Skill", "NPC", "Boss"
 ];
 
 const DEFAULT_TAGS = [
-  "Common",
-  "Uncommon",
-  "Rare",
-  "Epic",
-  "Legendary",
-  "Craftable",
-  "Quest",
-  "Optional"
+  "Common", "Uncommon", "Rare", "Epic",
+  "Legendary", "Craftable", "Quest", "Optional"
 ];
 
 const DEFAULT_PROPS = [
-  "Health",
-  "Damage",
-  "Defense",
-  "Armor",
-  "Speed",
-  "Attack Speed",
-  "Cooldown",
-  "Duration",
-  "Level",
-  "Rarity"
+  "Health", "Damage", "Defense", "Armor", "Speed",
+  "Attack Speed", "Cooldown", "Duration", "Level", "Rarity"
 ];
 
 const $ = id => document.getElementById(id);
@@ -72,9 +51,7 @@ const esc = s =>
   }[c]));
 
 const uid = () =>
-  "r-" +
-  Date.now().toString(36) +
-  "-" +
+  "r-" + Date.now().toString(36) + "-" +
   Math.random().toString(36).slice(2, 8);
 
 const uniq = a =>
@@ -103,9 +80,7 @@ const starter = [
     category: "Beginning Hole",
     description: "A basic crafting material gathered from local creatures and plants.",
     tags: ["Craftable"],
-    properties: [
-      { name: "Rarity", value: "Common" }
-    ],
+    properties: [{ name: "Rarity", value: "Common" }],
     related: []
   },
   {
@@ -128,9 +103,7 @@ const starter = [
     category: "Sector 1",
     description: "The player's starting area, featuring a locked door and an early guardian.",
     tags: ["Starting Area"],
-    properties: [
-      { name: "Level", value: "1" }
-    ],
+    properties: [{ name: "Level", value: "1" }],
     related: ["sample-mob"]
   },
   {
@@ -140,9 +113,7 @@ const starter = [
     category: "Debuff",
     description: "Reduces the affected target's movement speed.",
     tags: ["Debuff"],
-    properties: [
-      { name: "Duration", value: "3 seconds" }
-    ],
+    properties: [{ name: "Duration", value: "3 seconds" }],
     related: []
   },
   {
@@ -152,9 +123,7 @@ const starter = [
     category: "Beginning Hole",
     description: "Crafting recipe for the Leaf Bow.",
     tags: ["Craftable"],
-    properties: [
-      { name: "Material Cost", value: "Vines + Wood" }
-    ],
+    properties: [{ name: "Material Cost", value: "Vines + Wood" }],
     related: ["sample-item"]
   }
 ];
@@ -162,7 +131,10 @@ const starter = [
 let records = [];
 let savedFilters = [];
 let viewMode = "list";
-try { viewMode = localStorage.getItem("rpg-codex-view-mode-v1") || "list"; } catch {}
+
+try {
+  viewMode = localStorage.getItem("rpg-codex-view-mode-v1") || "list";
+} catch {}
 
 let activeTypes = [];
 let activeTags = [];
@@ -184,14 +156,24 @@ let tagCreateOpen = false;
 
 function iconFor(type) {
   return ({
-    Mob: "lucide:bug", Item: "lucide:swords", Material: "lucide:gem",
-    Area: "lucide:map", Recipe: "lucide:scroll-text", Effect: "lucide:sparkles",
-    Skill: "lucide:wand-sparkles", NPC: "lucide:user-round", Boss: "lucide:skull"
+    Mob: "lucide:bug",
+    Item: "lucide:swords",
+    Material: "lucide:gem",
+    Area: "lucide:map",
+    Recipe: "lucide:scroll-text",
+    Effect: "lucide:sparkles",
+    Skill: "lucide:wand-sparkles",
+    NPC: "lucide:user-round",
+    Boss: "lucide:skull"
   })[type] || "lucide:circle";
 }
 
 function iconOf(record) {
-  return iconMarkup(record.icon || iconFor(record.type));
+  return iconMarkup(
+    record.icon || iconFor(record.type),
+    "circle",
+    record.iconColor || "#B9A0FF"
+  );
 }
 
 function loadRecords() {
@@ -257,11 +239,9 @@ function applyFilterState(state) {
   $("search").value = state.query || "";
 
   renderFilterOptions();
-
   $("filter-category").value = state.category || "";
 
   renderFilterOptions();
-
   $("filter-category").value = state.category || "";
   $("filter-subcategory").value = state.subcategory || "";
   $("sort-records").value = state.sort || "name-asc";
@@ -289,6 +269,7 @@ const { renderRecords } = createRecordListFeature({
   openRecord: id => openRecord(id),
   getViewMode: () => viewMode
 });
+
 const {
   renderCategories,
   renderFilterTags,
@@ -362,12 +343,10 @@ function dashboardRecordMarkup(record, detail) {
       data-dashboard-open="${esc(record.id)}"
     >
       <span class="record-icon">${iconOf(record)}</span>
-
       <span class="dashboard-record-info">
         <strong>${esc(record.name)}</strong>
         <span>${esc(detail || record.type)}</span>
       </span>
-
       <span class="record-arrow">›</span>
     </button>
   `;
@@ -434,34 +413,25 @@ function renderDashboard() {
   });
 
   noProperties.forEach(record => {
-    const item =
-      attentionMap.get(record.id) || {
-        record,
-        issues: []
-      };
+    const item = attentionMap.get(record.id) || {
+      record,
+      issues: []
+    };
 
     item.issues.push("No properties");
     attentionMap.set(record.id, item);
   });
 
   const attention = [...attentionMap.values()]
-    .sort((a, b) =>
-      a.record.name.localeCompare(b.record.name)
-    );
+    .sort((a, b) => a.record.name.localeCompare(b.record.name));
 
   $("dashboard-attention-count").textContent =
     `${attention.length} records`;
 
   $("dashboard-attention").innerHTML = attention.length
-    ? attention
-        .slice(0, 6)
-        .map(({ record, issues }) =>
-          dashboardRecordMarkup(
-            record,
-            issues.join(" · ")
-          )
-        )
-        .join("")
+    ? attention.slice(0, 6).map(({ record, issues }) =>
+        dashboardRecordMarkup(record, issues.join(" · "))
+      ).join("")
     : '<p class="empty">Everything looks complete.</p>';
 
   const recent = [...records]
@@ -469,25 +439,17 @@ function renderDashboard() {
       const dateA = Date.parse(a.createdAt || "") || 0;
       const dateB = Date.parse(b.createdAt || "") || 0;
 
-      return (
-        dateB - dateA ||
-        records.indexOf(b) - records.indexOf(a)
-      );
+      return dateB - dateA || records.indexOf(b) - records.indexOf(a);
     })
     .slice(0, 5);
 
   $("dashboard-recent").innerHTML = recent.length
-    ? recent
-        .map(record =>
-          dashboardRecordMarkup(
-            record,
-            record.type +
-              (record.category
-                ? " · " + record.category
-                : "")
-          )
+    ? recent.map(record =>
+        dashboardRecordMarkup(
+          record,
+          record.type + (record.category ? " · " + record.category : "")
         )
-        .join("")
+      ).join("")
     : '<p class="empty">No records yet. Create your first record to get started.</p>';
 
   $("dashboard-types")
@@ -500,13 +462,11 @@ function renderDashboard() {
     });
 
   paintIcons();
+
   ["dashboard-attention", "dashboard-recent"].forEach(id => {
-    $(id)
-      .querySelectorAll("[data-dashboard-open]")
-      .forEach(button => {
-        button.onclick = () =>
-          openRecord(button.dataset.dashboardOpen);
-      });
+    $(id).querySelectorAll("[data-dashboard-open]").forEach(button => {
+      button.onclick = () => openRecord(button.dataset.dashboardOpen);
+    });
   });
 }
 
@@ -635,7 +595,6 @@ createRecordFormFeature({
   uniq,
   uid,
   getRecord,
-  syncCatalogs,
   saveRecords,
   setCurrentId: value => {
     currentId = value;
@@ -645,7 +604,6 @@ createRecordFormFeature({
 
 $("nav-dashboard").onclick = renderDashboard;
 $("nav-records").onclick = renderHome;
-
 $("dashboard-all-records").onclick = renderHome;
 
 $("dashboard-new-record").onclick = () => {
@@ -678,8 +636,7 @@ $("new-record").onclick = () => {
   showForm();
 };
 
-$("add-property").onclick = () =>
-  addPropertyRow();
+$("add-property").onclick = () => addPropertyRow();
 
 $("back").onclick = () => {
   currentId = null;
@@ -689,10 +646,7 @@ $("back").onclick = () => {
 $("cancel-top").onclick = cancelForm;
 $("cancel-bottom").onclick = cancelForm;
 
-$("search").addEventListener(
-  "input",
-  renderRecords
-);
+$("search").addEventListener("input", renderRecords);
 
 $("toggle-filters").onclick = () => {
   filtersOpen = !filtersOpen;
@@ -710,8 +664,7 @@ $("filter-subcategory").onchange = () => {
   updateFilterToggle();
 };
 
-$("sort-records").onchange =
-  renderRecords;
+$("sort-records").onchange = renderRecords;
 
 $("add-filter-condition").onclick = () => {
   conditions.push({
@@ -725,14 +678,9 @@ $("add-filter-condition").onclick = () => {
   updateFilterToggle();
 };
 
-$("save-filter").onclick =
-  saveCurrentFilter;
-
-$("apply-saved-filter").onclick =
-  applySelectedFilter;
-
-$("delete-saved-filter").onclick =
-  deleteSelectedFilter;
+$("save-filter").onclick = saveCurrentFilter;
+$("apply-saved-filter").onclick = applySelectedFilter;
+$("delete-saved-filter").onclick = deleteSelectedFilter;
 
 $("clear-filters").onclick = () => {
   activeTypes = [];
@@ -748,97 +696,273 @@ $("clear-filters").onclick = () => {
 };
 
 function downloadJson(filename, data) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const blob = new Blob(
+    [JSON.stringify(data, null, 2)],
+    { type: "application/json" }
+  );
+
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
-  anchor.href = url; anchor.download = filename; anchor.click();
+
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function setupWorkspaceTools() {
   const switcher = $("project-switcher");
-  if (!switcher) return;
+  const manageButton = $("project-manage");
+  const backupFile = $("backup-file");
+  const trashButton = $("trash-open");
+
+  if (!switcher || !manageButton || !backupFile || !trashButton) return;
+
   let projects = loadProjects();
-  const active = getActiveProjectId();
-  if (!projects.some(project => project.id === active)) setActiveProjectId("default");
+
+  if (!projects.some(project => project.id === getActiveProjectId())) {
+    setActiveProjectId("default");
+  }
+
   function renderProjects() {
     projects = loadProjects();
-    switcher.innerHTML = projects.map(project => `<option value="${esc(project.id)}">${esc(project.name)}</option>`).join("");
+
+    switcher.innerHTML = projects.map(project =>
+      `<option value="${esc(project.id)}">${esc(project.name)}</option>`
+    ).join("");
+
     switcher.value = getActiveProjectId();
   }
-  renderProjects();
-  switcher.onchange = () => {
-    if (switcher.value === getActiveProjectId()) return;
-    setActiveProjectId(switcher.value);
+
+  function activeProject() {
+    return projects.find(project => project.id === getActiveProjectId());
+  }
+
+  function createProject() {
+    const name = prompt("Name for the new project:");
+    if (!name || !name.trim()) return;
+
+    const id = "p-" + Date.now().toString(36) + "-" +
+      Math.random().toString(36).slice(2, 7);
+
+    projects.push({
+      id,
+      name: name.trim(),
+      createdAt: new Date().toISOString()
+    });
+
+    saveProjects(projects);
+    setActiveProjectId(id);
     location.reload();
-  };
-  $("project-manage").onclick = () => {
-    const action = prompt("Projects: type NEW to create, RENAME to rename this project, or DELETE to remove this project.");
-    if (!action) return;
-    const normalized = action.trim().toLowerCase();
-    if (normalized === "new") {
-      const name = prompt("Name for the new project:");
-      if (!name || !name.trim()) return;
-      const id = "p-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7);
-      projects.push({ id, name: name.trim(), createdAt: new Date().toISOString() });
-      saveProjects(projects); setActiveProjectId(id); location.reload();
-    } else if (normalized === "rename") {
-      const project = projects.find(item => item.id === getActiveProjectId());
-      const name = prompt("New project name:", project?.name || "");
-      if (project && name?.trim()) { project.name = name.trim(); saveProjects(projects); renderProjects(); }
-    } else if (normalized === "delete") {
-      const id = getActiveProjectId();
-      if (id === "default") { alert("The original project cannot be deleted. You can clear its records from the database manually after exporting a backup."); return; }
-      const project = projects.find(item => item.id === id);
-      if (!confirm(`Delete project “${project?.name}” and all its local data? Export a backup first if needed.`)) return;
-      ["rpg-codex-records-v2", "rpg-codex-catalogs-v1", "rpg-codex-saved-filters-v1", "rpg-codex-trash-v1"].forEach(key => localStorage.removeItem(`${key}::${id}`));
-      projects = projects.filter(item => item.id !== id); saveProjects(projects); setActiveProjectId("default"); location.reload();
-    } else alert("Choose NEW, RENAME, or DELETE.");
-  };
-  $("backup-export").onclick = () => {
+  }
+
+  function renameProject() {
+    const project = activeProject();
+    if (!project) return;
+
+    const name = prompt("New project name:", project.name);
+    if (!name || !name.trim()) return;
+
+    project.name = name.trim();
+    saveProjects(projects);
+    renderProjects();
+  }
+
+  function deleteProject() {
+    const id = getActiveProjectId();
+
+    if (id === "default") {
+      alert("The original project cannot be deleted.");
+      return;
+    }
+
+    const project = activeProject();
+
+    if (!confirm(
+      `Delete project “${project?.name || id}” and all its local data? ` +
+      "Export a backup first if needed."
+    )) return;
+
+    [
+      "rpg-codex-records-v2",
+      "rpg-codex-catalogs-v1",
+      "rpg-codex-saved-filters-v1",
+      "rpg-codex-trash-v1"
+    ].forEach(key => localStorage.removeItem(`${key}::${id}`));
+
+    projects = projects.filter(item => item.id !== id);
+    saveProjects(projects);
+    setActiveProjectId("default");
+    location.reload();
+  }
+
+  function exportProject() {
     try {
       const bundle = exportProjectBundle();
       bundle.records = records;
-      downloadJson(`rpg-codex-${getActiveProjectId()}-backup.json`, bundle);
+
+      downloadJson(
+        `rpg-codex-${getActiveProjectId()}-backup.json`,
+        bundle
+      );
+    } catch (error) {
+      alert("Could not create backup: " + error.message);
     }
-    catch (error) { alert("Could not create backup: " + error.message); }
+  }
+
+  function startImport() {
+    backupFile.click();
+  }
+
+  switcher.onchange = () => {
+    if (switcher.value === getActiveProjectId()) return;
+
+    setActiveProjectId(switcher.value);
+    location.reload();
   };
-  $("backup-import").onclick = () => $("backup-file").click();
-  $("backup-file").onchange = async event => {
-    const file = event.target.files?.[0]; if (!file) return;
+
+  manageButton.onclick = () => {
+    const action = prompt(
+      "Projects\n\n" +
+      "1. Add project\n" +
+      "2. Rename current project\n" +
+      "3. Delete current project\n" +
+      "4. Export current project\n" +
+      "5. Import project backup\n\n" +
+      "Type a number or action name."
+    );
+
+    if (!action) return;
+
+    const normalized = action.trim().toLowerCase();
+
+    if (["1", "add", "new", "create"].includes(normalized)) {
+      createProject();
+    } else if (["2", "rename"].includes(normalized)) {
+      renameProject();
+    } else if (["3", "delete", "remove"].includes(normalized)) {
+      deleteProject();
+    } else if (["4", "export"].includes(normalized)) {
+      exportProject();
+    } else if (["5", "import"].includes(normalized)) {
+      startImport();
+    } else {
+      alert("Choose an action from 1 to 5.");
+    }
+  };
+
+  backupFile.onchange = async event => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
     try {
       const bundle = JSON.parse(await file.text());
-      const replace = confirm("Import mode: OK replaces the current project's records; Cancel merges the backup with the current records and protects existing entries.");
-      if (!confirm(`Import ${Array.isArray(bundle.records) ? bundle.records.length : 0} records into “${switcher.selectedOptions[0]?.textContent || "this project"}”?`)) return;
+
+      const replace = confirm(
+        "Import mode:\n\n" +
+        "OK = replace the current project's records.\n" +
+        "Cancel = merge the backup with the current records."
+      );
+
+      const count = Array.isArray(bundle.records) ? bundle.records.length : 0;
+
+      if (!confirm(
+        `Import ${count} records into “${activeProject()?.name || "this project"}”?`
+      )) return;
+
       importProjectBundle(bundle, { replace });
-      alert("Import complete. The app will reload to show the imported data."); location.reload();
-    } catch (error) { alert("Import failed: " + error.message); }
-    finally { event.target.value = ""; }
+
+      alert("Import complete. The app will reload to show the imported data.");
+      location.reload();
+    } catch (error) {
+      alert("Import failed: " + error.message);
+    } finally {
+      event.target.value = "";
+    }
   };
-  $("trash-open").onclick = () => {
+
+  trashButton.onclick = () => {
     const trash = loadTrash();
-    if (!trash.length) { alert("The trash is empty."); return; }
-    const menu = trash.map((item, i) => `${i + 1}. ${item.record?.name || "Unnamed record"}`).join("\n");
-    const choice = prompt(`Trash (${trash.length} items)\n${menu}\n\nType a number to restore, or EMPTY to permanently delete all items.`);
-    if (!choice) return;
-    if (choice.trim().toLowerCase() === "empty") {
-      if (confirm("Permanently delete every item in the trash? This cannot be undone.")) { saveTrash([]); alert("Trash emptied."); }
+
+    if (!trash.length) {
+      alert("The trash is empty.");
       return;
     }
+
+    const menu = trash.map((item, i) =>
+      `${i + 1}. ${item.record?.name || "Unnamed record"}`
+    ).join("\n");
+
+    const choice = prompt(
+      `Trash (${trash.length} items)\n${menu}\n\n` +
+      "Type a number to restore, or EMPTY to permanently delete all items."
+    );
+
+    if (!choice) return;
+
+    if (choice.trim().toLowerCase() === "empty") {
+      if (confirm("Permanently delete every item in the trash? This cannot be undone.")) {
+        saveTrash([]);
+        alert("Trash emptied.");
+      }
+      return;
+    }
+
     const index = Number(choice) - 1;
-    if (!Number.isInteger(index) || index < 0 || index >= trash.length) { alert("Invalid selection."); return; }
+
+    if (!Number.isInteger(index) || index < 0 || index >= trash.length) {
+      alert("Invalid selection.");
+      return;
+    }
+
     const item = trash[index];
-    if (records.some(record => record.id === item.record.id)) { alert("A record with this ID already exists. Export a backup and resolve the conflict before restoring."); return; }
+
+    if (records.some(record => record.id === item.record.id)) {
+      alert(
+        "A record with this ID already exists. Export a backup and " +
+        "resolve the conflict before restoring."
+      );
+      return;
+    }
+
     const previousRecords = records;
     const restored = { ...item.record };
-    delete restored._trashedAt; delete restored._linkedFrom;
-    records = [...records, restored].map(record => ({ ...record, related: [...(record.related || [])] }));
-    (item.linkedFrom || item.record._linkedFrom || []).forEach(id => { const linked = records.find(record => record.id === id); if (linked && !linked.related.includes(restored.id)) linked.related.push(restored.id); });
-    if (!saveRecords()) { records = previousRecords; return; }
+
+    delete restored._trashedAt;
+    delete restored._linkedFrom;
+
+    records = [...records, restored].map(record => ({
+      ...record,
+      related: [...(record.related || [])]
+    }));
+
+    (item.linkedFrom || item.record._linkedFrom || []).forEach(id => {
+      const linked = records.find(record => record.id === id);
+
+      if (linked && !linked.related.includes(restored.id)) {
+        linked.related.push(restored.id);
+      }
+    });
+
+    if (!saveRecords()) {
+      records = previousRecords;
+      return;
+    }
+
     trash.splice(index, 1);
-    try { saveTrash(trash); } catch (error) { console.error("Could not update trash", error); }
-    renderHome(); alert("Record restored.");
+
+    try {
+      saveTrash(trash);
+    } catch (error) {
+      console.error("Could not update trash", error);
+    }
+
+    renderHome();
+    alert("Record restored.");
   };
+
+  renderProjects();
 }
 
 records = loadRecords();
@@ -870,7 +994,9 @@ createQuickMenu({
   getViewMode: () => viewMode,
   setViewMode: value => {
     viewMode = value;
-    try { localStorage.setItem("rpg-codex-view-mode-v1", value); } catch {}
+    try {
+      localStorage.setItem("rpg-codex-view-mode-v1", value);
+    } catch {}
   }
 });
 
