@@ -1,4 +1,3 @@
-
 "use strict";
 
 export function createQuickMenu({
@@ -9,7 +8,9 @@ export function createQuickMenu({
   expanded,
   renderRecords,
   getViewMode,
-  setViewMode
+  setViewMode,
+  getCustomColumns = () => 3,
+  setCustomColumns = () => {}
 }) {
   if ($("quick-menu")) return;
 
@@ -81,6 +82,22 @@ export function createQuickMenu({
         <i data-lucide="grid-2x2" aria-hidden="true"></i>
         <span class="shortcut-label">Grid view</span>
       </button>
+
+      <button type="button" data-action="custom" title="Custom grid view">
+        <i data-lucide="layout-grid" aria-hidden="true"></i>
+        <span class="shortcut-label">Custom Grid</span>
+      </button>
+
+      <div id="quick-menu-custom-settings" class="quick-menu-custom-settings" hidden>
+        <label for="quick-menu-custom-columns">Grid columns</label>
+        <select id="quick-menu-custom-columns">
+          <option value="2">2 columns</option>
+          <option value="3">3 columns</option>
+          <option value="4">4 columns</option>
+          <option value="5">5 columns</option>
+          <option value="6">6 columns</option>
+        </select>
+      </div>
     </div>
   `;
 
@@ -230,18 +247,43 @@ export function createQuickMenu({
     }
 
     #quick-menu .quick-menu-types {
+      position: fixed;
+      z-index: 1210;
       display: grid;
       gap: 4px;
-      max-height: 260px;
+      width: 220px;
+      max-height: min(320px, calc(100vh - 24px));
       overflow-y: auto;
       padding: 5px;
       border: 1px solid var(--border);
       border-radius: 10px;
       background: #17171e;
+      box-shadow: 0 12px 32px #0008;
     }
 
     #quick-menu .quick-menu-types[hidden] {
       display: none !important;
+    }
+
+    #quick-menu .quick-menu-custom-settings {
+      display: grid;
+      gap: 6px;
+      padding: 8px 10px 10px 38px;
+    }
+
+    #quick-menu .quick-menu-custom-settings[hidden] {
+      display: none !important;
+    }
+
+    #quick-menu .quick-menu-custom-settings label {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    #quick-menu .quick-menu-custom-settings select {
+      width: 100%;
+      padding: 7px;
+      font-size: 12px;
     }
 
     #quick-menu .quick-menu-types button {
@@ -307,6 +349,8 @@ export function createQuickMenu({
   const toggle = menu.querySelector(".quick-menu-toggle");
   const typesPanel = $("quick-menu-types");
   const typesButton = menu.querySelector('[data-action="types"]');
+  const customSettings = $("quick-menu-custom-settings");
+  const customColumnsSelect = $("quick-menu-custom-columns");
   const recordsView = $("records-view");
 
   function paintIcons(root = menu) {
@@ -335,13 +379,41 @@ export function createQuickMenu({
   }
 
   function updateViewButtons() {
-    menu.querySelectorAll('[data-action="list"], [data-action="grid"]')
-      .forEach(button => {
-        button.classList.toggle(
-          "active",
-          button.dataset.action === getViewMode()
-        );
-      });
+    menu.querySelectorAll(
+      '[data-action="list"], [data-action="grid"], [data-action="custom"]'
+    ).forEach(button => {
+      button.classList.toggle(
+        "active",
+        button.dataset.action === getViewMode()
+      );
+    });
+
+    customSettings.hidden = getViewMode() !== "custom";
+    customColumnsSelect.value = String(getCustomColumns());
+  }
+
+  function positionTypesPanel() {
+    const rect = typesButton.getBoundingClientRect();
+    const panelWidth = 220;
+    const panelHeight = Math.min(
+      typesPanel.scrollHeight || 260,
+      window.innerHeight - 24
+    );
+    const gap = 8;
+
+    let left = rect.right + gap;
+
+    if (left + panelWidth > window.innerWidth - 8) {
+      left = rect.left - panelWidth - gap;
+    }
+
+    left = Math.max(8, Math.min(left, window.innerWidth - panelWidth - 8));
+
+    let top = rect.top;
+    top = Math.max(8, Math.min(top, window.innerHeight - panelHeight - 8));
+
+    typesPanel.style.left = left + "px";
+    typesPanel.style.top = top + "px";
   }
 
   function escapeHTML(value) {
@@ -456,6 +528,7 @@ export function createQuickMenu({
         if (typesPanel.hidden) {
           renderTypes();
           typesPanel.hidden = false;
+          positionTypesPanel();
         } else {
           typesPanel.hidden = true;
         }
@@ -480,8 +553,28 @@ export function createQuickMenu({
         renderRecords();
         updateViewButtons();
         break;
+
+      case "custom":
+        setViewMode("custom");
+        renderRecords();
+        updateViewButtons();
+        break;
     }
   });
+
+  customColumnsSelect.addEventListener("change", () => {
+    setCustomColumns(Number(customColumnsSelect.value));
+    renderRecords();
+    updateViewButtons();
+  });
+
+  window.addEventListener("resize", () => {
+    if (!typesPanel.hidden) positionTypesPanel();
+  });
+
+  window.addEventListener("scroll", () => {
+    if (!typesPanel.hidden) positionTypesPanel();
+  }, true);
 
   const categoriesObserver = new MutationObserver(() => {
     if (!typesPanel.hidden) renderTypes();
