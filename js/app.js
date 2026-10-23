@@ -61,6 +61,48 @@ const uniq = a =>
     a.map(x => String(x || "").trim()).filter(Boolean)
   )].sort((a, b) => a.localeCompare(b));
 
+// Estado central do aplicativo.
+let records = [];
+let savedFilters = [];
+let viewMode = "list";
+
+try {
+  const storedViewMode = localStorage.getItem("rpg-codex-view-mode-v1");
+  if (["list", "grid", "custom"].includes(storedViewMode)) {
+    viewMode = storedViewMode;
+  }
+} catch {}
+
+let activeTypes = [];
+let activeTags = [];
+let conditions = [];
+let qualityOnly = false;
+let customColumns = 3;
+
+try {
+  const storedColumns = Number(
+    localStorage.getItem("rpg-codex-custom-columns-v1")
+  );
+
+  if (Number.isFinite(storedColumns)) {
+    customColumns = Math.max(2, Math.min(6, Math.round(storedColumns)));
+  }
+} catch {}
+
+let expanded = new Set();
+let filtersOpen = false;
+let editingId = null;
+let currentId = null;
+
+let selectedTags = [];
+let selectedRelated = [];
+
+let tagOpen = false;
+let relatedOpen = false;
+let tagSearch = "";
+let relatedSearch = "";
+let tagCreateOpen = false;
+
 function iconFor(type) {
   return ({
     Mob: "lucide:bug",
@@ -104,24 +146,40 @@ function saveRecords() {
 
   try {
     syncCatalogs();
+
     if (!saveCatalogs()) {
       throw new Error("The tag/property catalog could not be saved.");
     }
   } catch (error) {
     console.error("Record/catalog save failed; rolling back the record write.", error);
+
     try {
       const recordsKey = getScopedStorageKey(STORAGE_KEY);
       const catalogsKey = getScopedStorageKey(CATALOG_KEY);
 
-      if (previousRecordsRaw === null) localStorage.removeItem(recordsKey);
-      else localStorage.setItem(recordsKey, previousRecordsRaw);
+      if (previousRecordsRaw === null) {
+        localStorage.removeItem(recordsKey);
+      } else {
+        localStorage.setItem(recordsKey, previousRecordsRaw);
+      }
 
-      if (previousCatalogsRaw === null) localStorage.removeItem(catalogsKey);
-      else localStorage.setItem(catalogsKey, previousCatalogsRaw);
+      if (previousCatalogsRaw === null) {
+        localStorage.removeItem(catalogsKey);
+      } else {
+        localStorage.setItem(catalogsKey, previousCatalogsRaw);
+      }
     } catch (rollbackError) {
-      console.error("Could not roll back record/catalog writes after save failure.", rollbackError);
-      alert("The catalog could not be saved and rollback also failed. Export or preserve a backup before further changes.");
+      console.error(
+        "Could not roll back record/catalog writes after save failure.",
+        rollbackError
+      );
+
+      alert(
+        "The catalog could not be saved and rollback also failed. " +
+        "Export or preserve a backup before further changes."
+      );
     }
+
     return false;
   }
 
@@ -167,7 +225,9 @@ function filterState() {
     subcategory: $("filter-subcategory").value,
     tags: [...activeTags],
     sort: $("sort-records").value,
-    sortDirection: $("sort-direction")?.dataset.direction === "desc" ? "desc" : "asc",
+    sortDirection: $("sort-direction")?.dataset.direction === "desc"
+      ? "desc"
+      : "asc",
     conditions: conditions.map(c => ({ ...c }))
   };
 }
@@ -185,7 +245,9 @@ function applyFilterState(state) {
   renderFilterOptions();
   $("filter-category").value = state.category || "";
   $("filter-subcategory").value = state.subcategory || "";
+
   const legacySort = String(state.sort || "name-asc");
+
   const sortOptionAliases = {
     name: "name-asc",
     "name-asc": "name-asc",
@@ -202,17 +264,27 @@ function applyFilterState(state) {
     "relations-asc": "relations-asc",
     "relations-desc": "relations-asc"
   };
+
   $("sort-records").value = sortOptionAliases[legacySort] || "name-asc";
+
   const sortDirection = state.sortDirection === "desc" ||
     (!state.sortDirection && /(?:-desc|newest)$/.test(legacySort))
     ? "desc"
     : "asc";
+
   const sortDirectionButton = $("sort-direction");
-  if (sortDirectionButton) sortDirectionButton.dataset.direction = sortDirection;
+
+  if (sortDirectionButton) {
+    sortDirectionButton.dataset.direction = sortDirection;
+  }
 
   conditions = Array.isArray(state.conditions)
     ? state.conditions
-        .filter(condition => condition && typeof condition === "object" && !Array.isArray(condition))
+        .filter(condition =>
+          condition &&
+          typeof condition === "object" &&
+          !Array.isArray(condition)
+        )
         .map(condition => ({
           ...condition,
           property: String(condition.property ?? ""),
@@ -347,8 +419,10 @@ function renderDashboard() {
 
   const incomplete = records.filter(record => {
     const missingDescription = !String(record.description || "").trim();
+
     const missingTags =
       !Array.isArray(record.tags) || record.tags.length === 0;
+
     const missingProperties =
       !Array.isArray(record.properties) || record.properties.length === 0;
 
@@ -382,6 +456,7 @@ function renderDashboard() {
     .sort((a, b) => {
       const dateA = Date.parse(a.createdAt || "") || 0;
       const dateB = Date.parse(b.createdAt || "") || 0;
+
       return dateB - dateA || records.indexOf(b) - records.indexOf(a);
     })
     .slice(0, 5);
@@ -676,6 +751,7 @@ createQuickMenu({
   getViewMode: () => viewMode,
   setViewMode: value => {
     viewMode = value;
+
     try {
       localStorage.setItem("rpg-codex-view-mode-v1", value);
     } catch {}
@@ -683,6 +759,7 @@ createQuickMenu({
   getCustomColumns: () => customColumns,
   setCustomColumns: value => {
     customColumns = Math.max(2, Math.min(6, Math.round(Number(value) || 3)));
+
     try {
       localStorage.setItem(
         "rpg-codex-custom-columns-v1",
