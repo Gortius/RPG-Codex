@@ -139,6 +139,19 @@ try {
 let activeTypes = [];
 let activeTags = [];
 let conditions = [];
+let qualityOnly = false;
+let customColumns = 3;
+
+try {
+  const storedColumns = Number(
+    localStorage.getItem("rpg-codex-custom-columns-v1")
+  );
+
+  if (Number.isFinite(storedColumns)) {
+    customColumns = Math.max(2, Math.min(6, Math.round(storedColumns)));
+  }
+} catch {}
+
 let expanded = new Set();
 
 let filtersOpen = false;
@@ -233,6 +246,7 @@ function filterState() {
 }
 
 function applyFilterState(state) {
+  qualityOnly = false;
   activeTypes = state.types || [];
   activeTags = state.tags || [];
 
@@ -263,11 +277,13 @@ const { renderRecords } = createRecordListFeature({
   getFilterState: () => ({
     activeTypes,
     activeTags,
-    conditions
+    conditions,
+    qualityOnly
   }),
   expanded,
   openRecord: id => openRecord(id),
-  getViewMode: () => viewMode
+  getViewMode: () => viewMode,
+  getCustomColumns: () => customColumns
 });
 
 const {
@@ -371,18 +387,19 @@ function renderDashboard() {
   const usedTypes = Object.entries(typeCounts)
     .sort((a, b) => a[0].localeCompare(b[0]));
 
-  const noDescription = records.filter(
-    r => !String(r.description || "").trim()
-  );
+  const incomplete = records.filter(record => {
+    const missingDescription = !String(record.description || "").trim();
+    const missingTags =
+      !Array.isArray(record.tags) || record.tags.length === 0;
+    const missingProperties =
+      !Array.isArray(record.properties) || record.properties.length === 0;
 
-  const noProperties = records.filter(
-    r => !Array.isArray(r.properties) || r.properties.length === 0
-  );
+    return missingDescription || missingTags || missingProperties;
+  });
 
   $("stat-total-value").textContent = records.length;
   $("stat-types-value").textContent = usedTypes.length;
-  $("stat-no-description-value").textContent = noDescription.length;
-  $("stat-no-properties-value").textContent = noProperties.length;
+  $("stat-quality-value").textContent = incomplete.length;
 
   $("dashboard-types").innerHTML = usedTypes.length
     ? usedTypes.map(([type, count]) => `
@@ -403,42 +420,10 @@ function renderDashboard() {
     `).join("")
     : '<p class="empty">No records yet. Create your first record to see a breakdown.</p>';
 
-  const attentionMap = new Map();
-
-  noDescription.forEach(record => {
-    attentionMap.set(record.id, {
-      record,
-      issues: ["No description"]
-    });
-  });
-
-  noProperties.forEach(record => {
-    const item = attentionMap.get(record.id) || {
-      record,
-      issues: []
-    };
-
-    item.issues.push("No properties");
-    attentionMap.set(record.id, item);
-  });
-
-  const attention = [...attentionMap.values()]
-    .sort((a, b) => a.record.name.localeCompare(b.record.name));
-
-  $("dashboard-attention-count").textContent =
-    `${attention.length} records`;
-
-  $("dashboard-attention").innerHTML = attention.length
-    ? attention.slice(0, 6).map(({ record, issues }) =>
-        dashboardRecordMarkup(record, issues.join(" · "))
-      ).join("")
-    : '<p class="empty">Everything looks complete.</p>';
-
   const recent = [...records]
     .sort((a, b) => {
       const dateA = Date.parse(a.createdAt || "") || 0;
       const dateB = Date.parse(b.createdAt || "") || 0;
-
       return dateB - dateA || records.indexOf(b) - records.indexOf(a);
     })
     .slice(0, 5);
@@ -456,18 +441,19 @@ function renderDashboard() {
     .querySelectorAll("[data-dashboard-type]")
     .forEach(button => {
       button.onclick = () => {
+        qualityOnly = false;
         activeTypes = [button.dataset.dashboardType];
         renderHome();
       };
     });
 
-  paintIcons();
-
-  ["dashboard-attention", "dashboard-recent"].forEach(id => {
-    $(id).querySelectorAll("[data-dashboard-open]").forEach(button => {
+  $("dashboard-recent")
+    .querySelectorAll("[data-dashboard-open]")
+    .forEach(button => {
       button.onclick = () => openRecord(button.dataset.dashboardOpen);
     });
-  });
+
+  paintIcons();
 }
 
 const {
@@ -603,8 +589,16 @@ createRecordFormFeature({
 });
 
 $("nav-dashboard").onclick = renderDashboard;
-$("nav-records").onclick = renderHome;
-$("dashboard-all-records").onclick = renderHome;
+
+$("nav-records").onclick = () => {
+  qualityOnly = false;
+  renderHome();
+};
+
+$("dashboard-all-records").onclick = () => {
+  qualityOnly = false;
+  renderHome();
+};
 
 $("dashboard-new-record").onclick = () => {
   currentId = null;
@@ -612,21 +606,19 @@ $("dashboard-new-record").onclick = () => {
 };
 
 $("stat-total").onclick = () => {
+  qualityOnly = false;
   activeTypes = [];
   renderHome();
 };
 
 $("stat-types").onclick = () => {
+  qualityOnly = false;
   activeTypes = [];
   renderHome();
 };
 
-$("stat-no-description").onclick = () => {
-  activeTypes = [];
-  renderHome();
-};
-
-$("stat-no-properties").onclick = () => {
+$("stat-quality").onclick = () => {
+  qualityOnly = true;
   activeTypes = [];
   renderHome();
 };
@@ -683,6 +675,7 @@ $("apply-saved-filter").onclick = applySelectedFilter;
 $("delete-saved-filter").onclick = deleteSelectedFilter;
 
 $("clear-filters").onclick = () => {
+  qualityOnly = false;
   activeTypes = [];
   activeTags = [];
   conditions = [];
@@ -996,6 +989,16 @@ createQuickMenu({
     viewMode = value;
     try {
       localStorage.setItem("rpg-codex-view-mode-v1", value);
+    } catch {}
+  },
+  getCustomColumns: () => customColumns,
+  setCustomColumns: value => {
+    customColumns = Math.max(2, Math.min(6, Math.round(Number(value) || 3)));
+    try {
+      localStorage.setItem(
+        "rpg-codex-custom-columns-v1",
+        String(customColumns)
+      );
     } catch {}
   }
 });
