@@ -2,6 +2,58 @@
 
 const VIEW_FIX_STYLE_ID = "rpg-codex-view-mode-fixes";
 
+const SORT_PAIRS = {
+  "name-asc": "name-desc",
+  "name-desc": "name-asc",
+  "details-asc": "details-desc",
+  "details-desc": "details-asc",
+  "oldest": "newest",
+  "newest": "oldest",
+  "relations-asc": "relations-desc",
+  "relations-desc": "relations-asc",
+  "type": "type-desc",
+  "type-desc": "type",
+  "category": "category-desc",
+  "category-desc": "category",
+  "subcategory-asc": "subcategory-desc",
+  "subcategory-desc": "subcategory-asc"
+};
+
+function sortDirection(value) {
+  return value === "newest" ||
+    String(value).endsWith("-desc")
+    ? "desc"
+    : "asc";
+}
+
+function updateSortControls($) {
+  const select = $("sort-records");
+  const button = $("sort-direction");
+
+  if (!select || !button) return;
+
+  const direction = sortDirection(select.value);
+
+  Array.from(select.options).forEach(option => {
+    option.hidden = sortDirection(option.value) !== direction;
+  });
+
+  button.textContent = direction === "asc"
+    ? "↑ Ascending"
+    : "↓ Descending";
+
+  button.title = direction === "asc"
+    ? "Switch to descending order"
+    : "Switch to ascending order";
+
+  button.setAttribute(
+    "aria-label",
+    direction === "asc"
+      ? "Current direction: ascending. Switch to descending."
+      : "Current direction: descending. Switch to ascending."
+  );
+}
+
 function ensureViewModeStyles() {
   if (document.getElementById(VIEW_FIX_STYLE_ID)) return;
 
@@ -9,7 +61,7 @@ function ensureViewModeStyles() {
   style.id = VIEW_FIX_STYLE_ID;
 
   style.textContent = `
-    /* Navegação superior centralizada */
+    /* Navegação superior: ícones SVG sempre visíveis */
     .page-nav {
       display: flex;
       justify-content: center;
@@ -31,8 +83,82 @@ function ensureViewModeStyles() {
     }
 
     .page-nav .nav-button svg {
-      width: 19px;
-      height: 19px;
+      display: block;
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      pointer-events: none;
+    }
+
+    /* Controles de ordenação junto ao título Records */
+    .records-heading {
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .records-heading > h3 {
+      flex: 0 0 auto;
+    }
+
+    .records-tools {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-width: 0;
+      margin-left: auto;
+    }
+
+    .records-tools .sort-label {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .records-tools #sort-records {
+      width: auto;
+      max-width: 260px;
+      min-width: 155px;
+      padding: 9px 10px;
+    }
+
+    .records-tools #sort-direction {
+      padding: 9px 11px;
+      white-space: nowrap;
+    }
+
+    .records-tools #count {
+      white-space: nowrap;
+    }
+
+    @media (max-width: 760px) {
+      .records-tools {
+        justify-content: flex-start;
+        width: 100%;
+        margin-left: 0;
+      }
+
+      .records-tools #sort-records {
+        flex: 1 1 170px;
+        min-width: 0;
+        max-width: 100%;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .records-tools .sort-label {
+        flex-basis: 100%;
+      }
+
+      .records-tools #sort-records {
+        flex-basis: 100%;
+      }
     }
 
     /* Custom Grid: cartões com Preview */
@@ -93,7 +219,6 @@ function ensureViewModeStyles() {
       margin-left: auto;
     }
 
-    /* Não esconder o botão Preview */
     #records.custom-grid .record-actions {
       display: flex !important;
       justify-content: flex-start;
@@ -106,7 +231,6 @@ function ensureViewModeStyles() {
       overflow-wrap: anywhere;
     }
 
-    /* Não esconder as propriedades expandidas */
     #records.custom-grid .record-preview {
       display: block !important;
       min-width: 0;
@@ -198,7 +322,29 @@ export function createRecordListFeature({
 }) {
   ensureViewModeStyles();
 
+  const sortButton = $("sort-direction");
+  const sortSelect = $("sort-records");
+
+  if (sortButton && sortSelect) {
+    sortButton.onclick = () => {
+      const currentValue = sortSelect.value || "name-asc";
+      const nextValue = SORT_PAIRS[currentValue];
+
+      if (!nextValue) return;
+
+      sortSelect.value = nextValue;
+      updateSortControls($);
+      renderRecords();
+    };
+
+    sortSelect.addEventListener("change", () => {
+      updateSortControls($);
+    });
+  }
+
   function renderRecords() {
+    updateSortControls($);
+
     const state = getFilterState();
 
     let list = filterRecords(getRecords(), {
