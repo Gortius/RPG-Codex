@@ -25,8 +25,12 @@
 <main>
 <section id="home">
   <nav class="page-nav" aria-label="Main navigation">
-    <button id="nav-dashboard" class="nav-button active" type="button">Overview</button>
-    <button id="nav-records" class="nav-button" type="button">Records</button>
+    <button id="nav-dashboard" class="nav-button active" type="button" title="Overview" aria-label="Overview">
+      <i data-lucide="layout-dashboard" aria-hidden="true"></i>
+    </button>
+    <button id="nav-records" class="nav-button" type="button" title="Records" aria-label="Records">
+      <i data-lucide="database" aria-hidden="true"></i>
+    </button>
   </nav>
 
   <div id="dashboard-view">
@@ -45,15 +49,10 @@
         <strong id="stat-types-value">0</strong>
         <span class="stat-note">Different record types</span>
       </button>
-      <button id="stat-no-description" class="stat-card" type="button">
-        <span class="stat-label">No description</span>
-        <strong id="stat-no-description-value">0</strong>
-        <span class="stat-note">Records to complete</span>
-      </button>
-      <button id="stat-no-properties" class="stat-card" type="button">
-        <span class="stat-label">No properties</span>
-        <strong id="stat-no-properties-value">0</strong>
-        <span class="stat-note">Records to review</span>
+      <button id="stat-quality" class="stat-card" type="button">
+        <span class="stat-label">Overall View</span>
+        <strong id="stat-quality-value">0</strong>
+        <span class="stat-note">Missing tags, description or properties</span>
       </button>
     </div>
 
@@ -61,13 +60,6 @@
       <div class="panel dashboard-panel">
         <div class="section-title compact"><h3>Records by Type</h3></div>
         <div id="dashboard-types" class="dashboard-type-list"></div>
-      </div>
-      <div class="panel dashboard-panel">
-        <div class="section-title compact">
-          <h3>Needs Attention</h3>
-          <span id="dashboard-attention-count" class="muted"></span>
-        </div>
-        <div id="dashboard-attention" class="dashboard-record-list"></div>
       </div>
     </div>
 
@@ -288,4 +280,3 @@
 </script>
 </body>
 </html>
-
