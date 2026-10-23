@@ -10,6 +10,104 @@ export const PROJECTS_KEY = "rpg-codex-projects-v1";
 export const ACTIVE_PROJECT_KEY = "rpg-codex-active-project-v1";
 export const TRASH_KEY = "rpg-codex-trash-v1";
 
+
+export const PROPERTY_VALUE_TYPES = Object.freeze(["number", "percentage", "text", "list"]);
+const LIST_ITEM_TYPES = new Set(["text", "number", "percentage", "record", "json"]);
+
+function strictNumber(value) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  const text = String(value ?? "").trim();
+  if (!text || !/^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(text)) return null;
+  const result = Number(text);
+  return Number.isFinite(result) ? result : null;
+}
+
+function normalizeListItem(item) {
+  let type;
+  let value;
+  if (item && typeof item === "object" && !Array.isArray(item) && LIST_ITEM_TYPES.has(String(item.type || "").toLowerCase())) {
+    type = String(item.type).toLowerCase();
+    value = item.value;
+  } else if (typeof item === "number") {
+    type = "number"; value = item;
+  } else if (item && typeof item === "object") {
+    type = "json"; value = item;
+  } else {
+    type = "text"; value = String(item ?? "");
+  }
+
+  if (type === "number" || type === "percentage") {
+    if (value === "" || value === null || value === undefined) value = null;
+    else {
+      const numeric = strictNumber(value);
+      if (numeric === null) throw new Error(`A list item declared as ${type} must contain a valid number.`);
+      value = numeric;
+    }
+  } else if (type === "record") {
+    value = String(value ?? "");
+  } else if (type === "json") {
+    if (typeof value === "string") {
+      try { value = JSON.parse(value); } catch { /* Preserve valid free-form string content. */ }
+    }
+  } else {
+    value = String(value ?? "");
+  }
+  return { type, value };
+}
+
+/**
+ * Normalizes both new typed properties and old {name, value} properties.
+ * Legacy numeric strings are migrated to numbers; a legacy value ending in %
+ * becomes a fraction ("20%" -> 0.2). Other legacy values remain text.
+ */
+export function normalizeProperty(property) {
+  if (!property || typeof property !== "object" || Array.isArray(property)) {
+    throw new Error("A saved property has an invalid structure.");
+  }
+  const name = String(property.name ?? "").trim();
+  const rawValue = property.value ?? "";
+  let valueType = String(property.valueType ?? "").toLowerCase();
+  let value = rawValue;
+  const typeWasExplicit = PROPERTY_VALUE_TYPES.includes(valueType);
+
+  if (!typeWasExplicit) {
+    if (Array.isArray(rawValue)) valueType = "list";
+    else if (typeof rawValue === "number") valueType = "number";
+    else {
+      const text = String(rawValue ?? "").trim();
+      const percent = text.match(/^([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)\s*%$/);
+      if (percent) { valueType = "percentage"; value = Number(percent[1]) / 100; }
+      else if (strictNumber(text) !== null) { valueType = "number"; value = Number(text); }
+      else valueType = "text";
+    }
+  }
+
+  if (valueType === "number" || valueType === "percentage") {
+    if (value === "" || value === null || value === undefined) value = null;
+    else {
+      const numeric = strictNumber(value);
+      if (numeric === null) throw new Error(`Property “${name || "(unnamed)"}” has a non-numeric value but is typed as ${valueType}.`);
+      value = numeric;
+    }
+  } else if (valueType === "text") {
+    value = String(value ?? "");
+  } else if (valueType === "list") {
+    let items = value;
+    if (typeof items === "string") {
+      try {
+        const parsed = JSON.parse(items);
+        items = Array.isArray(parsed) ? parsed : items.split(/\r?\n/).filter(line => line.length > 0);
+      } catch {
+        items = items.split(/\r?\n/).filter(line => line.length > 0);
+      }
+    }
+    if (!Array.isArray(items)) throw new Error(`List property “${name || "(unnamed)"}” must contain a list of items.`);
+    value = items.map(normalizeListItem);
+  }
+
+  return { ...property, name, valueType, value };
+}
+
 export function getActiveProjectId() {
   try {
     return localStorage.getItem(ACTIVE_PROJECT_KEY) || "default";
@@ -175,11 +273,7 @@ function normalizeProjectRecord(record, context = "backup") {
       ? record.tags.map(tag => String(tag ?? ""))
       : [],
     properties: Array.isArray(record.properties)
-      ? record.properties.map(property => ({
-          ...property,
-          name: String(property.name ?? ""),
-          value: String(property.value ?? "")
-        }))
+      ? record.properties.map(normalizeProperty)
       : [],
     related: Array.isArray(record.related)
       ? record.related.map(String)
@@ -522,7 +616,7 @@ function cloneStarter(starter) {
     ...record,
     tags: Array.isArray(record.tags) ? [...record.tags] : [],
     properties: Array.isArray(record.properties)
-      ? record.properties.map(property => ({ ...property }))
+      ? record.properties.map(normalizeProperty)
       : [],
     related: Array.isArray(record.related) ? [...record.related] : []
   }));
@@ -580,10 +674,7 @@ export function loadRecords(starter, uid) {
                 throw new Error("A saved property has an invalid structure.");
               }
 
-              return {
-                name: String(property.name || ""),
-                value: String(property.value ?? "")
-              };
+              return normalizeProperty(property);
             })
           : [],
         related: Array.isArray(record.related)

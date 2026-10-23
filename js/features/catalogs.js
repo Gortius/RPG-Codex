@@ -6,7 +6,7 @@ import {
   syncCatalogs as syncStoredCatalogs,
   mergeCatalog as mergeStoredCatalog,
   catalogNames as getStoredCatalogNames
-} from "../data/storage.js";
+} from "../data/storage.js?v=20261023-r5";
 
 export function createCatalogFeatures({
   getRecords,

@@ -166,9 +166,15 @@ export function filterRecords(records, filters) {
       record.subcategory,
       record.description,
       ...recordTags,
-      ...properties.map(
-        property => property.name + " " + property.value
-      )
+      ...properties.map(property => {
+        const value = Array.isArray(property.value)
+          ? property.value.map(item => {
+              if (item && typeof item === "object") return `${item.type || ""} ${typeof item.value === "object" ? JSON.stringify(item.value) : item.value ?? ""}`;
+              return String(item ?? "");
+            }).join(" ")
+          : String(property.value ?? "");
+        return property.name + " " + value;
+      })
     ].join(" ").toLowerCase();
 
     return (

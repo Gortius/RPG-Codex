@@ -31,9 +31,55 @@ export function createViewFeatures({
 
     const records = getRecords();
 
+    const propertyTypeLabel = property => ({
+      number: "Number",
+      percentage: "Percentage",
+      text: "Text",
+      list: "List"
+    }[property.valueType] || "Text");
+
+    const renderPropertyValue = property => {
+      if (property.valueType === "percentage") {
+        const value = Number(property.value);
+        return Number.isFinite(value)
+          ? `${esc(Number((value * 100).toFixed(6)))}%`
+          : '<span class="muted">Not set</span>';
+      }
+      if (property.valueType === "list") {
+        const items = Array.isArray(property.value) ? property.value : [];
+        if (!items.length) return '<span class="muted">Empty list</span>';
+        return `<ul class="property-detail-list">${items.map(item => {
+          const itemType = item && typeof item === "object" && !Array.isArray(item) ? item.type : "text";
+          const value = item && typeof item === "object" && !Array.isArray(item) ? item.value : item;
+          if (itemType === "record") {
+            const linked = getRecord(String(value ?? ""));
+            return linked
+              ? `<li><button type="button" class="property-record-link" data-related="${esc(linked.id)}">${iconOf(linked)} ${esc(linked.name)} <span class="relation-type">· ${esc(linked.type)}</span></button></li>`
+              : `<li><span class="muted">Missing record reference: ${esc(value ?? "")}</span></li>`;
+          }
+          if (itemType === "percentage") {
+            const n = Number(value);
+            return `<li>${Number.isFinite(n) ? `${esc(Number((n * 100).toFixed(6)))}%` : "—"}</li>`;
+          }
+          if (itemType === "json") {
+            const text = typeof value === "string" ? value : JSON.stringify(value);
+            return `<li><code>${esc(text ?? "null")}</code></li>`;
+          }
+          return `<li>${esc(value ?? "—")}</li>`;
+        }).join("")}</ul>`;
+      }
+      if (property.valueType === "number") {
+        const n = Number(property.value);
+        return property.value === null || property.value === "" || !Number.isFinite(n)
+          ? '<span class="muted">Not set</span>'
+          : esc(n);
+      }
+      return esc(property.value ?? "");
+    };
+
     const props = r.properties.length
-      ? r.properties.map(p =>
-          `<div class="field"><span class="field-label">${esc(p.name)}</span>${esc(p.value)}</div>`
+      ? r.properties.map(property =>
+          `<div class="field"><span class="field-label">${esc(property.name)} <span class="property-type-chip">${propertyTypeLabel(property)}</span></span><div class="property-detail-value">${renderPropertyValue(property)}</div></div>`
         ).join("")
       : '<p class="muted">No properties defined.</p>';
 

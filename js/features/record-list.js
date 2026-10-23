@@ -71,6 +71,22 @@ export function createRecordListFeature({
 }) {
   const sortSelect = $("sort-records");
   const directionButton = $("sort-direction");
+  function previewValue(property) {
+    if (property.valueType === "percentage") {
+      const value = Number(property.value);
+      return Number.isFinite(value) ? `${Number((value * 100).toFixed(6))}%` : "—";
+    }
+    if (property.valueType === "list") {
+      const items = Array.isArray(property.value) ? property.value : [];
+      return `List · ${items.length} item${items.length === 1 ? "" : "s"}`;
+    }
+    if (property.valueType === "number") {
+      const value = Number(property.value);
+      return property.value === null || property.value === "" || !Number.isFinite(value) ? "—" : String(value);
+    }
+    return String(property.value ?? "");
+  }
+
 
   // Compatibilidade com os valores de ordenação das versões anteriores.
   if (sortSelect) {
@@ -231,7 +247,7 @@ export function createRecordListFeature({
                       ? properties.map(property => `
                           <div class="preview-property">
                             <span>${esc(property.name)}</span>
-                            <strong>${esc(property.value)}</strong>
+                            <strong>${esc(previewValue(property))}</strong>
                           </div>
                         `).join("")
                       : '<p class="muted">No properties defined.</p>'

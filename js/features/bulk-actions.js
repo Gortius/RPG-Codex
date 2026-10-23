@@ -77,6 +77,7 @@ export function createBulkActionsFeature({
       $("bulk-property-operation").value === "remove";
 
     $("bulk-property-value").disabled = remove;
+    if ($("bulk-property-type")) $("bulk-property-type").disabled = remove;
   }
 
   function enterSelectionMode(id) {
@@ -295,15 +296,30 @@ export function createBulkActionsFeature({
     const name = $("bulk-property-name").value.trim();
     const operation = $("bulk-property-operation").value;
     const value = $("bulk-property-value").value.trim();
+    const valueType = $("bulk-property-type")?.value || "text";
 
     if (!name) {
       alert("Choose or enter a property name.");
       return;
     }
 
-    if (operation !== "remove" && !value) {
-      alert("Enter a value for this property.");
-      return;
+    let typedValue = value;
+    if (operation !== "remove") {
+      if (valueType === "number" || valueType === "percentage") {
+        if (!value || !Number.isFinite(Number(value))) {
+          alert(`Enter a valid ${valueType === "percentage" ? "percentage" : "number"}.`);
+          return;
+        }
+        typedValue = valueType === "percentage" ? Number(value) / 100 : Number(value);
+      } else if (valueType === "list") {
+        try {
+          typedValue = JSON.parse(value);
+          if (!Array.isArray(typedValue)) throw new Error("The value must be a JSON array.");
+        } catch (error) {
+          alert(`Enter a valid JSON array for the list. Example: [\"one\", 2, {\"type\":\"record\",\"value\":\"record-id\"}]. ${error.message || ""}`);
+          return;
+        }
+      }
     }
 
     const chosenIds = new Set(chosen.map(record => record.id));
@@ -330,10 +346,11 @@ export function createBulkActionsFeature({
       if (index >= 0) {
         properties[index] = {
           ...properties[index],
-          value
+          valueType,
+          value: typedValue
         };
       } else {
-        properties.push({ name, value });
+        properties.push({ name, valueType, value: typedValue });
       }
 
       return { ...record, properties };
@@ -426,6 +443,15 @@ export function createBulkActionsFeature({
           <option value="set">Set or add property</option>
           <option value="remove">Remove property</option>
         </select>
+
+        <label for="bulk-property-type">Value type</label>
+        <select id="bulk-property-type">
+          <option value="text">Text</option>
+          <option value="number">Number</option>
+          <option value="percentage">Percentage (%)</option>
+          <option value="list">List (JSON array)</option>
+        </select>
+        <p class="hint">The selected type will be applied to this property on every selected record. For percentages enter 20 for 20%; lists must be valid JSON arrays.</p>
 
         <label for="bulk-property-value">Value</label>
         <input id="bulk-property-value" placeholder="Property value">

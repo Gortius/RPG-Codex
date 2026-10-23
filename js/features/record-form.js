@@ -45,7 +45,15 @@ export function createRecordFormFeature({
       }
     }
 
-    const properties = readProperties();
+    let properties;
+    try {
+      properties = readProperties();
+    } catch (error) {
+      const message = $("form-message");
+      message.textContent = error.message || "One of the property values is invalid.";
+      message.hidden = false;
+      return;
+    }
     const existing = editingId ? getRecord(editingId) : null;
     const iconColor = $("f-icon-color")?.value || "#B9A0FF";
 

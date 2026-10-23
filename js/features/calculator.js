@@ -7,7 +7,7 @@ import {
   TRASH_KEY,
   exportProjectBundle,
   importProjectBundle
-} from "../data/storage.js";
+} from "../data/storage.js?v=20261023-r5";
 import { STARTER_RECORDS } from "../data/default-records.js";
 
 const FACTORS_KEY = "rpg-codex-calculator-factors-v1";
@@ -214,6 +214,46 @@ function numericValue(value) {
   const n = Number(text);
   return Number.isFinite(n) ? n : null;
 }
+function normalizeCalculatorProperty(property) {
+  const name = String(property.name || "").trim();
+  let valueType = String(property.valueType || "").toLowerCase();
+  let value = property.value ?? "";
+  if (!["number", "percentage", "text", "list"].includes(valueType)) {
+    if (Array.isArray(value)) valueType = "list";
+    else if (typeof value === "number") valueType = "number";
+    else {
+      const text = String(value ?? "").trim();
+      const percent = text.match(/^([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)\s*%$/);
+      if (percent) { valueType = "percentage"; value = Number(percent[1]) / 100; }
+      else if (numericValue(text) !== null) { valueType = "number"; value = Number(text); }
+      else valueType = "text";
+    }
+  }
+  if (valueType === "number" || valueType === "percentage") {
+    value = value === "" || value === null ? null : numericValue(value);
+  } else if (valueType === "text") {
+    value = String(value ?? "");
+  } else if (valueType === "list") {
+    if (!Array.isArray(value)) {
+      if (typeof value === "string") {
+        try { const parsed = JSON.parse(value); value = Array.isArray(parsed) ? parsed : value.split(/\r?\n/).filter(Boolean); }
+        catch { value = value.split(/\r?\n/).filter(Boolean); }
+      } else value = [];
+    }
+  }
+  return { ...property, name, valueType, value };
+}
+function isNumericProperty(property) {
+  return Boolean(property && ["number", "percentage"].includes(property.valueType) && numericValue(property.value) !== null);
+}
+function displayPropertyValue(property) {
+  if (property?.valueType === "percentage") {
+    const value = numericValue(property.value);
+    return value === null ? "—" : `${formatNumber(value * 100)}%`;
+  }
+  if (property?.valueType === "list") return `List · ${Array.isArray(property.value) ? property.value.length : 0} items`;
+  return property?.value === null || property?.value === undefined || property?.value === "" ? "—" : String(property.value);
+}
 function formatNumber(value) {
   if (value === null || value === undefined || !Number.isFinite(Number(value))) return "—";
   return Number(value).toLocaleString(undefined, { maximumFractionDigits: 6, useGrouping: false });
@@ -226,12 +266,11 @@ function resultVariable(output) { return `result_${slug(output.id)}`; }
 function readCurrentRecords() {
   const key = getScopedStorageKey(STORAGE_KEY);
   const raw = localStorage.getItem(key);
-  if (raw === null) {
-    return getActiveProjectId() === "default"
-      ? clone(STARTER_RECORDS)
-      : [];
-  }
-  const parsed = JSON.parse(raw);
+  // Normalize starter records through the same path as saved records. This keeps
+  // the calculator usable before the first write to localStorage as well.
+  const parsed = raw === null
+    ? (getActiveProjectId() === "default" ? clone(STARTER_RECORDS) : [])
+    : JSON.parse(raw);
   if (!Array.isArray(parsed)) throw new Error("Saved records are not a list. Calculations were stopped to protect the database.");
   const ids = new Set();
   return parsed.map(record => {
@@ -250,7 +289,7 @@ function readCurrentRecords() {
       tags: asArray(record.tags),
       properties: asArray(record.properties).map(property => {
         if (!property || typeof property !== "object" || Array.isArray(property)) throw new Error(`A property in “${record.name || record.id}” is invalid.`);
-        return { name: String(property.name || "").trim(), value: property.value ?? "" };
+        return normalizeCalculatorProperty(property);
       }).filter(property => property.name)
     };
   });
@@ -276,19 +315,35 @@ function readFactors() {
 }
 
 function normalizeFactor(source) {
-  const factor = {
+  const inputs = asArray(source.inputs).map((input, index) => ({
+    id: String(input.id || makeId("input")),
+    key: String(input.key || `input_${index + 1}`).trim(),
+    label: String(input.label || input.key || `Input ${index + 1}`).trim(),
+    role: ["attacker", "target", "context", "other"].includes(input.role) ? input.role : "other",
+    optional: Boolean(input.optional),
+    // Retained only to migrate older factor definitions. New editing UI does not expose these filters.
+    acceptedTypes: asArray(input.acceptedTypes).map(String),
+    acceptedCategories: asArray(input.acceptedCategories).map(String),
+    requiredProperties: asArray(input.requiredProperties).map(String)
+  }));
+  const sourceVariables = Array.isArray(source.variables)
+    ? source.variables
+    : inputs.flatMap(input => input.requiredProperties.map(propertyName => ({
+        id: makeId("variable"),
+        name: inputVariable(input.key, propertyName),
+        inputKey: input.key,
+        propertyName
+      })));
+  return {
     id: String(source.id || makeId("factor")),
     name: String(source.name || "Untitled factor").trim(),
     description: String(source.description || ""),
-    inputs: asArray(source.inputs).map((input, index) => ({
-      id: String(input.id || makeId("input")),
-      key: String(input.key || `input_${index + 1}`).trim(),
-      label: String(input.label || input.key || `Input ${index + 1}`).trim(),
-      role: ["attacker", "target", "context", "other"].includes(input.role) ? input.role : "other",
-      optional: Boolean(input.optional),
-      acceptedTypes: asArray(input.acceptedTypes).map(String),
-      acceptedCategories: asArray(input.acceptedCategories).map(String),
-      requiredProperties: asArray(input.requiredProperties).map(String)
+    inputs,
+    variables: sourceVariables.map((variable, index) => ({
+      id: String(variable.id || makeId("variable")),
+      name: String(variable.name || `X${index + 1}`).trim(),
+      inputKey: String(variable.inputKey || inputs[0]?.key || ""),
+      propertyName: String(variable.propertyName || "").trim()
     })),
     outputs: asArray(source.outputs).map(output => ({
       id: String(output.id || makeId("output")),
@@ -302,7 +357,6 @@ function normalizeFactor(source) {
         : {}
     }))
   };
-  return factor;
 }
 
 function findDependencyCycle(factors) {
@@ -350,6 +404,18 @@ function validateFactor(factor, factors) {
     inputKeys.add(input.key.toLowerCase());
     if (!input.label) throw new Error("Every input needs a display name.");
   }
+  const variableNames = new Set();
+  const variableIds = new Set();
+  for (const variable of normalized.variables) {
+    if (!variable.id || variableIds.has(variable.id)) throw new Error("Each formula variable must have a unique ID.");
+    variableIds.add(variable.id);
+    if (!validKey(variable.name)) throw new Error(`Variable name “${variable.name}” must start with a letter or underscore and contain only letters, numbers and underscores.`);
+    const key = variable.name.toLowerCase();
+    if (variableNames.has(key)) throw new Error(`Variable name “${variable.name}” is duplicated. Each variable must have a unique name.`);
+    variableNames.add(key);
+    if (!inputKeys.has(variable.inputKey)) throw new Error(`Variable “${variable.name}” must be linked to an existing record source.`);
+    if (!variable.propertyName) throw new Error(`Choose a numeric property for variable “${variable.name}”.`);
+  }
   const outputNames = new Set();
   const outputIds = new Set();
   for (const output of normalized.outputs) {
@@ -386,52 +452,45 @@ function validateFactor(factor, factors) {
 function propertyNames(records) {
   return [...new Set(records.flatMap(record => asArray(record.properties).map(property => String(property.name || "").trim()).filter(Boolean)))].sort((a, b) => a.localeCompare(b));
 }
-function typeNames(records) {
-  return [...new Set(records.map(record => String(record.type || "Item").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+function numericPropertyNames(records) {
+  return [...new Set(records.flatMap(record => asArray(record.properties).filter(isNumericProperty).map(property => String(property.name || "").trim()).filter(Boolean)))].sort((a, b) => a.localeCompare(b));
 }
-function categoryNames(records) {
-  return [...new Set(records.map(record => String(record.category || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-}
-function eligibleRecords(input, records) {
-  return records.filter(record => {
-    if (input.acceptedTypes.length && !input.acceptedTypes.includes(record.type)) return false;
-    if (input.acceptedCategories.length && !input.acceptedCategories.includes(record.category)) return false;
-    return true;
-  });
+function numericPropertyOptions(records, selected = "") {
+  const typesByName = new Map();
+  records.forEach(record => asArray(record.properties).filter(isNumericProperty).forEach(property => {
+    const name = String(property.name || "").trim();
+    if (!name) return;
+    if (!typesByName.has(name)) typesByName.set(name, new Set());
+    typesByName.get(name).add(property.valueType === "percentage" ? "Percentage" : "Number");
+  }));
+  if (selected && !typesByName.has(selected)) typesByName.set(selected, new Set(["Unavailable"]));
+  return [...typesByName.keys()].sort((a, b) => a.localeCompare(b)).map(name => {
+    const types = [...typesByName.get(name)].join(" / ");
+    return `<option value="${escapeHTML(name)}" ${name === selected ? "selected" : ""}>${escapeHTML(name)} · ${escapeHTML(types)}</option>`;
+  }).join("");
 }
 function getProperty(record, propertyName) {
-  return asArray(record.properties).find(property => String(property.name || "").toLowerCase() === String(propertyName || "").toLowerCase());
+  return asArray(record?.properties).find(property => String(property.name || "").toLowerCase() === String(propertyName || "").toLowerCase());
+}
+function variablesForInput(factor, inputKey) {
+  return asArray(factor?.variables).filter(variable => variable.inputKey === inputKey && variable.propertyName);
+}
+function eligibleRecords(input, factor, records) {
+  const mappings = variablesForInput(factor, input.key);
+  return records.filter(record => {
+    if (!asArray(record.properties).some(isNumericProperty)) return false;
+    if (!mappings.length) return true;
+    return mappings.every(variable => isNumericProperty(getProperty(record, variable.propertyName)));
+  });
 }
 function variableCandidates(factor, records, factors = [], currentOutputId = "") {
-  const result = [];
-  const counts = new Map();
-  for (const input of factor.inputs) {
-    const names = new Set([
-      ...input.requiredProperties,
-      ...eligibleRecords(input, records).flatMap(record => asArray(record.properties).map(property => String(property.name || "").trim()).filter(Boolean))
-    ]);
-    for (const name of names) counts.set(slug(name), (counts.get(slug(name)) || 0) + 1);
-    for (const name of names) {
-      result.push({
-        token: inputVariable(input.key, name),
-        label: `${input.key}.${name}`,
-        inputKey: input.key,
-        property: name
-      });
-      if (!name.includes(" ") && /^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
-        result.push({ token: `${input.key}.${name}`, label: `${input.key}.${name}`, inputKey: input.key, property: name });
-      }
-    }
-  }
-  for (const input of factor.inputs) {
-    const names = new Set([
-      ...input.requiredProperties,
-      ...eligibleRecords(input, records).flatMap(record => asArray(record.properties).map(property => String(property.name || "").trim()).filter(Boolean))
-    ]);
-    for (const name of names) if (counts.get(slug(name)) === 1 && /^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
-      result.push({ token: name, label: `${name} (unique property)`, inputKey: input.key, property: name });
-    }
-  }
+  const result = factor.variables.map(variable => {
+    const input = factor.inputs.find(item => item.key === variable.inputKey);
+    return {
+      token: variable.name,
+      label: `${variable.name} ← ${input?.label || variable.inputKey}.${variable.propertyName}`
+    };
+  });
   for (const dependency of factor.dependencies) {
     const depended = factors.find(item => item.id === dependency.factorId);
     if (!depended) continue;
@@ -440,9 +499,7 @@ function variableCandidates(factor, records, factors = [], currentOutputId = "")
       label: `${depended.name} → ${output.name}`
     });
   }
-  const outputIndex = currentOutputId
-    ? factor.outputs.findIndex(output => output.id === currentOutputId)
-    : factor.outputs.length;
+  const outputIndex = currentOutputId ? factor.outputs.findIndex(output => output.id === currentOutputId) : factor.outputs.length;
   const earlierOutputs = outputIndex < 0 ? [] : factor.outputs.slice(0, outputIndex);
   for (const output of earlierOutputs) result.push({ token: resultVariable(output), label: `Earlier result → ${output.name}` });
   const seen = new Set();
@@ -455,31 +512,31 @@ function variableCandidates(factor, records, factors = [], currentOutputId = "")
 
 function buildVariablesForInputs(factor, assignments, rootRoleMap, overrides, factors, stack) {
   const variables = Object.create(null);
-  const addShort = [];
-  const aliasOccurrences = new Map();
+  const shortAliases = [];
   const propertyRows = [];
+  const sourceProperties = new Map();
   for (const input of factor.inputs) {
     const record = assignments[input.key];
     if (!record) {
       if (input.optional) continue;
-      throw new Error(`No record was assigned to input “${input.label}”.`);
+      throw new Error(`No record was assigned to “${input.label}”.`);
     }
-    if (input.acceptedTypes.length && !input.acceptedTypes.includes(record.type)) throw new Error(`“${record.name}” has an incompatible type for input “${input.label}”.`);
-    if (input.acceptedCategories.length && !input.acceptedCategories.includes(record.category)) throw new Error(`“${record.name}” has an incompatible category for input “${input.label}”.`);
     const rootKey = rootRoleMap[input.key] || input.key;
-    const properties = new Map(asArray(record.properties).map(property => [String(property.name).toLowerCase(), { name: String(property.name), value: property.value }]));
+    const properties = new Map(asArray(record.properties).map(property => [String(property.name).toLowerCase(), { ...property, name: String(property.name) }]));
+
     for (const override of overrides) {
       if (override.inputKey !== rootKey) continue;
       const key = override.property.toLowerCase();
       let current = properties.get(key);
       if (!current && override.operation === "set") {
-        current = { name: override.property, value: override.amount };
+        current = { name: override.property, valueType: "number", value: override.amount };
         properties.set(key, current);
         continue;
       }
-      if (!current) throw new Error(`Cannot ${override.operation} “${override.property}” for “${record.name}”: the property is missing (use Set to create a temporary value).`);
+      if (!current) throw new Error(`Cannot ${override.operation} “${override.property}” for “${record.name}”: the property is missing (use Set to create a temporary numeric value).`);
+      if (!isNumericProperty(current)) throw new Error(`Property “${current.name}” on “${record.name}” is not typed as Number or Percentage.`);
       const n = numericValue(current.value);
-      if (n === null) throw new Error(`Property “${current.name}” on “${record.name}” is not numeric.`);
+      if (n === null) throw new Error(`Property “${current.name}” on “${record.name}” has no numeric value.`);
       if (override.operation === "set") current.value = override.amount;
       else if (override.operation === "add") current.value = n + override.amount;
       else if (override.operation === "subtract") current.value = n - override.amount;
@@ -489,39 +546,47 @@ function buildVariablesForInputs(factor, assignments, rootRoleMap, overrides, fa
         current.value = n / override.amount;
       }
       if (!Number.isFinite(Number(current.value))) throw new Error(`The temporary value for “${current.name}” is not finite.`);
+      properties.set(key, current);
     }
-    const normalizedProps = [...properties.values()];
-    for (const name of input.requiredProperties) {
-      const property = properties.get(name.toLowerCase());
-      if (!property) throw new Error(`Required property “${name}” is missing on “${record.name}”.`);
-      if (numericValue(property.value) === null) throw new Error(`Required property “${name}” on “${record.name}” is not numeric.`);
-    }
-    for (const property of normalizedProps) {
-      const value = numericValue(property.value);
-      if (value === null) continue;
-      const aliases = [inputVariable(input.key, property.name)];
-      if (!property.name.includes(" ") && /^[A-Za-z_][A-Za-z0-9_]*$/.test(property.name)) aliases.push(`${input.key}.${property.name}`);
-      for (const alias of aliases) addVariable(variables, alias, value);
-      propertyRows.push({ inputKey: input.key, name: property.name, value });
-      addShort.push({ slug: propertySlug(property.name), original: property.name, value, inputKey: input.key });
+
+    sourceProperties.set(input.key, properties);
+    for (const property of properties.values()) {
+      if (!isNumericProperty(property)) continue;
+      propertyRows.push({ inputKey: input.key, name: property.name, value: numericValue(property.value) });
+      shortAliases.push({ original: property.name, value: numericValue(property.value), inputKey: input.key });
+      addVariable(variables, inputVariable(input.key, property.name), numericValue(property.value));
+      if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(property.name)) addVariable(variables, `${input.key}.${property.name}`, numericValue(property.value));
     }
   }
-  const propertyCounts = new Map();
-  addShort.forEach(item => propertyCounts.set(item.slug, (propertyCounts.get(item.slug) || 0) + 1));
-  addShort.forEach(item => {
-    const alias = /^[A-Za-z_][A-Za-z0-9_]*$/.test(item.original) ? item.original : "";
-    if (alias) addVariable(variables, alias, item.value);
-  });
-  // An unqualified name appearing on more than one input is explicitly ambiguous.
+
+  // The factor explicitly defines which property feeds each freely named formula variable.
+  for (const mapping of factor.variables) {
+    const record = assignments[mapping.inputKey];
+    if (!record) {
+      const input = factor.inputs.find(item => item.key === mapping.inputKey);
+      if (input?.optional) continue;
+      throw new Error(`Variable “${mapping.name}” has no selected record source.`);
+    }
+    const properties = sourceProperties.get(mapping.inputKey);
+    const property = properties?.get(mapping.propertyName.toLowerCase()) || getProperty(record, mapping.propertyName);
+    if (!property) throw new Error(`Variable “${mapping.name}” needs property “${mapping.propertyName}”, which is missing on “${record.name}”.`);
+    if (!isNumericProperty(property)) throw new Error(`Variable “${mapping.name}” cannot use “${mapping.propertyName}” on “${record.name}”: only Number and Percentage properties can be used in formulas.`);
+    const value = numericValue(property.value);
+    if (value === null) throw new Error(`Variable “${mapping.name}” has no numeric value on “${record.name}”.`);
+    addVariable(variables, mapping.name, value);
+  }
+
+  // Retain common unqualified aliases for old factors. They are not shown in the new editor.
+  for (const item of shortAliases) {
+    if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(item.original)) addVariable(variables, item.original, item.value);
+  }
   const byName = new Map();
   propertyRows.forEach(item => {
     const key = slug(item.name);
     const previous = byName.get(key) || new Set();
     previous.add(item.inputKey); byName.set(key, previous);
   });
-  for (const [name, keys] of byName.entries()) {
-    if (keys.size > 1) variables[name] = AMBIGUOUS;
-  }
+  for (const [name, keys] of byName.entries()) if (keys.size > 1) variables[name] = AMBIGUOUS;
   return { variables, propertyRows };
 }
 
@@ -600,7 +665,33 @@ function styleText() {
     .calc-btn{display:inline-flex;gap:7px;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font:inherit;font-size:12px;font-weight:650;background:transparent;color:var(--text);cursor:pointer}
     .calc-btn.primary{background:var(--accent);border-color:var(--accent);color:#191620}.calc-btn.danger{color:#ff9ca7;border-color:#703a43}.calc-btn:disabled{opacity:.45;cursor:not-allowed}
     .calc-field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.calc-field-grid .calc-field{margin-bottom:9px}
-    .calc-input-row,.calc-output-row,.calc-dep-row,.calc-override-row{padding:12px;margin:10px 0;border:1px solid var(--border);border-radius:10px;background:rgba(0,0,0,.09);min-width:0}
+    .calc-input-row,.calc-variable-row,.calc-output-row,.calc-dep-row,.calc-override-row{padding:12px;margin:10px 0;border:1px solid var(--border);border-radius:10px;background:rgba(0,0,0,.09);min-width:0}
+
+    .calc-help-message{background:rgba(185,160,255,.07);border-color:#504269;line-height:1.75}
+    .calc-guide-list{margin:0;padding-left:20px;color:var(--muted);font-size:12px;line-height:1.85}
+    .calc-guide-list code,.calc-help-message code{padding:2px 4px;border-radius:4px;background:#17181e;color:#d7c8ff;overflow-wrap:anywhere}
+    .calc-variable-row{padding:12px;margin:10px 0;border:1px solid #4c4260;border-radius:10px;background:rgba(185,160,255,.045);min-width:0}
+    .calc-variable-summary{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:9px;padding:8px 10px;border-radius:8px;background:#1b1a22;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+    .calc-variable-name{font-weight:800;color:#d7c8ff;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+    .calc-token-label{font-family:inherit;font-size:10px;color:#b9accd;white-space:normal}
+    .calc-source-picker{margin:12px 0;padding:12px;border:1px solid var(--border);border-radius:11px;background:rgba(0,0,0,.06);min-width:0}
+    .calc-source-picker .calc-item-heading{align-items:flex-start}
+    .calc-source-search-label{display:grid;gap:6px;margin:9px 0;font-size:11px;font-weight:700;color:var(--muted)}
+    .calc-source-search-label input{font:inherit;font-weight:400;color:var(--text);background:#17181e;border:1px solid var(--border);border-radius:8px;padding:9px 10px;min-width:0;width:100%}
+    .calc-source-variables{display:flex;gap:5px;flex-wrap:wrap;margin:7px 0}
+    .calc-record-picker{display:grid;gap:5px;max-height:300px;overflow:auto;padding:2px 3px 2px 0}
+    .calc-record-option{display:flex;align-items:flex-start;gap:9px;padding:9px;border:1px solid var(--border);border-radius:9px;background:#1c1d23;cursor:pointer;min-width:0}
+    .calc-record-option:hover{border-color:#655482;background:#24212d}
+    .calc-record-option input{flex:0 0 auto;margin-top:3px;accent-color:var(--accent);width:16px;height:16px}
+    .calc-record-info{display:grid;gap:3px;min-width:0;flex:1}
+    .calc-record-info strong{font-size:12px;overflow-wrap:anywhere}
+    .calc-record-info small{color:var(--muted);font-size:10px;overflow-wrap:anywhere}
+    .calc-record-info .calc-record-props{color:#d0c3e8}
+    .calc-record-empty{padding:12px;border:1px dashed var(--border);border-radius:8px;font-size:12px;color:var(--muted);line-height:1.55}
+    .calc-picker-actions{margin-top:9px}
+    .calc-picker-actions .calc-muted{font-size:10px}
+    .calc-picker-actions button{font-size:11px}
+
     .calc-item-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}.calc-item-heading strong{font-size:13px}
     .calc-item-heading .calc-btn{padding:6px 8px}.calc-token-list{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
     .calc-token{font-family:ui-monospace,Consolas,monospace;font-size:11px;padding:6px 8px;background:#292532;border:1px solid #403650;border-radius:7px;color:#d7c8ff;cursor:pointer;max-width:100%;overflow-wrap:anywhere}
@@ -648,7 +739,7 @@ const state = {
   records: [], factors: [], factorReadError: "", recordsReadError: "",
   selectedFactorId: "", activeTab: "run", editor: null, editorError: "",
   results: [], lastRunAt: null, visibleColumns: {}, sortBy: "", sortDirection: "desc",
-  selectedRecordIds: {}, overrideDraft: [], scenarioEnabled: false,
+  selectedRecordIds: {}, inputSearch: {}, overrideDraft: [], scenarioEnabled: false,
   resultSearch: "", numericFilter: { outputId: "", operator: ">", value: "" },
   highlightMax: true, highlightMin: false
 };
@@ -758,13 +849,18 @@ function exampleFactor() {
     id: makeId("factor"), name: "Effective Damage (example)",
     description: "Illustrative damage reduction formula. Adapt it to your game's real combat rules.",
     inputs: [
-      { id: makeId("input"), key: "attacker", label: "Attacker / weapon", role: "attacker", acceptedTypes: ["Item"], acceptedCategories: [], requiredProperties: ["Damage"] },
-      { id: makeId("input"), key: "target", label: "Target / mob", role: "target", acceptedTypes: ["Mob"], acceptedCategories: [], requiredProperties: ["Armor"] }
+      { id: makeId("input"), key: "weapon", label: "Weapon", role: "attacker", acceptedTypes: [], acceptedCategories: [], requiredProperties: [] },
+      { id: makeId("input"), key: "target", label: "Target", role: "target", acceptedTypes: [], acceptedCategories: [], requiredProperties: [] }
     ],
-    outputs: [{ id: makeId("output"), name: "Damage", formula: "attacker_damage * (100 / (100 + 2.5 * target_armor))" }],
+    variables: [
+      { id: makeId("variable"), name: "X", inputKey: "weapon", propertyName: "Damage" },
+      { id: makeId("variable"), name: "Y", inputKey: "target", propertyName: "Armor" }
+    ],
+    outputs: [{ id: makeId("output"), name: "Damage", formula: "X * (100 / (100 + 2.5 * Y))" }],
     dependencies: []
   });
 }
+
 function renderAll() {
   if (!$("calculator-page")) return;
   renderStorageMessage();
@@ -788,14 +884,18 @@ function renderFactorList() {
   if (!pane) return;
   const cards = state.factors.map(factor => `
     <article class="calc-factor-card">
-      <div class="calc-item-heading"><div><h4>${escapeHTML(factor.name)}</h4><p class="calc-muted">${escapeHTML(factor.description || "No description.")}</p></div><span class="calc-tag">${factor.inputs.length} input${factor.inputs.length === 1 ? "" : "s"}</span></div>
-      <div>${factor.outputs.map(output => `<span class="calc-tag">${escapeHTML(output.name)}</span>`).join("")}${factor.dependencies.length ? `<span class="calc-tag">${factor.dependencies.length} dependenc${factor.dependencies.length === 1 ? "y" : "ies"}</span>` : ""}</div>
+      <div class="calc-item-heading"><div><h4>${escapeHTML(factor.name)}</h4><p class="calc-muted">${escapeHTML(factor.description || "No description.")}</p></div><span class="calc-tag">${factor.inputs.length} source${factor.inputs.length === 1 ? "" : "s"} · ${factor.variables.length} variable${factor.variables.length === 1 ? "" : "s"}</span></div>
+      <div>${factor.variables.map(variable => {
+        const input = factor.inputs.find(item => item.key === variable.inputKey);
+        return `<span class="calc-tag"><strong>${escapeHTML(variable.name)}</strong> ← ${escapeHTML(input?.label || variable.inputKey)}.${escapeHTML(variable.propertyName)}</span>`;
+      }).join("")}</div>
+      <div style="margin-top:5px">${factor.outputs.map(output => `<span class="calc-tag">Result: ${escapeHTML(output.name)}</span>`).join("")}${factor.dependencies.length ? `<span class="calc-tag">${factor.dependencies.length} dependenc${factor.dependencies.length === 1 ? "y" : "ies"}</span>` : ""}</div>
       <div class="calc-row" style="margin-top:11px"><button class="calc-btn primary" type="button" data-factor-action="run" data-factor-id="${escapeHTML(factor.id)}">Use factor</button><button class="calc-btn" type="button" data-factor-action="edit" data-factor-id="${escapeHTML(factor.id)}">Edit</button><button class="calc-btn" type="button" data-factor-action="duplicate" data-factor-id="${escapeHTML(factor.id)}">Duplicate</button><button class="calc-btn danger" type="button" data-factor-action="delete" data-factor-id="${escapeHTML(factor.id)}">Delete</button></div>
     </article>`).join("");
   pane.innerHTML = `
     <div class="calc-layout">
       <div class="calc-panel"><h3>Factor library</h3><p class="calc-muted">Factors are saved within the active project. Use stable inputs and named outputs to reuse formulas in different tests.</p><div class="calc-row"><button class="calc-btn primary" type="button" data-calc-action="new-factor" ${state.factorReadError ? "disabled" : ""}>＋ New factor</button><button class="calc-btn" type="button" data-calc-action="example-factor" ${state.factorReadError ? "disabled" : ""}>Create damage example</button></div>${state.factors.length ? `<div class="calc-factor-list" style="margin-top:14px">${cards}</div>` : `<div class="calc-empty" style="margin-top:14px">No factors yet.<br>Create your first factor, or start with the illustrative damage formula.</div>`}</div>
-      <div class="calc-panel"><h3>Design guidelines</h3><div class="calc-subtitle">Inputs</div><p class="calc-muted">Each input has a variable key, a descriptive label, an optional accepted record type/category filter, required numeric properties and an optional-input switch. A single selected record stays fixed during mass calculations.</p><div class="calc-subtitle">Outputs</div><p class="calc-muted">Create one or more named outputs. Outputs are calculated from top to bottom; later outputs can reference earlier ones with the suggested <code>result_…</code> token.</p><div class="calc-subtitle">Dependencies</div><p class="calc-muted">A factor can depend on other factors and map each dependency input to one of its own inputs. Circular dependencies are blocked.</p><div class="calc-subtitle">Safety</div><p class="calc-muted">Only arithmetic expressions and the listed math functions are interpreted. Factor formulas cannot run JavaScript, access the network or modify source records.</p></div>
+      <div class="calc-panel"><h3>Quick guide</h3><ol class="calc-guide-list"><li>Create a record source named Weapon or Target.</li><li>Add variables such as <code>X</code> and <code>Y</code>.</li><li>Connect <code>X</code> to Weapon → Damage and <code>Y</code> to Target → Armor.</li><li>Write <code>X * (100 / (100 + 2.5 * Y))</code> in the formula.</li><li>Save, choose one or more records for each source, and run it.</li></ol><div class="calc-subtitle">Allowed values</div><p class="calc-muted">Only Number and Percentage properties can be variables. Text and List properties stay available on records but do not enter mathematical formulas.</p><div class="calc-subtitle">Safety and advanced use</div><p class="calc-muted">Formulas use a restricted mathematical interpreter, not arbitrary JavaScript. Dependencies and multiple outputs are optional advanced features.</p></div>
       <div id="calc-factor-editor" class="calc-panel calc-wide" hidden></div>
     </div>`;
 }
@@ -809,54 +909,81 @@ function renderFactorEditor() {
   if (!container) return;
   const factor = state.editor;
   if (!factor) { container.hidden = true; container.innerHTML = ""; return; }
-  const types = [...new Set([...typeNames(state.records), ...factor.inputs.flatMap(input => input.acceptedTypes)])].sort((a, b) => a.localeCompare(b));
-  const categories = [...new Set([...categoryNames(state.records), ...factor.inputs.flatMap(input => input.acceptedCategories)])].sort((a, b) => a.localeCompare(b));
-  const props = [...new Set([...propertyNames(state.records), ...factor.inputs.flatMap(input => input.requiredProperties)])].sort((a, b) => a.localeCompare(b));
+  const numericProps = numericPropertyNames(state.records);
   const inputHTML = factor.inputs.map((input, index) => `
     <div class="calc-input-row" data-calc-input-row data-input-id="${escapeHTML(input.id)}">
-      <div class="calc-item-heading"><strong>Input ${index + 1}</strong><button type="button" class="calc-btn danger" data-calc-action="remove-input" data-input-id="${escapeHTML(input.id)}">Remove</button></div>
+      <input type="hidden" data-input-key value="${escapeHTML(input.key)}">
+      <div class="calc-item-heading"><strong>Record source ${index + 1}</strong><button type="button" class="calc-btn danger" data-calc-action="remove-input" data-input-id="${escapeHTML(input.id)}">Remove</button></div>
       <div class="calc-field-grid">
-        <div class="calc-field"><label>Variable key</label><input data-input-key value="${escapeHTML(input.key)}" maxlength="36" placeholder="attacker"></div>
-        <div class="calc-field"><label>Display name</label><input data-input-label value="${escapeHTML(input.label)}" maxlength="70" placeholder="Attacker / weapon"></div>
-        <div class="calc-field"><label>Role</label><select data-input-role>${["attacker", "target", "context", "other"].map(role => `<option value="${role}" ${role === input.role ? "selected" : ""}>${role[0].toUpperCase() + role.slice(1)}</option>`).join("")}</select><label class="calc-inline-check"><input type="checkbox" data-input-optional ${input.optional ? "checked" : ""}> Optional input</label></div>
-        <div class="calc-field"><label>Accepted record types <span class="calc-muted">(empty = any)</span></label><select multiple data-input-types>${multiOptions(types, input.acceptedTypes)}</select></div>
-        <div class="calc-field"><label>Accepted categories <span class="calc-muted">(empty = any)</span></label><select multiple data-input-categories>${multiOptions(categories, input.acceptedCategories)}</select></div>
-        <div class="calc-field"><label>Required numeric properties</label><select multiple data-input-required>${multiOptions(props, input.requiredProperties)}</select></div>
+        <div class="calc-field"><label>Source name</label><input data-input-label value="${escapeHTML(input.label)}" maxlength="70" placeholder="Weapon, Target, Buff…"><small class="calc-muted">This is the name shown when you choose records to compare.</small></div>
+        <div class="calc-field"><label>Role in the calculation</label><select data-input-role>${[["attacker","Attacker / source"],["target","Target"],["context","Context / modifier"],["other","Other"]].map(([role,label]) => `<option value="${role}" ${role === input.role ? "selected" : ""}>${label}</option>`).join("")}</select><label class="calc-inline-check"><input type="checkbox" data-input-optional ${input.optional ? "checked" : ""}> This source may be left empty</label></div>
       </div>
+      <p class="calc-muted">No record type or category is required. During a calculation, this source can use any record with the numeric properties assigned to its variables.</p>
     </div>`).join("");
+  const sourceOptions = factor.inputs.map(input => `<option value="${escapeHTML(input.key)}">${escapeHTML(input.label || input.key)}</option>`).join("");
+  const availableNumericProperties = numericPropertyNames(state.records);
+  const variablesHTML = factor.variables.map((variable, index) => {
+    const propertyOptions = availableNumericProperties.length || variable.propertyName
+      ? `<option value="">Choose a numeric property…</option>${numericPropertyOptions(state.records, variable.propertyName)}`
+      : `<option value="">No Number or Percentage properties yet</option>`;
+    const propertyHelp = availableNumericProperties.length
+      ? "Only Number and Percentage properties are listed. Percentages use fractions in formulas (20% = 0.2)."
+      : "First, edit any record and set one property to Number or Percentage. Text and List properties cannot be used in formulas.";
+    return `
+    <div class="calc-variable-row" data-calc-variable-row data-variable-id="${escapeHTML(variable.id)}">
+      <div class="calc-item-heading"><strong>Variable ${index + 1}</strong><button type="button" class="calc-btn danger" data-calc-action="remove-variable" data-variable-id="${escapeHTML(variable.id)}">Remove</button></div>
+      <div class="calc-field-grid">
+        <div class="calc-field"><label>Variable name</label><input data-variable-name value="${escapeHTML(variable.name)}" maxlength="36" placeholder="X, Y, Xdmg…"><small class="calc-muted">This exact name is what you type in the formula.</small></div>
+        <div class="calc-field"><label>Read from record source</label><select data-variable-input>${factor.inputs.map(input => `<option value="${escapeHTML(input.key)}" ${variable.inputKey === input.key ? "selected" : ""}>${escapeHTML(input.label || input.key)}</option>`).join("")}</select></div>
+        <div class="calc-field"><label>Read this property</label><select data-variable-property>${propertyOptions}</select><small class="calc-muted">${escapeHTML(propertyHelp)}</small></div>
+      </div>
+      <div class="calc-variable-summary"><span class="calc-variable-name" data-variable-summary-name>${escapeHTML(variable.name || "X")}</span><span>←</span><span data-variable-summary-source>${escapeHTML(factor.inputs.find(input => input.key === variable.inputKey)?.label || variable.inputKey)}</span><span>.</span><span data-variable-summary-property>${escapeHTML(variable.propertyName || "Choose property")}</span></div>
+    </div>`;
+  }).join("");
   const outputHTML = factor.outputs.map((output, index) => {
     const tokens = variableCandidates(factor, state.records, state.factors, output.id);
     return `<div class="calc-output-row" data-calc-output-row data-output-id="${escapeHTML(output.id)}">
-      <div class="calc-item-heading"><strong>Output ${index + 1}</strong>${factor.outputs.length > 1 ? `<button type="button" class="calc-btn danger" data-calc-action="remove-output" data-output-id="${escapeHTML(output.id)}">Remove</button>` : ""}</div>
-      <div class="calc-field"><label>Result name</label><input data-output-name value="${escapeHTML(output.name)}" maxlength="60" placeholder="Damage"></div>
-      <div class="calc-field"><label>Formula</label><textarea data-output-formula spellcheck="false" placeholder="attacker_damage * (100 / (100 + 2.5 * target_armor))">${escapeHTML(output.formula)}</textarea><div class="calc-muted">Click a variable to insert it into the formula. Results above this one can be reused.</div><div class="calc-token-list">${tokens.map(token => `<button class="calc-token" type="button" data-insert-token="${escapeHTML(token.token)}" title="Insert ${escapeHTML(token.label)}">${escapeHTML(token.token)}</button>`).join("") || `<span class="calc-muted">Add inputs and choose properties to populate the variable list.</span>`}</div><div class="calc-token-list">${Object.keys(ALLOWED_FUNCTIONS).map(fn => `<button class="calc-token" type="button" data-insert-token="${fn}()">${fn}()</button>`).join("")}</div></div>
+      <div class="calc-item-heading"><strong>Result ${index + 1}</strong>${factor.outputs.length > 1 ? `<button type="button" class="calc-btn danger" data-calc-action="remove-output" data-output-id="${escapeHTML(output.id)}">Remove</button>` : ""}</div>
+      <div class="calc-field"><label>Result name</label><input data-output-name value="${escapeHTML(output.name)}" maxlength="60" placeholder="Damage, DPS, Healing…"></div>
+      <div class="calc-field"><label>Formula</label><textarea data-output-formula spellcheck="false" placeholder="X * (100 / (100 + 2.5 * Y))">${escapeHTML(output.formula)}</textarea><div class="calc-muted">Type the variable names you created, or click a chip below to insert one. Outputs above this one can also be reused.</div><div class="calc-token-list">${tokens.map(token => `<button class="calc-token" type="button" data-insert-token="${escapeHTML(token.token)}" title="Insert ${escapeHTML(token.label)}">${escapeHTML(token.token)} <span class="calc-token-label">${escapeHTML(token.label)}</span></button>`).join("") || `<span class="calc-muted">Add variables above to make them available in this formula.</span>`}</div><div class="calc-token-list">${Object.keys(ALLOWED_FUNCTIONS).map(fn => `<button class="calc-token" type="button" data-insert-token="${fn}()">${fn}()</button>`).join("")}</div></div>
     </div>`;
   }).join("");
   const otherFactors = state.factors.filter(item => item.id !== factor.id && !factor.dependencies.some(dep => dep.factorId === item.id));
   const depsHTML = factor.dependencies.map(dependency => {
     const depended = state.factors.find(item => item.id === dependency.factorId);
     if (!depended) return `<div class="calc-message error">A referenced factor no longer exists.</div>`;
-    return `<div class="calc-dep-row" data-calc-dep-row data-dep-id="${escapeHTML(depended.id)}"><div class="calc-item-heading"><strong>${escapeHTML(depended.name)}</strong><button class="calc-btn danger" type="button" data-calc-action="remove-dependency" data-dep-id="${escapeHTML(depended.id)}">Remove</button></div>${depended.inputs.map(depInput => `<div class="calc-field"><label>Map “${escapeHTML(depInput.label)}” to</label><select data-dep-bind="${escapeHTML(depInput.key)}"><option value="">Choose this factor's input…</option>${factor.inputs.map(input => `<option value="${escapeHTML(input.key)}" ${dependency.bindings[depInput.key] === input.key ? "selected" : ""}>${escapeHTML(input.label)} (${escapeHTML(input.key)})</option>`).join("")}</select></div>`).join("")}</div>`;
+    return `<div class="calc-dep-row" data-calc-dep-row data-dep-id="${escapeHTML(depended.id)}"><div class="calc-item-heading"><strong>${escapeHTML(depended.name)}</strong><button class="calc-btn danger" type="button" data-calc-action="remove-dependency" data-dep-id="${escapeHTML(depended.id)}">Remove</button></div>${depended.inputs.map(depInput => `<div class="calc-field"><label>For “${escapeHTML(depInput.label)}”, use this source</label><select data-dep-bind="${escapeHTML(depInput.key)}"><option value="">Choose a source…</option>${factor.inputs.map(input => `<option value="${escapeHTML(input.key)}" ${dependency.bindings[depInput.key] === input.key ? "selected" : ""}>${escapeHTML(input.label)} </option>`).join("")}</select></div>`).join("")}</div>`;
   }).join("");
   container.hidden = false;
   container.innerHTML = `
     <div class="calc-item-heading"><div><p class="eyebrow">FACTOR EDITOR</p><h3>${factor.id && state.factors.some(item => item.id === factor.id) ? "Edit factor" : "Create factor"}</h3></div><button type="button" class="calc-btn" data-calc-action="close-editor">Close</button></div>
     ${state.editorError ? `<div class="calc-message error">${escapeHTML(state.editorError)}</div>` : ""}
     <form id="calc-factor-form">
-      <div class="calc-field-grid"><div class="calc-field"><label for="calc-factor-name">Name</label><input id="calc-factor-name" data-factor-name required maxlength="100" value="${escapeHTML(factor.name)}"></div><div class="calc-field"><label for="calc-factor-description">Description</label><input id="calc-factor-description" data-factor-description maxlength="240" value="${escapeHTML(factor.description)}"></div></div>
-      <hr class="calc-section-divider"><div class="calc-item-heading"><h4>Inputs</h4><button type="button" class="calc-btn" data-calc-action="add-input">＋ Add input</button></div>${inputHTML}
-      <hr class="calc-section-divider"><div class="calc-item-heading"><h4>Outputs and formulas</h4><button type="button" class="calc-btn" data-calc-action="add-output">＋ Add output</button></div><p class="calc-muted">Operators: + − × ÷ ^ and parentheses. Functions: ${Object.keys(ALLOWED_FUNCTIONS).join(", ")}. Percentages are stored as fractions (20% = 0.2), so use 1 + Bonus to apply a 20% bonus when Bonus = 0.2.</p>${outputHTML}
-      <hr class="calc-section-divider"><div class="calc-item-heading"><h4>Dependencies</h4><div class="calc-row"><select id="calc-new-dependency" ${otherFactors.length ? "" : "disabled"} style="max-width:240px">${otherFactors.length ? otherFactors.map(item => `<option value="${escapeHTML(item.id)}">${escapeHTML(item.name)}</option>`).join("") : `<option value="">No available factors</option>`}</select><button class="calc-btn" type="button" data-calc-action="add-dependency" ${otherFactors.length ? "" : "disabled"}>＋ Add</button></div></div><p class="calc-muted">Dependency outputs use an ID-based variable token shown in the formula suggestions. Every dependency input must map to one of this factor’s inputs.</p>${depsHTML || `<p class="calc-muted">No dependencies added.</p>`}
+      <div class="calc-field-grid"><div class="calc-field"><label for="calc-factor-name">Factor name</label><input id="calc-factor-name" data-factor-name required maxlength="100" value="${escapeHTML(factor.name)}" placeholder="Effective damage"></div><div class="calc-field"><label for="calc-factor-description">Description (optional)</label><input id="calc-factor-description" data-factor-description maxlength="240" value="${escapeHTML(factor.description)}" placeholder="What does this calculation measure?"></div></div>
+      <div class="calc-message calc-help-message"><strong>How to set up a formula</strong><br>1. Add the record sources you need (for example, Weapon and Target).<br>2. Create variables like <code>X</code> and <code>Y</code>, and connect each to a source and a Number/Percentage property.<br>3. Write the formula using those names, such as <code>X * (100 / (100 + 2.5 * Y))</code>.<br>4. Save the factor, then choose the records to compare in Run &amp; Compare.</div>
+      <hr class="calc-section-divider"><div class="calc-item-heading"><div><h4>1. Record sources</h4><p class="calc-muted">These are the record slots you'll fill when running the calculation.</p></div><button type="button" class="calc-btn" data-calc-action="add-input">＋ Add source</button></div>${inputHTML}
+      <hr class="calc-section-divider"><div class="calc-item-heading"><div><h4>2. Formula variables</h4><p class="calc-muted">Create as many as needed. Each one reads one numeric property from one source.</p></div><button type="button" class="calc-btn" data-calc-action="add-variable">＋ Add variable</button></div>${variablesHTML || `<div class="calc-empty">No variables yet. Add one for each number the formula needs (for example, X = Weapon.Damage and Y = Target.Armor).</div>`}
+      <hr class="calc-section-divider"><div class="calc-item-heading"><div><h4>3. Results and formulas</h4><p class="calc-muted">Results are calculated from top to bottom; later results may use earlier ones.</p></div><button type="button" class="calc-btn" data-calc-action="add-output">＋ Add result</button></div><p class="calc-muted">Operators: + − × ÷ ^ and parentheses. Functions: ${Object.keys(ALLOWED_FUNCTIONS).join(", ")}.</p>${outputHTML}
+      <hr class="calc-section-divider"><div class="calc-item-heading"><div><h4>Advanced: factor dependencies</h4><p class="calc-muted">Use an existing factor as part of this one. Most basic formulas do not need this.</p></div><div class="calc-row"><select id="calc-new-dependency" ${otherFactors.length ? "" : "disabled"} style="max-width:240px">${otherFactors.length ? otherFactors.map(item => `<option value="${escapeHTML(item.id)}">${escapeHTML(item.name)}</option>`).join("") : `<option value="">No available factors</option>`}</select><button class="calc-btn" type="button" data-calc-action="add-dependency" ${otherFactors.length ? "" : "disabled"}>＋ Add dependency</button></div></div>${depsHTML || `<p class="calc-muted">No dependencies added.</p>`}
       <div class="calc-row" style="margin-top:15px"><button type="submit" class="calc-btn primary">Save factor</button><button type="button" class="calc-btn" data-calc-action="close-editor">Cancel</button></div>
     </form>`;
 }
 
 function newFactorDraft() {
-  return normalizeFactor({ id: makeId("factor"), name: "New factor", description: "", inputs: [
-    { id: makeId("input"), key: "attacker", label: "Attacker", role: "attacker", acceptedTypes: [], acceptedCategories: [], requiredProperties: [] },
-    { id: makeId("input"), key: "target", label: "Target", role: "target", acceptedTypes: [], acceptedCategories: [], requiredProperties: [] }
-  ], outputs: [{ id: makeId("output"), name: "Result", formula: "1" }], dependencies: [] });
+  const firstProperty = numericPropertyNames(state.records)[0] || "";
+  return normalizeFactor({
+    id: makeId("factor"), name: "New factor", description: "",
+    inputs: [
+      { id: makeId("input"), key: "source_a", label: "Source A", role: "attacker", acceptedTypes: [], acceptedCategories: [], requiredProperties: [] }
+    ],
+    variables: [
+      { id: makeId("variable"), name: "X", inputKey: "source_a", propertyName: firstProperty }
+    ],
+    outputs: [{ id: makeId("output"), name: "Result", formula: "X" }],
+    dependencies: []
+  });
 }
+
 function readEditorForm() {
   const container = $("calc-factor-editor");
   if (!container || !state.editor) return state.editor;
@@ -869,11 +996,15 @@ function readEditorForm() {
     label: row.querySelector("[data-input-label]")?.value.trim() || "",
     role: row.querySelector("[data-input-role]")?.value || "other",
     optional: row.querySelector("[data-input-optional]")?.checked ?? false,
-    acceptedTypes: [...(row.querySelector("[data-input-types]")?.selectedOptions || [])].map(option => option.value),
-    acceptedCategories: [...(row.querySelector("[data-input-categories]")?.selectedOptions || [])].map(option => option.value),
-    requiredProperties: [...(row.querySelector("[data-input-required]")?.selectedOptions || [])].map(option => option.value)
+    acceptedTypes: [], acceptedCategories: [], requiredProperties: []
   }));
   factor.inputs.forEach((input, index) => { if (!input.id) input.id = state.editor.inputs[index]?.id || makeId("input"); });
+  factor.variables = [...container.querySelectorAll("[data-calc-variable-row]")].map(row => ({
+    id: row.dataset.variableId || makeId("variable"),
+    name: row.querySelector("[data-variable-name]")?.value.trim() || "",
+    inputKey: row.querySelector("[data-variable-input]")?.value || "",
+    propertyName: row.querySelector("[data-variable-property]")?.value || ""
+  }));
   factor.outputs = [...container.querySelectorAll("[data-calc-output-row]")].map(row => ({
     id: row.dataset.outputId || makeId("output"),
     name: row.querySelector("[data-output-name]")?.value.trim() || "",
@@ -884,6 +1015,32 @@ function readEditorForm() {
     bindings: Object.fromEntries([...row.querySelectorAll("[data-dep-bind]")].map(select => [select.dataset.depBind, select.value]))
   }));
   return factor;
+}
+
+function renderRecordSourceSummary(record, input, factor) {
+  const mappings = variablesForInput(factor, input.key);
+  if (mappings.length) {
+    return mappings.map(variable => {
+      const property = getProperty(record, variable.propertyName);
+      return `${variable.name}: ${displayPropertyValue(property)}`;
+    }).join(" · ");
+  }
+  return asArray(record.properties).filter(isNumericProperty).slice(0, 3)
+    .map(property => `${property.name}: ${displayPropertyValue(property)}`).join(" · ");
+}
+
+function updateInputPickerCount(inputKey) {
+  const picker = $("calc-run-pane")?.querySelector(`[data-input-picker="${CSS.escape(inputKey)}"]`);
+  if (!picker) return;
+  const checked = picker.querySelectorAll("[data-run-record]:checked").length;
+  const count = picker.querySelector("[data-selected-count]");
+  if (count) count.textContent = `${checked} selected`;
+  const selectAll = picker.querySelector("[data-calc-action='select-visible']");
+  if (selectAll) {
+    const visible = [...picker.querySelectorAll("[data-record-option]")].filter(row => !row.hidden).length;
+    selectAll.textContent = `Select ${visible} visible`;
+    selectAll.disabled = visible === 0;
+  }
 }
 
 function renderRunPane() {
@@ -904,9 +1061,30 @@ function renderRunPane() {
   }
   const options = state.factors.map(item => `<option value="${escapeHTML(item.id)}" ${item.id === factor.id ? "selected" : ""}>${escapeHTML(item.name)}</option>`).join("");
   const inputsHtml = factor.inputs.map(input => {
-    const allowed = eligibleRecords(input, state.records);
+    const allowed = eligibleRecords(input, factor, state.records);
     const selectedIds = state.selectedRecordIds?.[input.key] || [];
-    return `<div class="calc-field"><label>${escapeHTML(input.label)} <span class="calc-muted">(${escapeHTML(input.key)}${input.optional ? ", optional" : ""})</span></label><select multiple size="5" data-run-input="${escapeHTML(input.key)}" aria-label="Select records for ${escapeHTML(input.label)}">${allowed.map(record => `<option value="${escapeHTML(record.id)}" ${selectedIds.includes(record.id) ? "selected" : ""}>${escapeHTML(record.name)} · ${escapeHTML(record.type)}${record.category ? ` · ${escapeHTML(record.category)}` : ""}</option>`).join("")}</select><span class="calc-muted">${allowed.length} compatible record(s). ${input.optional ? "Leave empty to omit this input, select one to keep it fixed, or multiple to compare." : "Select one to keep this input fixed, or multiple to compare."}</span></div>`;
+    const inputSearch = String(state.inputSearch?.[input.key] || "").toLowerCase();
+    const mappings = variablesForInput(factor, input.key);
+    const mappingSummary = mappings.length
+      ? `<div class="calc-source-variables">${mappings.map(variable => `<span class="calc-tag"><strong>${escapeHTML(variable.name)}</strong> ← ${escapeHTML(variable.propertyName)}</span>`).join("")}</div>`
+      : `<p class="calc-muted">No variables are linked to this source yet. Records with at least one Number/Percentage property are shown.</p>`;
+    const cards = allowed.map(record => {
+      const selected = selectedIds.includes(record.id);
+      const summary = renderRecordSourceSummary(record, input, factor);
+      const searchText = `${record.name} ${record.type || ""} ${record.category || ""} ${summary}`.toLowerCase();
+      const hidden = inputSearch && !searchText.includes(inputSearch);
+      return `<label class="calc-record-option" data-record-option data-search-text="${escapeHTML(searchText)}" ${hidden ? "hidden" : ""}>
+        <input type="checkbox" data-run-record data-input-key="${escapeHTML(input.key)}" value="${escapeHTML(record.id)}" ${selected ? "checked" : ""}>
+        <span class="calc-record-info"><strong>${escapeHTML(record.name)}</strong><small>${escapeHTML(record.type || "Record")}${record.category ? ` · ${escapeHTML(record.category)}` : ""}</small><small class="calc-record-props">${escapeHTML(summary || "No mapped values")}</small></span>
+      </label>`;
+    }).join("");
+    return `<section class="calc-source-picker" data-input-picker="${escapeHTML(input.key)}">
+      <div class="calc-item-heading"><div><strong>${escapeHTML(input.label)}</strong><p class="calc-muted">${escapeHTML(input.role[0].toUpperCase() + input.role.slice(1))}${input.optional ? " · Optional" : ""}</p></div><span class="calc-tag" data-selected-count>${selectedIds.length} selected</span></div>
+      ${mappingSummary}
+      <label class="calc-source-search-label">Find a record<input type="search" data-input-search="${escapeHTML(input.key)}" placeholder="Search name, type, category…" value="${escapeHTML(state.inputSearch?.[input.key] || "")}"></label>
+      <div class="calc-record-picker">${cards || `<div class="calc-record-empty">No records currently have the numeric properties mapped to this source. Edit the factor variables or add numeric properties to records.</div>`}</div>
+      <div class="calc-row calc-picker-actions"><button class="calc-btn" type="button" data-calc-action="select-visible" data-input-key="${escapeHTML(input.key)}">Select visible</button><button class="calc-btn" type="button" data-calc-action="clear-input" data-input-key="${escapeHTML(input.key)}">Clear</button><span class="calc-muted">${allowed.length} matching record${allowed.length === 1 ? "" : "s"}</span></div>
+    </section>`;
   }).join("");
   const overrideRows = renderOverrideRows(factor);
   const outputs = factor.outputs;
@@ -920,39 +1098,44 @@ function renderRunPane() {
     <div class="calc-layout">
       <div class="calc-panel">
         <h3>Set up a calculation</h3><div class="calc-field"><label for="calc-run-factor">Factor</label><select id="calc-run-factor">${options}</select></div>
-        <p class="calc-muted">${escapeHTML(factor.description || "Choose records for each input. Their current properties are read without changing the source records.")}</p>
-        <div class="calc-subtitle">Inputs and records</div>${inputsHtml}
-        <div class="calc-subtitle">Combination mode</div><div class="calc-field"><label for="calc-combination-mode">How to combine selected records</label><select id="calc-combination-mode"><option value="cartesian">All possible combinations (cartesian)</option><option value="position">Pair lists by position</option></select></div>
-        <div class="calc-muted">Cartesian example: 10 weapons × 5 mobs = 50 calculations. In pair-by-position mode, list lengths must match or be 1 (a single selection is broadcast).</div>
+        <p class="calc-muted">${escapeHTML(factor.description || "Choose records for each source. The factor reads their Number and Percentage properties without changing the records.")}</p>
+        <div class="calc-subtitle">1. Choose records for each source</div><p class="calc-muted">Check one record to keep it fixed, or several to compare them. A record appears when it has the numeric properties used by the factor's variables.</p>${inputsHtml}
+        <div class="calc-field"><label for="calc-combination-mode">How should selected records be combined?</label><select id="calc-combination-mode"><option value="cartesian">Every possible combination</option><option value="position">Pair lists by position</option></select><p class="calc-muted">Example: 10 weapons × 5 targets = 50 calculations. Pair-by-position requires equal list lengths, or a single fixed record in one source.</p></div>
         <hr class="calc-section-divider"><div class="calc-item-heading"><h4 style="margin:0">Temporary scenario</h4><label class="calc-inline-check"><input type="checkbox" id="calc-scenario-enabled" ${state.scenarioEnabled ? "checked" : ""}> Compare modified values</label></div>
-        <p class="calc-muted">Overrides affect only this run. The original record values are never edited.</p>
+        <p class="calc-muted">Modifiers affect only this run. Original records are never changed. Percentage property values use fractions (0.2 = 20%).</p>
         <div id="calc-overrides" ${state.scenarioEnabled ? "" : "hidden"}><div id="calc-overrides-body">${overrideRows}</div><button type="button" class="calc-btn" data-calc-action="add-override">＋ Add modifier</button></div>
         <div class="calc-row" style="margin-top:17px"><button type="button" class="calc-btn primary" data-calc-action="run-calculation">▶ Run calculation</button><button type="button" class="calc-btn" data-calc-action="clear-results">Clear results</button></div>
       </div>
       <div class="calc-panel">
         <div class="calc-item-heading"><h3 style="margin:0">Results</h3><span class="calc-tag">${state.results.length ? `${state.results.length} row(s)` : "No run yet"}</span></div>
-        ${state.results.length ? `<div class="calc-stat-row"><div class="calc-stat"><small>COMBINATIONS</small><strong>${state.results.length}</strong></div><div class="calc-stat"><small>SUCCESSFUL</small><strong>${state.results.filter(row => !row.baseError && !row.scenarioError).length}</strong></div><div class="calc-stat"><small>WITH ERRORS</small><strong>${state.results.filter(row => row.baseError || row.scenarioError).length}</strong></div></div>` : `<div class="calc-empty">Choose inputs and run a calculation. Each combination gets its own row, so an error in one row does not hide successful results.</div>`}
+        ${state.results.length ? `<div class="calc-stat-row"><div class="calc-stat"><small>COMBINATIONS</small><strong>${state.results.length}</strong></div><div class="calc-stat"><small>SUCCESSFUL</small><strong>${state.results.filter(row => !row.baseError && !row.scenarioError).length}</strong></div><div class="calc-stat"><small>WITH ERRORS</small><strong>${state.results.filter(row => row.baseError || row.scenarioError).length}</strong></div></div>` : `<div class="calc-empty">Choose records for each source, then run the factor. Each combination gets its own row, so one error does not hide successful results.</div>`}
         <div class="calc-results-toolbar"><input id="calc-results-search" type="search" placeholder="Filter by record name or error…" value="${escapeHTML(state.resultSearch)}"><select id="calc-results-sort" aria-label="Sort results">${sortOptions}</select><button type="button" class="calc-btn" data-calc-action="sort-direction">${state.sortDirection === "asc" ? "↑ Ascending" : "↓ Descending"}</button></div>
         <details><summary class="calc-muted" style="cursor:pointer">Configure columns and highlights</summary><div class="calc-columns" style="margin-top:10px">${columnControls}</div><div class="calc-row"><label class="calc-inline-check"><input type="checkbox" id="calc-highlight-max" ${state.highlightMax ? "checked" : ""}> Highlight maximum</label><label class="calc-inline-check"><input type="checkbox" id="calc-highlight-min" ${state.highlightMin ? "checked" : ""}> Highlight minimum</label></div></details>
         <div class="calc-results-toolbar"><select id="calc-filter-output"><option value="">No numeric filter</option>${outputs.map(output => `<option value="${escapeHTML(output.id)}" ${state.numericFilter.outputId === output.id ? "selected" : ""}>${escapeHTML(output.name)}</option>`).join("")}</select><select id="calc-filter-operator"><option value=">" ${state.numericFilter.operator === ">" ? "selected" : ""}>greater than</option><option value=">=" ${state.numericFilter.operator === ">=" ? "selected" : ""}>at least</option><option value="<" ${state.numericFilter.operator === "<" ? "selected" : ""}>less than</option><option value="<=" ${state.numericFilter.operator === "<=" ? "selected" : ""}>at most</option><option value="=" ${state.numericFilter.operator === "=" ? "selected" : ""}>equal to</option></select><input type="number" step="any" id="calc-filter-value" value="${escapeHTML(state.numericFilter.value)}" placeholder="Threshold"></div>
-        <div id="calc-results-table"></div><p class="calc-muted" style="margin-top:9px">Percentages are handled as fractions in formulas. Display values are rounded to 6 decimal places; stored records remain unchanged.</p>
+        <div id="calc-results-table"></div><p class="calc-muted" style="margin-top:9px">Number and Percentage properties can feed formulas; Text and List properties are excluded. Display values are rounded to 6 decimal places.</p>
       </div>
     </div>`;
+  // Reapply search visibility after painting the checkbox list.
+  pane.querySelectorAll("[data-input-picker]").forEach(picker => {
+    const search = picker.querySelector("[data-input-search]");
+    const q = String(search?.value || "").trim().toLowerCase();
+    picker.querySelectorAll("[data-record-option]").forEach(option => {
+      option.hidden = Boolean(q && !option.dataset.searchText.includes(q));
+    });
+    updateInputPickerCount(picker.dataset.inputPicker);
+  });
   renderResultsTable();
 }
 
 function renderOverrideRows(factor) {
   const overrides = state.overrideDraft || [];
-  const propOptions = [...new Set([
-    ...propertyNames(state.records),
-    ...factor.inputs.flatMap(input => input.requiredProperties)
-  ])].sort((a, b) => a.localeCompare(b));
+  const propOptions = numericPropertyNames(state.records);
   return overrides.map((override, index) => `<div class="calc-override-row" data-override-row>
     <div class="calc-item-heading"><strong>Modifier ${index + 1}</strong><button type="button" class="calc-btn danger" data-calc-action="remove-override" data-override-index="${index}">Remove</button></div>
     <div class="calc-field-grid"><div class="calc-field"><label>Input role</label><select data-override-input>${factor.inputs.map(input => `<option value="${escapeHTML(input.key)}" ${override.inputKey === input.key ? "selected" : ""}>${escapeHTML(input.label)} (${escapeHTML(input.key)})</option>`).join("")}</select></div>
     <div class="calc-field"><label>Property</label><select data-override-property>${multiOptions(propOptions, [override.property])}</select></div>
     <div class="calc-field"><label>Operation</label><select data-override-operation><option value="set" ${override.operation === "set" ? "selected" : ""}>Set value</option><option value="add" ${override.operation === "add" ? "selected" : ""}>Add amount</option><option value="subtract" ${override.operation === "subtract" ? "selected" : ""}>Subtract amount</option><option value="multiply" ${override.operation === "multiply" ? "selected" : ""}>Multiply by</option><option value="divide" ${override.operation === "divide" ? "selected" : ""}>Divide by</option></select></div>
-    <div class="calc-field"><label>Value</label><input data-override-amount type="number" step="any" value="${escapeHTML(override.amount)}"></div></div>
+    <div class="calc-field"><label>Value</label><input data-override-amount type="number" step="any" value="${escapeHTML(override.amount)}"><small class="calc-muted">For Percentage properties, values are fractions (0.2 = 20%).</small></div></div>
   </div>`).join("");
 }
 function readOverrides() {
@@ -975,17 +1158,16 @@ function readOverrides() {
 }
 function selectedInputRecords(factor) {
   const selections = {};
-  const countEl = $("calc-run-pane");
+  const root = $("calc-run-pane");
   for (const input of factor.inputs) {
-    const select = countEl.querySelector(`[data-run-input="${CSS.escape(input.key)}"]`);
-    const ids = select ? [...select.selectedOptions].map(option => option.value) : [];
+    const ids = [...(root?.querySelectorAll(`[data-run-record][data-input-key="${CSS.escape(input.key)}"]:checked`) || [])].map(option => option.value);
     if (!ids.length) {
       if (input.optional) { selections[input.key] = [null]; continue; }
-      throw new Error(`Select at least one record for “${input.label}”.`);
+      throw new Error(`Choose at least one record for “${input.label}”.`);
     }
     const byId = new Map(state.records.map(record => [record.id, record]));
     selections[input.key] = ids.map(id => byId.get(id)).filter(Boolean);
-    if (selections[input.key].length !== ids.length) throw new Error(`One of the selected records for “${input.label}” no longer exists. Refresh the calculator and try again.`);
+    if (selections[input.key].length !== ids.length) throw new Error(`One selected record for “${input.label}” no longer exists. Refresh the calculator and try again.`);
   }
   return selections;
 }
@@ -1152,6 +1334,7 @@ function saveFactorFromForm() {
     if (cycle) throw new Error(`Circular dependency detected: ${cycle.join(" → ")}.`);
     if (!persistFactors(next)) return;
     state.selectedFactorId = candidate.id;
+    state.results = []; state.selectedRecordIds = {}; state.inputSearch = {}; state.overrideDraft = [];
     state.editor = null; state.editorError = "";
     notice(`Saved factor “${candidate.name}”.`, "success");
     renderAll();
@@ -1202,11 +1385,24 @@ function addDependencyToEditor() {
 function addInputToEditor() {
   const factor = readEditorForm();
   let index = factor.inputs.length + 1;
-  let key = `input_${index}`;
-  while (factor.inputs.some(input => input.key === key)) key = `input_${++index}`;
-  factor.inputs.push({ id: makeId("input"), key, label: `Input ${index}`, role: "other", acceptedTypes: [], acceptedCategories: [], requiredProperties: [] });
+  let key = `source_${index}`;
+  while (factor.inputs.some(input => input.key === key)) key = `source_${++index}`;
+  factor.inputs.push({ id: makeId("input"), key, label: `Source ${index}`, role: "other", optional: false, acceptedTypes: [], acceptedCategories: [], requiredProperties: [] });
   state.editor = factor; renderFactorEditor();
 }
+function addVariableToEditor() {
+  const factor = readEditorForm();
+  const commonNames = ["X", "Y", "Z", "W", "V", "U"];
+  let name = commonNames.find(candidate => !factor.variables.some(variable => variable.name.toLowerCase() === candidate.toLowerCase()));
+  if (!name) {
+    let index = factor.variables.length + 1;
+    name = `X${index}`;
+    while (factor.variables.some(variable => variable.name.toLowerCase() === name.toLowerCase())) name = `X${++index}`;
+  }
+  factor.variables.push({ id: makeId("variable"), name, inputKey: factor.inputs[0]?.key || "", propertyName: numericPropertyNames(state.records)[0] || "" });
+  state.editor = factor; state.editorError = ""; renderFactorEditor();
+}
+
 function addOutputToEditor() {
   const factor = readEditorForm();
   factor.outputs.push({ id: makeId("output"), name: `Result ${factor.outputs.length + 1}`, formula: "1" });
@@ -1218,9 +1414,14 @@ function removeFromEditor(kind, id) {
     if (factor.inputs.length <= 1) { state.editorError = "A factor needs at least one input."; renderFactorEditor(); return; }
     const removed = factor.inputs.find(input => input.id === id);
     factor.inputs = factor.inputs.filter(input => input.id !== id);
-    if (removed) factor.dependencies.forEach(dependency => {
-      Object.keys(dependency.bindings).forEach(key => { if (dependency.bindings[key] === removed.key) dependency.bindings[key] = factor.inputs[0]?.key || ""; });
-    });
+    if (removed) {
+      factor.variables = factor.variables.filter(variable => variable.inputKey !== removed.key);
+      factor.dependencies.forEach(dependency => {
+        Object.keys(dependency.bindings).forEach(key => { if (dependency.bindings[key] === removed.key) dependency.bindings[key] = factor.inputs[0]?.key || ""; });
+      });
+    }
+  } else if (kind === "variable") {
+    factor.variables = factor.variables.filter(variable => variable.id !== id);
   } else if (kind === "output") {
     if (factor.outputs.length <= 1) { state.editorError = "A factor needs at least one output."; renderFactorEditor(); return; }
     factor.outputs = factor.outputs.filter(output => output.id !== id);
@@ -1453,14 +1654,32 @@ function handleAction(action, target) {
     if (state.factorReadError) return notice("Factor editing is blocked because saved data could not be read.", "error");
     const example = exampleFactor();
     if (state.factors.some(item => item.name.toLowerCase() === example.name.toLowerCase())) example.name += ` ${state.factors.length + 1}`;
-    try { const valid = validateFactor(example, state.factors); const next = [...state.factors, valid]; if (!persistFactors(next)) return; state.selectedFactorId = valid.id; state.results = []; notice("Created an illustrative damage factor. Adjust its accepted types and required properties to match your records.", "success"); renderAll(); }
+    try { const valid = validateFactor(example, state.factors); const next = [...state.factors, valid]; if (!persistFactors(next)) return; state.selectedFactorId = valid.id; state.results = []; notice("Created an example factor: X reads Weapon → Damage and Y reads Target → Armor. Choose matching records in Run & Compare.", "success"); renderAll(); }
     catch (error) { notice(error.message || String(error), "error"); }
   }
   else if (action === "close-editor") closeFactorEditor();
   else if (action === "add-input") addInputToEditor();
+  else if (action === "add-variable") addVariableToEditor();
   else if (action === "add-output") addOutputToEditor();
   else if (action === "remove-input") removeFromEditor("input", target.dataset.inputId);
+  else if (action === "remove-variable") removeFromEditor("variable", target.dataset.variableId);
   else if (action === "remove-output") removeFromEditor("output", target.dataset.outputId);
+  else if (action === "select-visible") {
+    const inputKey = target.dataset.inputKey || "";
+    const picker = $("calc-run-pane")?.querySelector(`[data-input-picker="${CSS.escape(inputKey)}"]`);
+    const current = new Set(state.selectedRecordIds[inputKey] || []);
+    picker?.querySelectorAll("[data-record-option]:not([hidden]) [data-run-record]").forEach(checkbox => current.add(checkbox.value));
+    state.selectedRecordIds[inputKey] = [...current];
+    picker?.querySelectorAll("[data-run-record]").forEach(checkbox => { checkbox.checked = current.has(checkbox.value); });
+    updateInputPickerCount(inputKey);
+  }
+  else if (action === "clear-input") {
+    const inputKey = target.dataset.inputKey || "";
+    state.selectedRecordIds[inputKey] = [];
+    const picker = $("calc-run-pane")?.querySelector(`[data-input-picker="${CSS.escape(inputKey)}"]`);
+    picker?.querySelectorAll("[data-run-record]").forEach(checkbox => { checkbox.checked = false; });
+    updateInputPickerCount(inputKey);
+  }
   else if (action === "add-dependency") addDependencyToEditor();
   else if (action === "remove-dependency") removeFromEditor("dependency", target.dataset.depId);
   else if (action === "run") { state.selectedFactorId = id; state.results = []; state.visibleColumns = {}; state.sortBy = ""; state.numericFilter = { outputId: "", operator: ">", value: "" }; state.selectedRecordIds = {}; state.overrideDraft = []; state.scenarioEnabled = false; state.activeTab = "run"; renderAll(); setTab("run"); }
@@ -1475,7 +1694,7 @@ function handleAction(action, target) {
   else if (action === "add-override") {
     const factor = getFactor(); if (!factor) return;
     const rows = readOverridesSafe();
-    rows.push({ inputKey: factor.inputs[0]?.key || "", property: propertyNames(state.records)[0] || factor.inputs[0]?.requiredProperties[0] || "", operation: "multiply", amount: 1.2 });
+    rows.push({ inputKey: factor.inputs[0]?.key || "", property: numericPropertyNames(state.records)[0] || "", operation: "multiply", amount: 1.2 });
     state.overrideDraft = rows; $("calc-overrides-body").innerHTML = renderOverrideRows(factor);
   }
   else if (action === "remove-override") {
@@ -1494,8 +1713,8 @@ function renderStatsOnly() {
   const factor = getFactor();
   if (factor) {
     factor.inputs.forEach(input => {
-      const select = $("calc-run-pane")?.querySelector(`[data-run-input="${CSS.escape(input.key)}"]`);
-      if (select) saved[input.key] = [...select.selectedOptions].map(option => option.value);
+      const picker = $("calc-run-pane")?.querySelector(`[data-input-picker="${CSS.escape(input.key)}"]`);
+      if (picker) saved[input.key] = [...picker.querySelectorAll("[data-run-record]:checked")].map(option => option.value);
     });
   }
   state.selectedRecordIds = saved;
@@ -1536,7 +1755,7 @@ function attachHandlers(page) {
       if (factorAction.dataset.factorAction === "edit") startFactorEditor(factor);
       else if (factorAction.dataset.factorAction === "delete") deleteFactor(factor.id);
       else if (factorAction.dataset.factorAction === "duplicate") duplicateFactor(factor.id);
-      else if (factorAction.dataset.factorAction === "run") { state.selectedFactorId = factor.id; state.results = []; state.selectedRecordIds = {}; state.visibleColumns = {}; state.sortBy = ""; state.numericFilter = { outputId: "", operator: ">", value: "" }; state.overrideDraft = []; state.scenarioEnabled = false; state.activeTab = "run"; renderAll(); setTab("run"); }
+      else if (factorAction.dataset.factorAction === "run") { state.selectedFactorId = factor.id; state.results = []; state.selectedRecordIds = {}; state.inputSearch = {}; state.visibleColumns = {}; state.sortBy = ""; state.numericFilter = { outputId: "", operator: ">", value: "" }; state.overrideDraft = []; state.scenarioEnabled = false; state.activeTab = "run"; renderAll(); setTab("run"); }
       return;
     }
     const tab = event.target.closest("[data-calc-tab]");
@@ -1549,6 +1768,7 @@ function attachHandlers(page) {
     const target = event.target;
     if (target.id === "calc-run-factor") {
       state.selectedRecordIds = {};
+      state.inputSearch = {};
       state.selectedFactorId = target.value;
       state.results = []; state.visibleColumns = {}; state.overrideDraft = [];
       state.sortBy = "";
@@ -1566,12 +1786,33 @@ function attachHandlers(page) {
     if (target.id === "calc-import-project-file") {
       const file = target.files?.[0]; importProjectWithFactorsFile(file); target.value = ""; return;
     }
-    if (target.matches("[data-input-types], [data-input-categories], [data-input-required]")) {
-      if (state.editor) {
-        state.editor = readEditorForm();
-        state.editorError = "";
-        renderFactorEditor();
+    if (target.matches("[data-run-record]")) {
+      const key = target.dataset.inputKey;
+      const selected = [...(page.querySelectorAll(`[data-run-record][data-input-key="${CSS.escape(key)}"]:checked`) || [])].map(input => input.value);
+      state.selectedRecordIds[key] = selected;
+      updateInputPickerCount(key);
+      return;
+    }
+    if (target.matches("[data-variable-name], [data-variable-input], [data-variable-property]")) {
+      const row = target.closest("[data-calc-variable-row]");
+      if (row) {
+        const name = row.querySelector("[data-variable-name]")?.value.trim() || "X";
+        const sourceKey = row.querySelector("[data-variable-input]")?.value || "";
+        const property = row.querySelector("[data-variable-property]")?.value || "Choose property";
+        const sourceLabel = [...page.querySelectorAll("[data-calc-input-row]")].find(inputRow => inputRow.querySelector("[data-input-key]")?.value === sourceKey)?.querySelector("[data-input-label]")?.value || sourceKey;
+        row.querySelector("[data-variable-summary-name]")?.replaceChildren(document.createTextNode(name));
+        row.querySelector("[data-variable-summary-source]")?.replaceChildren(document.createTextNode(sourceLabel));
+        row.querySelector("[data-variable-summary-property]")?.replaceChildren(document.createTextNode(property));
       }
+      // Keep the insertion chips in sync with variable names and mappings while editing.
+      const draft = readEditorForm();
+      page.querySelectorAll("[data-calc-output-row]").forEach(outputRow => {
+        const outputId = outputRow.dataset.outputId;
+        const tokenList = outputRow.querySelector(".calc-token-list");
+        if (!tokenList) return;
+        const tokens = variableCandidates(draft, state.records, state.factors, outputId);
+        tokenList.innerHTML = tokens.map(token => `<button class="calc-token" type="button" data-insert-token="${escapeHTML(token.token)}" title="Insert ${escapeHTML(token.label)}">${escapeHTML(token.token)} <span class="calc-token-label">${escapeHTML(token.label)}</span></button>`).join("") || `<span class="calc-muted">Add variables above to make them available in this formula.</span>`;
+      });
       return;
     }
     if (target.dataset.columnKey) {
@@ -1585,13 +1826,20 @@ function attachHandlers(page) {
       state.numericFilter = { outputId: $("calc-filter-output")?.value || "", operator: $("calc-filter-operator")?.value || ">", value: $("calc-filter-value")?.value || "" };
       renderResultsTable(); return;
     }
-    if (target.matches("[data-run-input]")) {
-      state.selectedRecordIds ||= {};
-      state.selectedRecordIds[target.dataset.runInput] = [...target.selectedOptions].map(option => option.value);
-    }
   });
   page.addEventListener("input", event => {
     const target = event.target;
+    if (target.matches("[data-input-search]")) {
+      const key = target.dataset.inputSearch;
+      state.inputSearch[key] = target.value;
+      const picker = target.closest("[data-input-picker]");
+      const query = target.value.trim().toLowerCase();
+      picker?.querySelectorAll("[data-record-option]").forEach(option => {
+        option.hidden = Boolean(query && !String(option.dataset.searchText || "").includes(query));
+      });
+      updateInputPickerCount(key);
+      return;
+    }
     if (target.id === "calc-results-search") { state.resultSearch = target.value; renderResultsTable(); }
     if (target.id === "calc-filter-value") { state.numericFilter.value = target.value; renderResultsTable(); }
   });

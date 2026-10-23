@@ -50,7 +50,22 @@ button:disabled{opacity:.5;cursor:default}
 .form-field{margin-bottom:18px}
 .form-field>label{display:block;font-weight:650;margin-bottom:7px}
 .hint{color:var(--muted);font-size:12px;margin-top:6px}
-.property-row{display:grid;grid-template-columns:1fr 1fr auto;gap:7px;margin-bottom:9px}
+.property-row{display:grid;grid-template-columns:minmax(120px,1.05fr) minmax(130px,.8fr) minmax(170px,1.5fr) auto;align-items:start;gap:8px;margin-bottom:12px;padding:11px;border:1px solid var(--border);border-radius:10px;background:rgba(0,0,0,.07)}
+.property-name-wrap,.property-type-wrap,.property-value-container{display:grid;gap:6px;min-width:0}
+.property-inline-label{font-size:11px;color:var(--muted);font-weight:650}
+.property-value-container{min-width:0}
+.property-value-hint{color:var(--muted);font-size:10px;line-height:1.45}
+.property-list-items{display:grid;gap:7px}
+.property-list-item{display:grid;grid-template-columns:minmax(120px,.7fr) minmax(120px,1fr) auto;gap:6px;align-items:center}
+.property-list-item-value{min-width:0}
+.property-list-item .remove{height:38px}
+.property-add-list-item{padding:7px 10px;font-size:11px}
+.property-type-chip{display:inline-block;margin-left:5px;padding:2px 6px;border:1px solid var(--border);border-radius:5px;font-size:9px;letter-spacing:.02em;font-weight:500;vertical-align:middle}
+.property-detail-value{overflow-wrap:anywhere}
+.property-detail-list{display:grid;gap:6px;margin:0;padding-left:20px}
+.property-detail-list li{padding-left:2px}
+.property-record-link{padding:4px 7px;background:var(--panel);border:1px solid var(--border);border-radius:7px;text-align:left}
+.property-record-link .vector-icon{vertical-align:middle}
 .property-row .remove{padding:0 10px;background:none;border:1px solid var(--border);border-radius:8px}
 .related button{margin:0 7px 7px 0}
 .empty{color:var(--muted);padding:25px 8px;text-align:center}
@@ -92,8 +107,12 @@ footer{padding:18px;color:var(--muted);font-size:11px;border-top:1px solid var(-
 [hidden]{display:none!important}
 
 @media(max-width:480px){
- .property-row{grid-template-columns:1fr 1fr}
- .property-row .remove{grid-column:span 2;padding:8px}
+ .property-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+ .property-name-wrap,.property-type-wrap,.property-value-container{grid-column:1/-1}
+ .property-row>.remove{grid-column:1/-1;padding:8px}
+ .property-list-item{grid-template-columns:minmax(0,1fr) auto}
+ .property-list-item select,.property-list-item-value{grid-column:1/-1}
+ .property-list-item .remove{grid-column:2;grid-row:1}
  .toolbar{flex-wrap:wrap}
  .toolbar>*{flex-basis:100%}
  .filter-grid{grid-template-columns:1fr}

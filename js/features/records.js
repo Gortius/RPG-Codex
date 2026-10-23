@@ -1,7 +1,7 @@
 
 "use strict";
 
-import { loadTrash, saveTrash } from "../data/storage.js";
+import { loadTrash, saveTrash } from "../data/storage.js?v=20261023-r5";
 
 export function createRecordFeatures({
   getRecords,

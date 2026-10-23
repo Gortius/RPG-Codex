@@ -6,22 +6,22 @@ import {
   getScopedStorageKey,
   STORAGE_KEY,
   CATALOG_KEY
-} from "./data/storage.js";
+} from "./data/storage.js?v=20261023-r5";
 import { iconMarkup, paintIcons, mountIconPicker } from "./features/icon-library.js";
 import { STARTER_RECORDS } from "./data/default-records.js";
 
-import { createRecordFeatures } from "./features/records.js";
-import { createCatalogFeatures } from "./features/catalogs.js";
-import { filterRecords } from "./features/filtering.js";
-import { createViewFeatures } from "./features/views.js";
-import { createPropertyEditor } from "./features/property-editor.js";
+import { createRecordFeatures } from "./features/records.js?v=20261023-r5";
+import { createCatalogFeatures } from "./features/catalogs.js?v=20261023-r5";
+import { filterRecords } from "./features/filtering.js?v=20261023-r5";
+import { createViewFeatures } from "./features/views.js?v=20261023-r5";
+import { createPropertyEditor } from "./features/property-editor.js?v=20261023-r5";
 import { createPickerFeatures } from "./features/pickers.js";
 import { createEditorFeatures } from "./features/editor.js";
-import { createRecordFormFeature } from "./features/record-form.js";
-import { createRecordListFeature } from "./features/record-list.js";
+import { createRecordFormFeature } from "./features/record-form.js?v=20261023-r5";
+import { createRecordListFeature } from "./features/record-list.js?v=20261023-r5";
 import { createFilterUIFeatures } from "./features/filter-ui.js";
 import { createSavedFiltersFeature } from "./features/saved-filters.js";
-import { createBulkActionsFeature } from "./features/bulk-actions.js";
+import { createBulkActionsFeature } from "./features/bulk-actions.js?v=20261023-r5";
 import { createQuickMenu } from "./features/quick-menu.js";
 
 "use strict";
@@ -61,7 +61,8 @@ const uniq = a =>
     a.map(x => String(x || "").trim()).filter(Boolean)
   )].sort((a, b) => a.localeCompare(b));
 
-// Estado central do aplicativo.
+// App state. Keep these declarations centralized so feature modules can
+// safely receive references to the same in-memory data and UI state.
 let records = [];
 let savedFilters = [];
 let viewMode = "list";
@@ -146,40 +147,24 @@ function saveRecords() {
 
   try {
     syncCatalogs();
-
     if (!saveCatalogs()) {
       throw new Error("The tag/property catalog could not be saved.");
     }
   } catch (error) {
     console.error("Record/catalog save failed; rolling back the record write.", error);
-
     try {
       const recordsKey = getScopedStorageKey(STORAGE_KEY);
       const catalogsKey = getScopedStorageKey(CATALOG_KEY);
 
-      if (previousRecordsRaw === null) {
-        localStorage.removeItem(recordsKey);
-      } else {
-        localStorage.setItem(recordsKey, previousRecordsRaw);
-      }
+      if (previousRecordsRaw === null) localStorage.removeItem(recordsKey);
+      else localStorage.setItem(recordsKey, previousRecordsRaw);
 
-      if (previousCatalogsRaw === null) {
-        localStorage.removeItem(catalogsKey);
-      } else {
-        localStorage.setItem(catalogsKey, previousCatalogsRaw);
-      }
+      if (previousCatalogsRaw === null) localStorage.removeItem(catalogsKey);
+      else localStorage.setItem(catalogsKey, previousCatalogsRaw);
     } catch (rollbackError) {
-      console.error(
-        "Could not roll back record/catalog writes after save failure.",
-        rollbackError
-      );
-
-      alert(
-        "The catalog could not be saved and rollback also failed. " +
-        "Export or preserve a backup before further changes."
-      );
+      console.error("Could not roll back record/catalog writes after save failure.", rollbackError);
+      alert("The catalog could not be saved and rollback also failed. Export or preserve a backup before further changes.");
     }
-
     return false;
   }
 
@@ -210,7 +195,8 @@ const {
 } = createPropertyEditor({
   $,
   esc,
-  catalogNames
+  catalogNames,
+  getRecords: () => records
 });
 
 function persistFilters() {
@@ -225,9 +211,7 @@ function filterState() {
     subcategory: $("filter-subcategory").value,
     tags: [...activeTags],
     sort: $("sort-records").value,
-    sortDirection: $("sort-direction")?.dataset.direction === "desc"
-      ? "desc"
-      : "asc",
+    sortDirection: $("sort-direction")?.dataset.direction === "desc" ? "desc" : "asc",
     conditions: conditions.map(c => ({ ...c }))
   };
 }
@@ -245,9 +229,7 @@ function applyFilterState(state) {
   renderFilterOptions();
   $("filter-category").value = state.category || "";
   $("filter-subcategory").value = state.subcategory || "";
-
   const legacySort = String(state.sort || "name-asc");
-
   const sortOptionAliases = {
     name: "name-asc",
     "name-asc": "name-asc",
@@ -264,27 +246,17 @@ function applyFilterState(state) {
     "relations-asc": "relations-asc",
     "relations-desc": "relations-asc"
   };
-
   $("sort-records").value = sortOptionAliases[legacySort] || "name-asc";
-
   const sortDirection = state.sortDirection === "desc" ||
     (!state.sortDirection && /(?:-desc|newest)$/.test(legacySort))
     ? "desc"
     : "asc";
-
   const sortDirectionButton = $("sort-direction");
-
-  if (sortDirectionButton) {
-    sortDirectionButton.dataset.direction = sortDirection;
-  }
+  if (sortDirectionButton) sortDirectionButton.dataset.direction = sortDirection;
 
   conditions = Array.isArray(state.conditions)
     ? state.conditions
-        .filter(condition =>
-          condition &&
-          typeof condition === "object" &&
-          !Array.isArray(condition)
-        )
+        .filter(condition => condition && typeof condition === "object" && !Array.isArray(condition))
         .map(condition => ({
           ...condition,
           property: String(condition.property ?? ""),
@@ -419,10 +391,8 @@ function renderDashboard() {
 
   const incomplete = records.filter(record => {
     const missingDescription = !String(record.description || "").trim();
-
     const missingTags =
       !Array.isArray(record.tags) || record.tags.length === 0;
-
     const missingProperties =
       !Array.isArray(record.properties) || record.properties.length === 0;
 
@@ -456,7 +426,6 @@ function renderDashboard() {
     .sort((a, b) => {
       const dateA = Date.parse(a.createdAt || "") || 0;
       const dateB = Date.parse(b.createdAt || "") || 0;
-
       return dateB - dateA || records.indexOf(b) - records.indexOf(a);
     })
     .slice(0, 5);
@@ -751,7 +720,6 @@ createQuickMenu({
   getViewMode: () => viewMode,
   setViewMode: value => {
     viewMode = value;
-
     try {
       localStorage.setItem("rpg-codex-view-mode-v1", value);
     } catch {}
@@ -759,7 +727,6 @@ createQuickMenu({
   getCustomColumns: () => customColumns,
   setCustomColumns: value => {
     customColumns = Math.max(2, Math.min(6, Math.round(Number(value) || 3)));
-
     try {
       localStorage.setItem(
         "rpg-codex-custom-columns-v1",

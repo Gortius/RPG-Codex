@@ -13,7 +13,7 @@ import {
   SAVED_KEY,
   TRASH_KEY,
   getScopedStorageKey
-} from "../data/storage.js";
+} from "../data/storage.js?v=20261023-r5";
 import { STARTER_RECORDS } from "../data/default-records.js";
 
 const $ = id => document.getElementById(id);
