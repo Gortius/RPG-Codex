@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -14,17 +15,8 @@
     <div class="logo">R</div>
     <div><h1>RPG Codex</h1><p class="sub">Game Development Database</p></div>
   </div>
-  <div class="header-tools">
-    <select id="project-switcher" aria-label="Active project" title="Active project"></select>
-    <button id="project-manage" class="secondary" type="button">Projects</button>
-    <button id="trash-open" class="secondary" type="button">Trash</button>
-    <input id="backup-file" type="file" accept="application/json,.json" hidden>
-  </div>
-</header>
 
-<main>
-<section id="home">
-  <nav class="page-nav" aria-label="Main navigation">
+  <nav id="top-page-nav" class="page-nav" aria-label="Main navigation">
     <button id="nav-dashboard" class="nav-button active" type="button" title="Overview" aria-label="Overview">
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <rect x="3" y="3" width="8" height="8" rx="1"></rect>
@@ -43,6 +35,16 @@
     </button>
   </nav>
 
+  <div class="header-tools">
+    <select id="project-switcher" aria-label="Active project" title="Active project"></select>
+    <button id="project-manage" class="secondary" type="button">Projects</button>
+    <button id="trash-open" class="secondary" type="button">Trash</button>
+    <input id="backup-file" type="file" accept="application/json,.json" hidden>
+  </div>
+</header>
+
+<main>
+<section id="home">
   <div id="dashboard-view">
     <p class="eyebrow">YOUR WORKSPACE</p>
     <h2>Dashboard</h2>
@@ -149,40 +151,18 @@
 
     <div class="section-title records-heading">
       <h3>Records</h3>
-
       <div class="records-tools">
-        <label for="sort-records" class="sort-label">Sort by</label>
+        <label for="sort-records" class="sort-label">Sort By</label>
         <select id="sort-records" aria-label="Sort records">
-          <option value="name-asc">Alphabetical · A–Z</option>
-          <option value="name-desc" hidden>Alphabetical · Z–A</option>
-
-          <option value="details-asc">Properties + tags · Fewest first</option>
-          <option value="details-desc" hidden>Properties + tags · Most first</option>
-
-          <option value="oldest" hidden>Date added · Oldest first</option>
-          <option value="newest">Date added · Newest first</option>
-
-          <option value="relations-asc">Relations · Fewest first</option>
-          <option value="relations-desc" hidden>Relations · Most first</option>
-
-          <option value="type">Type · A–Z</option>
-          <option value="type-desc" hidden>Type · Z–A</option>
-
-          <option value="category">Category · A–Z</option>
-          <option value="category-desc" hidden>Category · Z–A</option>
-
-          <option value="subcategory-asc">Subcategory · A–Z</option>
-          <option value="subcategory-desc" hidden>Subcategory · Z–A</option>
+          <option value="name-asc">Alphabetical</option>
+          <option value="details-asc">Properties and Tags</option>
+          <option value="oldest">Date Added</option>
+          <option value="relations-asc">Number of Relations</option>
         </select>
-
-        <button
-          id="sort-direction"
-          class="secondary sort-direction"
-          type="button"
-          aria-label="Toggle sort direction"
-          title="Switch to descending order"
-        >↑ Ascending</button>
-
+        <button id="sort-direction" class="secondary sort-direction"
+          type="button" data-direction="asc"
+          aria-label="Switch to descending order"
+          title="Switch sort direction">↑ Ascending</button>
         <span id="count" class="muted"></span>
       </div>
     </div>
@@ -306,11 +286,8 @@
     .then(() => import("./js/features/sidebar.js"))
     .catch(error => {
       console.error("RPG Codex failed to start:", error);
-
       const status = document.getElementById("status");
-      if (status) {
-        status.textContent = "App failed to load: " + error.message;
-      }
+      if (status) status.textContent = "App failed to load: " + error.message;
     });
 </script>
 </body>
