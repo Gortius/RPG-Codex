@@ -1,3 +1,4 @@
+
 "use strict";
 
 function num(value) {
@@ -10,15 +11,16 @@ function num(value) {
   return Number(text);
 }
 
+function safeArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
 function conditionMatches(record, condition) {
   if (!condition.property || !condition.value.trim()) {
     return true;
   }
 
-  const properties = Array.isArray(record.properties)
-    ? record.properties
-    : [];
-
+  const properties = safeArray(record.properties);
   const property = properties.find(
     item => item.name === condition.property
   );
@@ -58,19 +60,28 @@ function conditionMatches(record, condition) {
 function getSortInfo(sort) {
   const value = String(sort || "name-asc");
 
+  // Valores usados pelas versões anteriores do aplicativo.
   const legacy = {
+    "name": { key: "name", direction: "asc" },
     "name-asc": { key: "name", direction: "asc" },
     "name-desc": { key: "name", direction: "desc" },
-    "newest": { key: "date", direction: "desc" },
+    "details": { key: "details", direction: "asc" },
+    "details-asc": { key: "details", direction: "asc" },
+    "details-desc": { key: "details", direction: "desc" },
+    "date": { key: "date", direction: "asc" },
     "oldest": { key: "date", direction: "asc" },
-    "type": { key: "type", direction: "asc" },
-    "category": { key: "category", direction: "asc" }
+    "newest": { key: "date", direction: "desc" },
+    "relations": { key: "relations", direction: "asc" },
+    "relations-asc": { key: "relations", direction: "asc" },
+    "relations-desc": { key: "relations", direction: "desc" },
+    "type": { key: "name", direction: "asc" },
+    "category": { key: "name", direction: "asc" }
   };
 
   if (legacy[value]) return legacy[value];
 
   const match = value.match(
-    /^(details|date|relations|type|category|subcategory|name)-(asc|desc)$/
+    /^(name|details|date|relations)-(asc|desc)$/
   );
 
   if (match) {
@@ -81,10 +92,6 @@ function getSortInfo(sort) {
   }
 
   return { key: "name", direction: "asc" };
-}
-
-function safeArray(value) {
-  return Array.isArray(value) ? value : [];
 }
 
 function compareText(a, b) {
@@ -122,22 +129,14 @@ function compareRecords(a, b, sort) {
     result =
       safeArray(a.related).length -
       safeArray(b.related).length;
-  } else if (key === "type") {
-    result = compareText(a.type, b.type);
-  } else if (key === "category") {
-    result = compareText(a.category, b.category);
-  } else if (key === "subcategory") {
-    result = compareText(a.subcategory, b.subcategory);
   }
 
-  if (result !== 0) return result * multiplier;
-
-  // Critério secundário consistente quando os valores empatam.
-  if (key !== "name") {
-    return compareText(a.name, b.name);
+  if (result !== 0) {
+    return result * multiplier;
   }
 
-  return 0;
+  // Para empates, mantém um critério secundário previsível.
+  return compareText(a.name, b.name);
 }
 
 export function filterRecords(records, filters) {
