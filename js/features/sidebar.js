@@ -25,59 +25,6 @@ function addSidebarStyles() {
   const style = document.createElement("style");
   style.id = "sidebar-styles";
   style.textContent = `
-    header {
-      position: relative;
-      justify-content: flex-start;
-      gap: 14px;
-    }
-
-    #top-page-nav {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 10;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 8px;
-      width: fit-content;
-      margin: 0;
-      padding: 4px;
-      background: transparent;
-      border: 0;
-    }
-
-    #top-page-nav .nav-button {
-      display: grid;
-      place-items: center;
-      flex: 0 0 42px;
-      width: 42px;
-      height: 42px;
-      padding: 0;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: var(--panel);
-      color: var(--muted);
-    }
-
-    #top-page-nav .nav-button.active {
-      color: var(--accent);
-      border-color: var(--accent);
-      background: #252130;
-    }
-
-    #top-page-nav .nav-button svg {
-      display: block;
-      width: 20px;
-      height: 20px;
-      fill: none;
-      stroke: currentColor;
-      stroke-width: 1.8;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      pointer-events: none;
-    }
 
     .sidebar-toggle {
       display: grid;
@@ -102,11 +49,6 @@ function addSidebarStyles() {
     .sidebar-close svg {
       width: 21px;
       height: 21px;
-    }
-
-    .brand {
-      min-width: 0;
-      margin-right: auto;
     }
 
     .sidebar-backdrop {
@@ -339,24 +281,6 @@ function addSidebarStyles() {
       }
     }
 
-    @media (max-width: 680px) {
-      header {
-        flex-wrap: wrap;
-      }
-
-      #top-page-nav {
-        position: static;
-        transform: none;
-        order: 3;
-        width: 100%;
-        margin: 0 auto;
-      }
-
-      .brand {
-        margin-right: 0;
-      }
-    }
-
     @media (prefers-reduced-motion: reduce) {
       .app-sidebar,
       .sidebar-backdrop {
@@ -449,6 +373,30 @@ function setupSidebar() {
   }
 
   $("sidebar-navigation").append(sidebarNavigation);
+
+  function syncSidebarNavigation() {
+    sidebarNavigation.querySelectorAll(".nav-button").forEach(cloneButton => {
+      const label = cloneButton.textContent.toLowerCase();
+      const original = label.includes("overview")
+        ? $("nav-dashboard")
+        : $("nav-records");
+      if (!original) return;
+      cloneButton.classList.toggle("active", original.classList.contains("active"));
+      if (original.classList.contains("active")) {
+        cloneButton.setAttribute("aria-current", "page");
+      } else {
+        cloneButton.removeAttribute("aria-current");
+      }
+    });
+  }
+
+  const sidebarNavObserver = new MutationObserver(syncSidebarNavigation);
+  sidebarNavObserver.observe(navigation, {
+    attributes: true,
+    subtree: true,
+    attributeFilter: ["class", "aria-current"]
+  });
+  syncSidebarNavigation();
 
   // Os controles do projeto são movidos para a barra lateral.
   // Os seus IDs e event listeners permanecem intactos.
@@ -576,6 +524,7 @@ function setupSidebar() {
   });
 
   addSidebarStyles();
+  document.body.classList.add("sidebar-ready");
   paintSidebarIcons(header);
   paintSidebarIcons(sidebar);
 }

@@ -38,7 +38,7 @@ export function createCatalogFeatures({
   }
 
   function saveCatalogs() {
-    saveStoredCatalogs(catalogs);
+    return saveStoredCatalogs(catalogs);
   }
 
   function catalogNames(kind) {

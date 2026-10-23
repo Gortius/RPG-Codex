@@ -3,10 +3,12 @@ import {
   saveRecords as saveStoredRecords,
   loadSavedFilters as loadStoredSavedFilters,
   persistFilters as persistStoredFilters,
-  loadProjects, saveProjects, getActiveProjectId, setActiveProjectId,
-  exportProjectBundle, importProjectBundle, loadTrash, saveTrash
+  getScopedStorageKey,
+  STORAGE_KEY,
+  CATALOG_KEY
 } from "./data/storage.js";
 import { iconMarkup, paintIcons, mountIconPicker } from "./features/icon-library.js";
+import { STARTER_RECORDS } from "./data/default-records.js";
 
 import { createRecordFeatures } from "./features/records.js";
 import { createCatalogFeatures } from "./features/catalogs.js";
@@ -59,114 +61,6 @@ const uniq = a =>
     a.map(x => String(x || "").trim()).filter(Boolean)
   )].sort((a, b) => a.localeCompare(b));
 
-const starter = [
-  {
-    id: "sample-mob",
-    name: "Leafling",
-    type: "Mob",
-    category: "Beginning Hole",
-    description: "A small creature found near the entrance.",
-    tags: ["Common"],
-    properties: [
-      { name: "Health", value: "20" },
-      { name: "Damage", value: "3" }
-    ],
-    related: []
-  },
-  {
-    id: "sample-material",
-    name: "Vines",
-    type: "Material",
-    category: "Beginning Hole",
-    description: "A basic crafting material gathered from local creatures and plants.",
-    tags: ["Craftable"],
-    properties: [{ name: "Rarity", value: "Common" }],
-    related: []
-  },
-  {
-    id: "sample-item",
-    name: "Leaf Bow",
-    type: "Item",
-    category: "Beginning Hole",
-    description: "A simple bow made with materials from the starting area.",
-    tags: ["Craftable", "Common"],
-    properties: [
-      { name: "Damage", value: "5" },
-      { name: "Attack Speed", value: "1.0" }
-    ],
-    related: ["sample-recipe"]
-  },
-  {
-    id: "sample-area",
-    name: "Beginning Hole",
-    type: "Area",
-    category: "Sector 1",
-    description: "The player's starting area, featuring a locked door and an early guardian.",
-    tags: ["Starting Area"],
-    properties: [{ name: "Level", value: "1" }],
-    related: ["sample-mob"]
-  },
-  {
-    id: "sample-effect",
-    name: "Slowness",
-    type: "Effect",
-    category: "Debuff",
-    description: "Reduces the affected target's movement speed.",
-    tags: ["Debuff"],
-    properties: [{ name: "Duration", value: "3 seconds" }],
-    related: []
-  },
-  {
-    id: "sample-recipe",
-    name: "Leaf Bow Recipe",
-    type: "Recipe",
-    category: "Beginning Hole",
-    description: "Crafting recipe for the Leaf Bow.",
-    tags: ["Craftable"],
-    properties: [{ name: "Material Cost", value: "Vines + Wood" }],
-    related: ["sample-item"]
-  }
-];
-
-let records = [];
-let savedFilters = [];
-let viewMode = "list";
-
-try {
-  viewMode = localStorage.getItem("rpg-codex-view-mode-v1") || "list";
-} catch {}
-
-let activeTypes = [];
-let activeTags = [];
-let conditions = [];
-let qualityOnly = false;
-let customColumns = 3;
-
-try {
-  const storedColumns = Number(
-    localStorage.getItem("rpg-codex-custom-columns-v1")
-  );
-
-  if (Number.isFinite(storedColumns)) {
-    customColumns = Math.max(2, Math.min(6, Math.round(storedColumns)));
-  }
-} catch {}
-
-let expanded = new Set();
-
-let filtersOpen = false;
-let editingId = null;
-let currentId = null;
-
-let selectedTags = [];
-let selectedRelated = [];
-
-let tagOpen = false;
-let relatedOpen = false;
-let tagSearch = "";
-let relatedSearch = "";
-let tagCreateOpen = false;
-
 function iconFor(type) {
   return ({
     Mob: "lucide:bug",
@@ -190,14 +84,46 @@ function iconOf(record) {
 }
 
 function loadRecords() {
-  return loadStoredRecords(starter, uid);
+  return loadStoredRecords(STARTER_RECORDS, uid);
 }
 
 function saveRecords() {
+  let previousRecordsRaw;
+  let previousCatalogsRaw;
+
+  try {
+    previousRecordsRaw = localStorage.getItem(getScopedStorageKey(STORAGE_KEY));
+    previousCatalogsRaw = localStorage.getItem(getScopedStorageKey(CATALOG_KEY));
+  } catch (error) {
+    console.error("Could not snapshot records/catalogs before saving.", error);
+    alert("Could not access browser storage. The changes were not confirmed as saved.");
+    return false;
+  }
+
   if (!saveStoredRecords(records)) return false;
 
-  syncCatalogs();
-  saveCatalogs();
+  try {
+    syncCatalogs();
+    if (!saveCatalogs()) {
+      throw new Error("The tag/property catalog could not be saved.");
+    }
+  } catch (error) {
+    console.error("Record/catalog save failed; rolling back the record write.", error);
+    try {
+      const recordsKey = getScopedStorageKey(STORAGE_KEY);
+      const catalogsKey = getScopedStorageKey(CATALOG_KEY);
+
+      if (previousRecordsRaw === null) localStorage.removeItem(recordsKey);
+      else localStorage.setItem(recordsKey, previousRecordsRaw);
+
+      if (previousCatalogsRaw === null) localStorage.removeItem(catalogsKey);
+      else localStorage.setItem(catalogsKey, previousCatalogsRaw);
+    } catch (rollbackError) {
+      console.error("Could not roll back record/catalog writes after save failure.", rollbackError);
+      alert("The catalog could not be saved and rollback also failed. Export or preserve a backup before further changes.");
+    }
+    return false;
+  }
 
   $("status").textContent =
     "Saved in this browser · " + records.length + " records";
@@ -241,14 +167,15 @@ function filterState() {
     subcategory: $("filter-subcategory").value,
     tags: [...activeTags],
     sort: $("sort-records").value,
+    sortDirection: $("sort-direction")?.dataset.direction === "desc" ? "desc" : "asc",
     conditions: conditions.map(c => ({ ...c }))
   };
 }
 
 function applyFilterState(state) {
   qualityOnly = false;
-  activeTypes = state.types || [];
-  activeTags = state.tags || [];
+  activeTypes = Array.isArray(state.types) ? state.types : [];
+  activeTags = Array.isArray(state.tags) ? state.tags : [];
 
   $("search").value = state.query || "";
 
@@ -258,9 +185,41 @@ function applyFilterState(state) {
   renderFilterOptions();
   $("filter-category").value = state.category || "";
   $("filter-subcategory").value = state.subcategory || "";
-  $("sort-records").value = state.sort || "name-asc";
+  const legacySort = String(state.sort || "name-asc");
+  const sortOptionAliases = {
+    name: "name-asc",
+    "name-asc": "name-asc",
+    "name-desc": "name-asc",
+    type: "name-asc",
+    category: "name-asc",
+    details: "details-asc",
+    "details-asc": "details-asc",
+    "details-desc": "details-asc",
+    date: "oldest",
+    oldest: "oldest",
+    newest: "oldest",
+    relations: "relations-asc",
+    "relations-asc": "relations-asc",
+    "relations-desc": "relations-asc"
+  };
+  $("sort-records").value = sortOptionAliases[legacySort] || "name-asc";
+  const sortDirection = state.sortDirection === "desc" ||
+    (!state.sortDirection && /(?:-desc|newest)$/.test(legacySort))
+    ? "desc"
+    : "asc";
+  const sortDirectionButton = $("sort-direction");
+  if (sortDirectionButton) sortDirectionButton.dataset.direction = sortDirection;
 
-  conditions = (state.conditions || []).map(c => ({ ...c }));
+  conditions = Array.isArray(state.conditions)
+    ? state.conditions
+        .filter(condition => condition && typeof condition === "object" && !Array.isArray(condition))
+        .map(condition => ({
+          ...condition,
+          property: String(condition.property ?? ""),
+          operator: String(condition.operator || "contains"),
+          value: String(condition.value ?? "")
+        }))
+    : [];
 
   renderConditionRows();
   renderCategories();
@@ -288,7 +247,6 @@ const { renderRecords } = createRecordListFeature({
 
 const {
   renderCategories,
-  renderFilterTags,
   renderFilterOptions,
   renderConditionRows,
   renderSavedFilters,
@@ -684,279 +642,10 @@ $("clear-filters").onclick = () => {
   $("filter-category").value = "";
   $("filter-subcategory").value = "";
   $("sort-records").value = "name-asc";
+  $("sort-direction").dataset.direction = "asc";
 
   renderHome();
 };
-
-function downloadJson(filename, data) {
-  const blob = new Blob(
-    [JSON.stringify(data, null, 2)],
-    { type: "application/json" }
-  );
-
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function setupWorkspaceTools() {
-  const switcher = $("project-switcher");
-  const manageButton = $("project-manage");
-  const backupFile = $("backup-file");
-  const trashButton = $("trash-open");
-
-  if (!switcher || !manageButton || !backupFile || !trashButton) return;
-
-  let projects = loadProjects();
-
-  if (!projects.some(project => project.id === getActiveProjectId())) {
-    setActiveProjectId("default");
-  }
-
-  function renderProjects() {
-    projects = loadProjects();
-
-    switcher.innerHTML = projects.map(project =>
-      `<option value="${esc(project.id)}">${esc(project.name)}</option>`
-    ).join("");
-
-    switcher.value = getActiveProjectId();
-  }
-
-  function activeProject() {
-    return projects.find(project => project.id === getActiveProjectId());
-  }
-
-  function createProject() {
-    const name = prompt("Name for the new project:");
-    if (!name || !name.trim()) return;
-
-    const id = "p-" + Date.now().toString(36) + "-" +
-      Math.random().toString(36).slice(2, 7);
-
-    projects.push({
-      id,
-      name: name.trim(),
-      createdAt: new Date().toISOString()
-    });
-
-    saveProjects(projects);
-    setActiveProjectId(id);
-    location.reload();
-  }
-
-  function renameProject() {
-    const project = activeProject();
-    if (!project) return;
-
-    const name = prompt("New project name:", project.name);
-    if (!name || !name.trim()) return;
-
-    project.name = name.trim();
-    saveProjects(projects);
-    renderProjects();
-  }
-
-  function deleteProject() {
-    const id = getActiveProjectId();
-
-    if (id === "default") {
-      alert("The original project cannot be deleted.");
-      return;
-    }
-
-    const project = activeProject();
-
-    if (!confirm(
-      `Delete project “${project?.name || id}” and all its local data? ` +
-      "Export a backup first if needed."
-    )) return;
-
-    [
-      "rpg-codex-records-v2",
-      "rpg-codex-catalogs-v1",
-      "rpg-codex-saved-filters-v1",
-      "rpg-codex-trash-v1"
-    ].forEach(key => localStorage.removeItem(`${key}::${id}`));
-
-    projects = projects.filter(item => item.id !== id);
-    saveProjects(projects);
-    setActiveProjectId("default");
-    location.reload();
-  }
-
-  function exportProject() {
-    try {
-      const bundle = exportProjectBundle();
-      bundle.records = records;
-
-      downloadJson(
-        `rpg-codex-${getActiveProjectId()}-backup.json`,
-        bundle
-      );
-    } catch (error) {
-      alert("Could not create backup: " + error.message);
-    }
-  }
-
-  function startImport() {
-    backupFile.click();
-  }
-
-  switcher.onchange = () => {
-    if (switcher.value === getActiveProjectId()) return;
-
-    setActiveProjectId(switcher.value);
-    location.reload();
-  };
-
-  manageButton.onclick = () => {
-    const action = prompt(
-      "Projects\n\n" +
-      "1. Add project\n" +
-      "2. Rename current project\n" +
-      "3. Delete current project\n" +
-      "4. Export current project\n" +
-      "5. Import project backup\n\n" +
-      "Type a number or action name."
-    );
-
-    if (!action) return;
-
-    const normalized = action.trim().toLowerCase();
-
-    if (["1", "add", "new", "create"].includes(normalized)) {
-      createProject();
-    } else if (["2", "rename"].includes(normalized)) {
-      renameProject();
-    } else if (["3", "delete", "remove"].includes(normalized)) {
-      deleteProject();
-    } else if (["4", "export"].includes(normalized)) {
-      exportProject();
-    } else if (["5", "import"].includes(normalized)) {
-      startImport();
-    } else {
-      alert("Choose an action from 1 to 5.");
-    }
-  };
-
-  backupFile.onchange = async event => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const bundle = JSON.parse(await file.text());
-
-      const replace = confirm(
-        "Import mode:\n\n" +
-        "OK = replace the current project's records.\n" +
-        "Cancel = merge the backup with the current records."
-      );
-
-      const count = Array.isArray(bundle.records) ? bundle.records.length : 0;
-
-      if (!confirm(
-        `Import ${count} records into “${activeProject()?.name || "this project"}”?`
-      )) return;
-
-      importProjectBundle(bundle, { replace });
-
-      alert("Import complete. The app will reload to show the imported data.");
-      location.reload();
-    } catch (error) {
-      alert("Import failed: " + error.message);
-    } finally {
-      event.target.value = "";
-    }
-  };
-
-  trashButton.onclick = () => {
-    const trash = loadTrash();
-
-    if (!trash.length) {
-      alert("The trash is empty.");
-      return;
-    }
-
-    const menu = trash.map((item, i) =>
-      `${i + 1}. ${item.record?.name || "Unnamed record"}`
-    ).join("\n");
-
-    const choice = prompt(
-      `Trash (${trash.length} items)\n${menu}\n\n` +
-      "Type a number to restore, or EMPTY to permanently delete all items."
-    );
-
-    if (!choice) return;
-
-    if (choice.trim().toLowerCase() === "empty") {
-      if (confirm("Permanently delete every item in the trash? This cannot be undone.")) {
-        saveTrash([]);
-        alert("Trash emptied.");
-      }
-      return;
-    }
-
-    const index = Number(choice) - 1;
-
-    if (!Number.isInteger(index) || index < 0 || index >= trash.length) {
-      alert("Invalid selection.");
-      return;
-    }
-
-    const item = trash[index];
-
-    if (records.some(record => record.id === item.record.id)) {
-      alert(
-        "A record with this ID already exists. Export a backup and " +
-        "resolve the conflict before restoring."
-      );
-      return;
-    }
-
-    const previousRecords = records;
-    const restored = { ...item.record };
-
-    delete restored._trashedAt;
-    delete restored._linkedFrom;
-
-    records = [...records, restored].map(record => ({
-      ...record,
-      related: [...(record.related || [])]
-    }));
-
-    (item.linkedFrom || item.record._linkedFrom || []).forEach(id => {
-      const linked = records.find(record => record.id === id);
-
-      if (linked && !linked.related.includes(restored.id)) {
-        linked.related.push(restored.id);
-      }
-    });
-
-    if (!saveRecords()) {
-      records = previousRecords;
-      return;
-    }
-
-    trash.splice(index, 1);
-
-    try {
-      saveTrash(trash);
-    } catch (error) {
-      console.error("Could not update trash", error);
-    }
-
-    renderHome();
-    alert("Record restored.");
-  };
-
-  renderProjects();
-}
 
 records = loadRecords();
 loadCatalogs();
@@ -1003,6 +692,5 @@ createQuickMenu({
   }
 });
 
-mountIconPicker({ $ });
-setupWorkspaceTools();
+mountIconPicker({ $, renderIcons: false });
 renderDashboard();

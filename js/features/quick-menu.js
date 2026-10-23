@@ -17,6 +17,7 @@ export function createQuickMenu({
   const menu = document.createElement("aside");
   menu.id = "quick-menu";
   menu.className = "quick-menu";
+  menu.hidden = true;
   menu.setAttribute("aria-label", "Record shortcuts");
 
   menu.innerHTML = `
@@ -373,6 +374,7 @@ export function createQuickMenu({
     menu.hidden = !recordsActive;
 
     if (!recordsActive) {
+      setOpen(false);
       typesPanel.hidden = true;
       typesButton.setAttribute("aria-expanded", "false");
     }

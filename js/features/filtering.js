@@ -16,33 +16,36 @@ function safeArray(value) {
 }
 
 function conditionMatches(record, condition) {
-  if (!condition.property || !condition.value.trim()) {
-    return true;
-  }
+  if (!condition || typeof condition !== "object") return true;
+
+  const propertyName = String(condition.property ?? "").trim();
+  const b = String(condition.value ?? "").trim();
+  const operator = String(condition.operator || "contains");
+
+  if (!propertyName || !b) return true;
 
   const properties = safeArray(record.properties);
   const property = properties.find(
-    item => item.name === condition.property
+    item => item && item.name === propertyName
   );
 
   if (!property) return false;
 
-  const a = String(property.value).trim();
-  const b = condition.value.trim();
+  const a = String(property.value ?? "").trim();
   const na = num(a);
   const nb = num(b);
 
-  if (condition.operator === "contains") {
+  if (operator === "contains") {
     return a.toLowerCase().includes(b.toLowerCase());
   }
 
-  if (condition.operator === "=") {
+  if (operator === "=") {
     return na !== null && nb !== null
       ? na === nb
       : a.toLowerCase() === b.toLowerCase();
   }
 
-  if (condition.operator === "!=") {
+  if (operator === "!=") {
     return na !== null && nb !== null
       ? na !== nb
       : a.toLowerCase() !== b.toLowerCase();
@@ -50,10 +53,10 @@ function conditionMatches(record, condition) {
 
   if (na === null || nb === null) return false;
 
-  return condition.operator === ">" ? na > nb
-    : condition.operator === ">=" ? na >= nb
-    : condition.operator === "<" ? na < nb
-    : condition.operator === "<=" ? na <= nb
+  return operator === ">" ? na > nb
+    : operator === ">=" ? na >= nb
+    : operator === "<" ? na < nb
+    : operator === "<=" ? na <= nb
     : true;
 }
 

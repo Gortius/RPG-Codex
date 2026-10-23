@@ -1,3 +1,5 @@
+import { STARTER_RECORDS } from "./default-records.js";
+
 "use strict";
 
 export const STORAGE_KEY = "rpg-codex-records-v2";
@@ -20,8 +22,8 @@ export function setActiveProjectId(id) {
   localStorage.setItem(ACTIVE_PROJECT_KEY, String(id || "default"));
 }
 
-function scopedKey(base) {
-  const id = getActiveProjectId();
+export function getScopedStorageKey(base, projectId = getActiveProjectId()) {
+  const id = String(projectId || "default");
   return id === "default" ? base : `${base}::${id}`;
 }
 
@@ -50,17 +52,68 @@ export function saveProjects(projects) {
   localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
 }
 
+let trashReadFailed = false;
+
 export function loadTrash() {
   try {
-    const data = JSON.parse(localStorage.getItem(scopedKey(TRASH_KEY)) || "[]");
-    return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
+    const raw = localStorage.getItem(getScopedStorageKey(TRASH_KEY));
+    const data = raw === null ? [] : JSON.parse(raw);
+    if (!Array.isArray(data)) {
+      throw new Error("The saved trash is not a valid array.");
+    }
+    if (data.some(item =>
+      !item || typeof item !== "object" || Array.isArray(item) ||
+      !item.record || typeof item.record !== "object" || Array.isArray(item.record) ||
+      !String(item.record.id ?? "").trim() ||
+      (item.linkedFrom !== undefined && !Array.isArray(item.linkedFrom))
+    )) {
+      throw new Error("The saved trash contains an invalid entry.");
+    }
+    trashReadFailed = false;
+    return data;
+  } catch (error) {
+    trashReadFailed = true;
+    console.error("RPG Codex: failed to load trash.", error);
+    throw new Error("The trash could not be read safely. Its existing data was preserved.");
   }
 }
 
 export function saveTrash(items) {
-  localStorage.setItem(scopedKey(TRASH_KEY), JSON.stringify(items));
+  if (trashReadFailed) {
+    throw new Error("Trash saving is blocked because the existing trash could not be read.");
+  }
+  if (!Array.isArray(items)) {
+    throw new Error("The trash must be saved as a list.");
+  }
+
+  const isValidTrashEntry = item =>
+    Boolean(
+      item && typeof item === "object" && !Array.isArray(item) &&
+      item.record && typeof item.record === "object" && !Array.isArray(item.record) &&
+      String(item.record.id ?? "").trim() &&
+      (item.linkedFrom === undefined || Array.isArray(item.linkedFrom))
+    );
+
+  if (!items.every(isValidTrashEntry)) {
+    throw new Error("The trash contains an invalid entry.");
+  }
+
+  const key = getScopedStorageKey(TRASH_KEY);
+  try {
+    const currentRaw = localStorage.getItem(key);
+    if (currentRaw !== null) {
+      const current = JSON.parse(currentRaw);
+      if (!Array.isArray(current) || !current.every(isValidTrashEntry)) {
+        throw new Error("The existing trash contains invalid data.");
+      }
+    }
+  } catch (error) {
+    trashReadFailed = true;
+    console.error("RPG Codex: refused to overwrite unreadable trash.", error);
+    throw new Error("Trash saving is blocked because the existing trash could not be read safely.");
+  }
+
+  localStorage.setItem(key, JSON.stringify(items));
 }
 
 export function exportProjectBundle() {
@@ -69,14 +122,149 @@ export function exportProjectBundle() {
     version: 1,
     exportedAt: new Date().toISOString(),
     projectId: getActiveProjectId(),
-    records: JSON.parse(localStorage.getItem(scopedKey(STORAGE_KEY)) || "[]"),
+    records: JSON.parse(localStorage.getItem(getScopedStorageKey(STORAGE_KEY)) || "[]"),
     catalogs: JSON.parse(
-      localStorage.getItem(scopedKey(CATALOG_KEY)) ||
+      localStorage.getItem(getScopedStorageKey(CATALOG_KEY)) ||
       '{"tags":[],"properties":[]}'
     ),
-    savedFilters: JSON.parse(localStorage.getItem(scopedKey(SAVED_KEY)) || "[]"),
+    savedFilters: JSON.parse(localStorage.getItem(getScopedStorageKey(SAVED_KEY)) || "[]"),
     trash: loadTrash()
   };
+}
+
+function normalizeProjectRecord(record, context = "backup") {
+  if (
+    !record || typeof record !== "object" || Array.isArray(record) ||
+    !String(record.id ?? "").trim() ||
+    !String(record.name ?? "").trim() ||
+    !String(record.type ?? "").trim()
+  ) {
+    throw new Error(`The ${context} contains an invalid record.`);
+  }
+
+  if (
+    (record.tags !== undefined && !Array.isArray(record.tags)) ||
+    (record.properties !== undefined && !Array.isArray(record.properties)) ||
+    (record.related !== undefined && !Array.isArray(record.related))
+  ) {
+    throw new Error(`The ${context} contains an invalid tags, properties, or relations list.`);
+  }
+
+  if (Array.isArray(record.properties) && record.properties.some(property =>
+    !property || typeof property !== "object" || Array.isArray(property)
+  )) {
+    throw new Error(`The ${context} contains an invalid property.`);
+  }
+
+  const iconColor = String(record.iconColor || "");
+
+  return {
+    ...record,
+    id: String(record.id).trim(),
+    name: String(record.name).trim(),
+    icon: String(record.icon ?? ""),
+    iconColor: /^#[0-9a-f]{6}$/i.test(iconColor)
+      ? iconColor.toUpperCase()
+      : "#B9A0FF",
+    type: String(record.type).trim(),
+    category: String(record.category ?? ""),
+    subcategory: String(record.subcategory ?? ""),
+    createdAt: String(record.createdAt ?? ""),
+    description: String(record.description ?? ""),
+    tags: Array.isArray(record.tags)
+      ? record.tags.map(tag => String(tag ?? ""))
+      : [],
+    properties: Array.isArray(record.properties)
+      ? record.properties.map(property => ({
+          ...property,
+          name: String(property.name ?? ""),
+          value: String(property.value ?? "")
+        }))
+      : [],
+    related: Array.isArray(record.related)
+      ? record.related.map(String)
+      : []
+  };
+}
+
+function normalizeSavedFilterState(state) {
+  const input = state && typeof state === "object" && !Array.isArray(state)
+    ? state
+    : {};
+  const allowedOperators = new Set(["contains", "=", "!=", ">", ">=", "<", "<="]);
+  const conditions = Array.isArray(input.conditions)
+    ? input.conditions
+        .filter(condition => condition && typeof condition === "object" && !Array.isArray(condition))
+        .map(condition => ({
+          ...condition,
+          property: String(condition.property ?? ""),
+          operator: allowedOperators.has(String(condition.operator))
+            ? String(condition.operator)
+            : "contains",
+          value: String(condition.value ?? "")
+        }))
+    : [];
+
+  const sort = String(input.sort || "name-asc");
+  const sortDirection = input.sortDirection === "desc" ||
+    (!input.sortDirection && /(?:-desc|newest)$/.test(sort))
+    ? "desc"
+    : "asc";
+
+  return {
+    ...input,
+    query: String(input.query ?? ""),
+    types: Array.isArray(input.types) ? input.types.map(String) : [],
+    category: String(input.category ?? ""),
+    subcategory: String(input.subcategory ?? ""),
+    tags: Array.isArray(input.tags) ? input.tags.map(String) : [],
+    sort,
+    sortDirection,
+    conditions
+  };
+}
+
+function normalizeIncomingFilters(filters, currentFilters, replace) {
+  if (!Array.isArray(filters)) {
+    throw new Error("The backup contains invalid saved filters.");
+  }
+
+  const reservedIds = new Set(
+    (replace ? [] : currentFilters).map(filter => String(filter.id))
+  );
+  const seenIncomingIds = new Set();
+
+  return filters.map(filter => {
+    if (
+      !filter || typeof filter !== "object" || Array.isArray(filter) ||
+      !String(filter.id ?? "").trim() ||
+      !String(filter.name ?? "").trim() ||
+      !filter.state || typeof filter.state !== "object" || Array.isArray(filter.state)
+    ) {
+      throw new Error("The backup contains an invalid saved filter.");
+    }
+
+    const sourceId = String(filter.id).trim();
+    if (seenIncomingIds.has(sourceId)) {
+      throw new Error("The backup contains duplicate saved filter IDs.");
+    }
+    seenIncomingIds.add(sourceId);
+
+    let targetId = sourceId;
+    let attempt = 0;
+    while (reservedIds.has(targetId)) {
+      attempt++;
+      targetId = `${sourceId}-import-${Math.random().toString(36).slice(2, 7)}${attempt > 1 ? `-${attempt}` : ""}`;
+    }
+    reservedIds.add(targetId);
+
+    return {
+      ...filter,
+      id: targetId,
+      name: String(filter.name).trim(),
+      state: normalizeSavedFilterState(filter.state)
+    };
+  });
 }
 
 export function importProjectBundle(bundle, { replace = false } = {}) {
@@ -89,103 +277,239 @@ export function importProjectBundle(bundle, { replace = false } = {}) {
     throw new Error("This file is not a valid RPG Codex backup.");
   }
 
-  const incoming = bundle.records;
-
-  if (incoming.some(r =>
-    !r || typeof r !== "object" || !r.id || !r.name || !r.type
-  )) {
-    throw new Error("The backup contains an invalid record.");
+  // Do not allow importing over data whose existing state failed to load.
+  if (recordsReadFailed || catalogsReadFailed || filtersReadFailed || trashReadFailed) {
+    throw new Error(
+      "Import stopped because some current saved data could not be read safely. " +
+      "Reload and resolve the storage problem before importing."
+    );
   }
 
-  const existing = JSON.parse(
-    localStorage.getItem(scopedKey(STORAGE_KEY)) || "[]"
+  const incoming = bundle.records.map(record =>
+    normalizeProjectRecord(record, "backup")
   );
+  const incomingIds = new Set();
+  incoming.forEach(record => {
+    if (incomingIds.has(record.id)) {
+      throw new Error("The backup contains duplicate record IDs.");
+    }
+    incomingIds.add(record.id);
+  });
 
-  let records;
-
-  if (replace) {
-    records = incoming;
-  } else {
-    const ids = new Set(existing.map(r => String(r.id)));
-    const names = new Set(
-      existing.map(r =>
-        `${String(r.type).toLowerCase()}::${String(r.name).toLowerCase()}`
-      )
-    );
-
-    records = [...existing];
-
-    incoming.forEach(r => {
-      const key =
-        `${String(r.type).toLowerCase()}::${String(r.name).toLowerCase()}`;
-
-      if (ids.has(String(r.id)) || names.has(key)) {
-        const copy = {
-          ...r,
-          id: `${r.id}-import-${Math.random().toString(36).slice(2, 7)}`
-        };
-
-        records.push(copy);
-        ids.add(String(copy.id));
-        names.add(key);
-      } else {
-        records.push(r);
-        ids.add(String(r.id));
-        names.add(key);
-      }
-    });
+  if (bundle.catalogs !== undefined && (
+    !bundle.catalogs || typeof bundle.catalogs !== "object" || Array.isArray(bundle.catalogs) ||
+    (bundle.catalogs.tags !== undefined && !Array.isArray(bundle.catalogs.tags)) ||
+    (bundle.catalogs.properties !== undefined && !Array.isArray(bundle.catalogs.properties))
+  )) {
+    throw new Error("The backup contains invalid catalogs.");
+  }
+  if (bundle.savedFilters !== undefined && !Array.isArray(bundle.savedFilters)) {
+    throw new Error("The backup contains invalid saved filters.");
+  }
+  if (bundle.trash !== undefined && !Array.isArray(bundle.trash)) {
+    throw new Error("The backup contains an invalid trash list.");
   }
 
-  localStorage.setItem(scopedKey(STORAGE_KEY), JSON.stringify(records));
+  const recordsKey = getScopedStorageKey(STORAGE_KEY);
+  const catalogsKey = getScopedStorageKey(CATALOG_KEY);
+  const filtersKey = getScopedStorageKey(SAVED_KEY);
+  const trashKey = getScopedStorageKey(TRASH_KEY);
+  const activeProjectId = getActiveProjectId();
+  const existingRaw = localStorage.getItem(recordsKey);
+  const existingSource = existingRaw === null && activeProjectId === "default"
+    ? STARTER_RECORDS
+    : JSON.parse(existingRaw || "[]");
 
-  if (bundle.catalogs && typeof bundle.catalogs === "object") {
-    const current = JSON.parse(
-      localStorage.getItem(scopedKey(CATALOG_KEY)) ||
-      '{"tags":[],"properties":[]}'
-    );
+  if (!Array.isArray(existingSource)) {
+    throw new Error("The current project's saved records are invalid.");
+  }
+
+  const existing = existingSource.map(record =>
+    normalizeProjectRecord(record, "current project")
+  );
+  const existingIds = new Set();
+  existing.forEach(record => {
+    if (existingIds.has(record.id)) {
+      throw new Error("The current project's saved records contain duplicate IDs.");
+    }
+    existingIds.add(record.id);
+  });
+
+  let nextRecords;
+  if (replace) {
+    nextRecords = incoming.map(record => ({
+      ...record,
+      related: [...record.related]
+    }));
+  } else {
+    const reservedIds = new Set(existing.map(record => record.id));
+    const reservedNames = new Set(existing.map(record =>
+      `${record.type.toLowerCase()}::${record.name.toLowerCase()}`
+    ));
+    const idRemap = new Map();
+    const imported = [];
+
+    incoming.forEach(record => {
+      const sourceId = record.id;
+      const nameKey = `${record.type.toLowerCase()}::${record.name.toLowerCase()}`;
+      let targetId = sourceId;
+      const conflicts = reservedIds.has(targetId) || reservedNames.has(nameKey);
+
+      if (conflicts) {
+        let attempt = 0;
+        do {
+          attempt++;
+          targetId = `${sourceId}-import-${Math.random().toString(36).slice(2, 7)}${attempt > 1 ? `-${attempt}` : ""}`;
+        } while (reservedIds.has(targetId) || incomingIds.has(targetId));
+      }
+
+      idRemap.set(sourceId, targetId);
+      reservedIds.add(targetId);
+      reservedNames.add(nameKey);
+      imported.push({ ...record, id: targetId });
+    });
+
+    const remappedImported = imported.map(record => ({
+      ...record,
+      related: record.related.map(id => idRemap.get(String(id)) || String(id))
+    }));
+
+    nextRecords = [...existing, ...remappedImported];
+  }
+
+  const writes = new Map([[recordsKey, JSON.stringify(nextRecords)]]);
+
+  if (bundle.catalogs) {
+    const currentRaw = localStorage.getItem(catalogsKey);
+    const current = currentRaw === null
+      ? { tags: [], properties: [] }
+      : JSON.parse(currentRaw);
+
+    if (
+      !current || typeof current !== "object" || Array.isArray(current) ||
+      (current.tags !== undefined && !Array.isArray(current.tags)) ||
+      (current.properties !== undefined && !Array.isArray(current.properties))
+    ) {
+      throw new Error("The current project's catalogs are invalid.");
+    }
+
+    for (const key of ["tags", "properties"]) {
+      const list = current[key] || [];
+      if (list.some(item =>
+        !item || typeof item !== "object" || Array.isArray(item) ||
+        !String(item.name ?? "").trim() ||
+        (item.types !== undefined && !Array.isArray(item.types))
+      )) {
+        throw new Error(`The current project's ${key} catalog contains an invalid entry.`);
+      }
+    }
 
     const mergeList = key => {
+      const source = bundle.catalogs[key] || [];
+      const existingList = current[key] || [];
       const map = new Map(
-        (replace ? [] : (current[key] || [])).map(x => [
-          String(x.name).toLowerCase(),
-          x
+        (replace ? [] : existingList).filter(item => item && item.name).map(item => [
+          String(item.name).toLowerCase(), item
         ])
       );
 
-      (bundle.catalogs[key] || []).forEach(x => {
-        if (x && x.name) map.set(String(x.name).toLowerCase(), x);
+      source.forEach(item => {
+        if (
+          !item || typeof item !== "object" || Array.isArray(item) ||
+          !String(item.name ?? "").trim() ||
+          (item.types !== undefined && !Array.isArray(item.types))
+        ) {
+          throw new Error(`The backup contains an invalid ${key} catalog entry.`);
+        }
+        map.set(String(item.name).toLowerCase(), {
+          ...item,
+          name: String(item.name).trim(),
+          types: Array.isArray(item.types) ? item.types.map(String) : []
+        });
       });
 
       return [...map.values()];
     };
 
-    localStorage.setItem(
-      scopedKey(CATALOG_KEY),
-      JSON.stringify({
-        tags: mergeList("tags"),
-        properties: mergeList("properties")
-      })
-    );
+    writes.set(catalogsKey, JSON.stringify({
+      tags: mergeList("tags"),
+      properties: mergeList("properties")
+    }));
   }
 
   if (Array.isArray(bundle.savedFilters)) {
-    const currentFilters = JSON.parse(
-      localStorage.getItem(scopedKey(SAVED_KEY)) || "[]"
-    );
+    const currentRaw = localStorage.getItem(filtersKey);
+    const current = currentRaw === null ? [] : JSON.parse(currentRaw);
+    if (!Array.isArray(current)) {
+      throw new Error("The current project's saved filters are invalid.");
+    }
 
-    localStorage.setItem(
-      scopedKey(SAVED_KEY),
-      JSON.stringify(
-        replace ? bundle.savedFilters : [...currentFilters, ...bundle.savedFilters]
-      )
-    );
+    const currentFilterIds = new Set();
+    current.forEach(filter => {
+      if (!filter || typeof filter !== "object" || Array.isArray(filter) || !filter.id) {
+        throw new Error("The current project's saved filters contain an invalid entry.");
+      }
+      const id = String(filter.id);
+      if (currentFilterIds.has(id)) {
+        throw new Error("The current project's saved filters contain duplicate IDs.");
+      }
+      currentFilterIds.add(id);
+    });
+
+    const importedFilters = normalizeIncomingFilters(bundle.savedFilters, current, replace);
+    writes.set(filtersKey, JSON.stringify(
+      replace ? importedFilters : [...current, ...importedFilters]
+    ));
   }
 
   if (Array.isArray(bundle.trash)) {
-    saveTrash(replace ? bundle.trash : [...loadTrash(), ...bundle.trash]);
+    const currentRaw = localStorage.getItem(trashKey);
+    const current = currentRaw === null ? [] : JSON.parse(currentRaw);
+    if (!Array.isArray(current)) {
+      throw new Error("The current project's trash is invalid.");
+    }
+    if (current.some(item =>
+      !item || typeof item !== "object" || Array.isArray(item) ||
+      !item.record || typeof item.record !== "object" || Array.isArray(item.record) ||
+      !String(item.record.id ?? "").trim() ||
+      (item.linkedFrom !== undefined && !Array.isArray(item.linkedFrom))
+    )) {
+      throw new Error("The current project's trash contains an invalid entry.");
+    }
+
+    if (bundle.trash.some(item =>
+      !item || typeof item !== "object" || Array.isArray(item) ||
+      !item.record || typeof item.record !== "object" || Array.isArray(item.record) ||
+      !String(item.record.id ?? "").trim() ||
+      (item.linkedFrom !== undefined && !Array.isArray(item.linkedFrom))
+    )) {
+      throw new Error("The backup contains an invalid trash entry.");
+    }
+
+    writes.set(trashKey, JSON.stringify(
+      replace ? bundle.trash : [...current, ...bundle.trash]
+    ));
   }
 
-  return records.length;
+  // localStorage has no multi-key transaction: snapshot affected keys and attempt rollback on failure.
+  const previous = new Map();
+  writes.forEach((_, key) => previous.set(key, localStorage.getItem(key)));
+
+  try {
+    writes.forEach((value, key) => localStorage.setItem(key, value));
+  } catch (error) {
+    previous.forEach((value, key) => {
+      try {
+        if (value === null) localStorage.removeItem(key);
+        else localStorage.setItem(key, value);
+      } catch (rollbackError) {
+        console.error("Could not roll back project import", rollbackError);
+      }
+    });
+    throw error;
+  }
+
+  return nextRecords.length;
 }
 
 // Bloqueiam gravações quando os dados existentes não puderam ser lidos.
@@ -206,7 +530,7 @@ function cloneStarter(starter) {
 
 export function loadRecords(starter, uid) {
   try {
-    const raw = localStorage.getItem(scopedKey(STORAGE_KEY));
+    const raw = localStorage.getItem(getScopedStorageKey(STORAGE_KEY));
 
     if (raw === null) {
       recordsReadFailed = false;
@@ -222,6 +546,13 @@ export function loadRecords(starter, uid) {
     const records = data.map(record => {
       if (!record || typeof record !== "object" || Array.isArray(record)) {
         throw new Error("A saved record has an invalid structure.");
+      }
+      if (
+        (record.tags !== undefined && !Array.isArray(record.tags)) ||
+        (record.properties !== undefined && !Array.isArray(record.properties)) ||
+        (record.related !== undefined && !Array.isArray(record.related))
+      ) {
+        throw new Error("A saved record contains an invalid tags, properties, or relations list.");
       }
 
       return {
@@ -291,7 +622,7 @@ export function saveRecords(records) {
   }
 
   try {
-    localStorage.setItem(scopedKey(STORAGE_KEY), JSON.stringify(records));
+    localStorage.setItem(getScopedStorageKey(STORAGE_KEY), JSON.stringify(records));
     return true;
   } catch (error) {
     console.error("RPG Codex: failed to save records.", error);
@@ -360,7 +691,7 @@ export function syncCatalogs(
 
 export function loadCatalogs() {
   try {
-    const raw = localStorage.getItem(scopedKey(CATALOG_KEY));
+    const raw = localStorage.getItem(getScopedStorageKey(CATALOG_KEY));
 
     if (raw === null) {
       catalogsReadFailed = false;
@@ -381,12 +712,39 @@ export function loadCatalogs() {
       throw new Error("The saved catalog lists are invalid.");
     }
 
-    catalogsReadFailed = false;
+    const normalizeEntries = (items, label) => {
+      const source = items || [];
+      if (!Array.isArray(source)) {
+        throw new Error(`The saved ${label} catalog is not a list.`);
+      }
 
-    return {
-      tags: catalogs.tags || [],
-      properties: catalogs.properties || []
+      return source.map(item => {
+        if (
+          !item || typeof item !== "object" || Array.isArray(item) ||
+          !String(item.name ?? "").trim()
+        ) {
+          throw new Error(`The saved ${label} catalog contains an invalid entry.`);
+        }
+
+        if (item.types !== undefined && !Array.isArray(item.types)) {
+          throw new Error(`The saved ${label} catalog contains invalid type metadata.`);
+        }
+
+        return {
+          ...item,
+          name: String(item.name).trim(),
+          types: Array.isArray(item.types) ? item.types.map(String) : []
+        };
+      });
     };
+
+    const normalized = {
+      tags: normalizeEntries(catalogs.tags, "tag"),
+      properties: normalizeEntries(catalogs.properties, "property")
+    };
+
+    catalogsReadFailed = false;
+    return normalized;
   } catch (error) {
     catalogsReadFailed = true;
 
@@ -411,7 +769,34 @@ export function saveCatalogs(catalogs) {
   }
 
   try {
-    localStorage.setItem(scopedKey(CATALOG_KEY), JSON.stringify(catalogs));
+    if (!catalogs || typeof catalogs !== "object" || Array.isArray(catalogs)) {
+      throw new Error("The catalog data is invalid.");
+    }
+
+    const normalizeEntries = (items, label) => {
+      if (!Array.isArray(items)) {
+        throw new Error(`The ${label} catalog must be a list.`);
+      }
+      return items.map(item => {
+        if (
+          !item || typeof item !== "object" || Array.isArray(item) ||
+          !String(item.name ?? "").trim()
+        ) {
+          throw new Error(`The ${label} catalog contains an invalid entry.`);
+        }
+        return {
+          ...item,
+          name: String(item.name).trim(),
+          types: Array.isArray(item.types) ? item.types.map(String) : []
+        };
+      });
+    };
+
+    const normalized = {
+      tags: normalizeEntries(catalogs.tags, "tag"),
+      properties: normalizeEntries(catalogs.properties, "property")
+    };
+    localStorage.setItem(getScopedStorageKey(CATALOG_KEY), JSON.stringify(normalized));
     return true;
   } catch (error) {
     console.error("RPG Codex: failed to save catalogs.", error);
@@ -432,7 +817,7 @@ export function catalogNames(catalogs, kind) {
 
 export function loadSavedFilters() {
   try {
-    const raw = localStorage.getItem(scopedKey(SAVED_KEY));
+    const raw = localStorage.getItem(getScopedStorageKey(SAVED_KEY));
 
     if (raw === null) {
       filtersReadFailed = false;
@@ -445,8 +830,33 @@ export function loadSavedFilters() {
       throw new Error("The saved filters are not a valid array.");
     }
 
+    const ids = new Set();
+    const normalized = data.map(filter => {
+      if (
+        !filter || typeof filter !== "object" || Array.isArray(filter) ||
+        !String(filter.id ?? "").trim() ||
+        !String(filter.name ?? "").trim() ||
+        !filter.state || typeof filter.state !== "object" || Array.isArray(filter.state)
+      ) {
+        throw new Error("A saved filter has an invalid structure.");
+      }
+
+      const id = String(filter.id).trim();
+      if (ids.has(id)) {
+        throw new Error("The saved filters contain duplicate IDs.");
+      }
+      ids.add(id);
+
+      return {
+        ...filter,
+        id,
+        name: String(filter.name).trim(),
+        state: normalizeSavedFilterState(filter.state)
+      };
+    });
+
     filtersReadFailed = false;
-    return data;
+    return normalized;
   } catch (error) {
     filtersReadFailed = true;
 
@@ -471,7 +881,7 @@ export function persistFilters(savedFilters) {
   }
 
   try {
-    localStorage.setItem(scopedKey(SAVED_KEY), JSON.stringify(savedFilters));
+    localStorage.setItem(getScopedStorageKey(SAVED_KEY), JSON.stringify(savedFilters));
     return true;
   } catch (error) {
     console.error("RPG Codex: failed to save filters.", error);

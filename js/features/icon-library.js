@@ -106,7 +106,7 @@ function hexToHsl(hex) {
   };
 }
 
-export function mountIconPicker({ $ }) {
+export function mountIconPicker({ $, renderIcons = true }) {
   const host = $("icon-picker");
   const search = $("icon-search");
   const field = $("f-icon");
@@ -148,7 +148,6 @@ export function mountIconPicker({ $ }) {
     if (lightness) lightness.value = String(hsl.l);
 
     updatePreview();
-    field.dispatchEvent(new Event("iconcolorchange", { bubbles: true }));
   }
 
   function render() {
@@ -206,23 +205,28 @@ export function mountIconPicker({ $ }) {
       field.value = "";
     }
 
-    render();
+    if (renderIcons) render();
     updatePreview();
+    if (!renderIcons) {
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+    }
   }
 
-  host.addEventListener("click", event => {
-    const button = event.target.closest("[data-icon]");
-    if (!button) return;
+  if (renderIcons) {
+    host.addEventListener("click", event => {
+      const button = event.target.closest("[data-icon]");
+      if (!button) return;
 
-    field.value = `lucide:${button.dataset.icon}`;
-    render();
-    updatePreview();
-  });
+      field.value = `lucide:${button.dataset.icon}`;
+      render();
+      updatePreview();
+    });
 
-  search.addEventListener("input", render);
+    search.addEventListener("input", render);
+  }
 
   field.addEventListener("input", () => {
-    render();
+    if (renderIcons) render();
     updatePreview();
   });
 
@@ -248,7 +252,6 @@ export function mountIconPicker({ $ }) {
     });
   });
 
-  field.addEventListener("iconcolorchange", updatePreview);
 
   updateColorControls(selectedColor);
   updateMode();

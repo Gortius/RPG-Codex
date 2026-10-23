@@ -7,8 +7,14 @@ import {
   exportProjectBundle,
   importProjectBundle,
   loadTrash,
-  saveTrash
+  saveTrash,
+  STORAGE_KEY,
+  CATALOG_KEY,
+  SAVED_KEY,
+  TRASH_KEY,
+  getScopedStorageKey
 } from "../data/storage.js";
+import { STARTER_RECORDS } from "../data/default-records.js";
 
 const $ = id => document.getElementById(id);
 
@@ -19,87 +25,6 @@ const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, char => ({
   '"': "&quot;",
   "'": "&#39;"
 }[char]));
-
-const RECORDS_KEY = "rpg-codex-records-v2";
-const CATALOG_KEY = "rpg-codex-catalogs-v1";
-const FILTERS_KEY = "rpg-codex-saved-filters-v1";
-const TRASH_KEY = "rpg-codex-trash-v1";
-
-const STARTER_RECORDS = [
-  {
-    id: "sample-mob",
-    name: "Leafling",
-    type: "Mob",
-    category: "Beginning Hole",
-    description: "A small creature found near the entrance.",
-    tags: ["Common"],
-    properties: [{ name: "Health", value: "20" }, { name: "Damage", value: "3" }],
-    related: []
-  },
-  {
-    id: "sample-material",
-    name: "Vines",
-    type: "Material",
-    category: "Beginning Hole",
-    description: "A basic crafting material gathered from local creatures and plants.",
-    tags: ["Craftable"],
-    properties: [{ name: "Rarity", value: "Common" }],
-    related: []
-  },
-  {
-    id: "sample-item",
-    name: "Leaf Bow",
-    type: "Item",
-    category: "Beginning Hole",
-    description: "A simple bow made with materials from the starting area.",
-    tags: ["Craftable", "Common"],
-    properties: [{ name: "Damage", value: "5" }, { name: "Attack Speed", value: "1.0" }],
-    related: ["sample-recipe"]
-  },
-  {
-    id: "sample-area",
-    name: "Beginning Hole",
-    type: "Area",
-    category: "Sector 1",
-    description: "The player's starting area, featuring a locked door and an early guardian.",
-    tags: ["Starting Area"],
-    properties: [{ name: "Level", value: "1" }],
-    related: ["sample-mob"]
-  },
-  {
-    id: "sample-effect",
-    name: "Slowness",
-    type: "Effect",
-    category: "Debuff",
-    description: "Reduces the affected target's movement speed.",
-    tags: ["Debuff"],
-    properties: [{ name: "Duration", value: "3 seconds" }],
-    related: []
-  },
-  {
-    id: "sample-recipe",
-    name: "Leaf Bow Recipe",
-    type: "Recipe",
-    category: "Beginning Hole",
-    description: "Crafting recipe for the Leaf Bow.",
-    tags: ["Craftable"],
-    properties: [{ name: "Material Cost", value: "Vines + Wood" }],
-    related: ["sample-item"]
-  }
-];
-
-function scopedKey(base, id = getActiveProjectId()) {
-  return id === "default" ? base : `${base}::${id}`;
-}
-
-function readJSON(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw === null ? fallback : JSON.parse(raw);
-  } catch {
-    return fallback;
-  }
-}
 
 function notify(message, type = "success") {
   let host = $("enhancement-toast");
@@ -121,8 +46,10 @@ function notify(message, type = "success") {
   host._hideTimer = setTimeout(() => host.classList.remove("visible"), 3600);
 }
 
+let activeModalCleanup = null;
+
 function showModal({ title, description = "", body = "", actions = [] }) {
-  $("enhancement-modal")?.remove();
+  activeModalCleanup?.();
 
   const overlay = document.createElement("div");
   overlay.id = "enhancement-modal";
@@ -146,7 +73,18 @@ function showModal({ title, description = "", body = "", actions = [] }) {
 
   document.body.append(overlay);
 
-  const close = () => overlay.remove();
+  const onKey = event => {
+    if (event.key === "Escape") close();
+  };
+
+  const close = () => {
+    if (!overlay.isConnected) return;
+    overlay.remove();
+    document.removeEventListener("keydown", onKey);
+    if (activeModalCleanup === close) activeModalCleanup = null;
+  };
+
+  activeModalCleanup = close;
 
   overlay.addEventListener("click", event => {
     if (event.target === overlay || event.target.closest("[data-modal-close]")) {
@@ -169,13 +107,6 @@ function showModal({ title, description = "", body = "", actions = [] }) {
     close();
     action.onClick?.(overlay, close);
   });
-
-  const onKey = event => {
-    if (event.key === "Escape") {
-      close();
-      document.removeEventListener("keydown", onKey);
-    }
-  };
 
   document.addEventListener("keydown", onKey);
   overlay.querySelector("[data-modal-close]")?.focus();
@@ -237,6 +168,7 @@ function setupProjects() {
       return;
     }
 
+    const previousProjectId = getActiveProjectId();
     const nextProjects = loadProjects();
 
     if (nextProjects.some(project =>
@@ -264,6 +196,12 @@ function setupProjects() {
 
       location.reload();
     } catch (error) {
+      try {
+        saveProjects(loadProjects().filter(project => project.id !== id));
+        setActiveProjectId(previousProjectId);
+      } catch (rollbackError) {
+        console.error("Could not roll back failed project creation.", rollbackError);
+      }
       notify(`Could not create project: ${error.message}`, "error");
     }
   }
@@ -355,9 +293,9 @@ function setupProjects() {
           className: "danger",
           onClick: () => {
             [
-              RECORDS_KEY,
+              STORAGE_KEY,
               CATALOG_KEY,
-              FILTERS_KEY,
+              SAVED_KEY,
               TRASH_KEY
             ].forEach(key => localStorage.removeItem(`${key}::${project.id}`));
 
@@ -374,7 +312,7 @@ function setupProjects() {
     try {
       const bundle = exportProjectBundle();
       const id = getActiveProjectId();
-      const storedRecords = localStorage.getItem(scopedKey(RECORDS_KEY));
+      const storedRecords = localStorage.getItem(getScopedStorageKey(STORAGE_KEY));
 
       // Preserve the starter records if the default project has not been saved yet.
       if (storedRecords === null && id === "default") {
@@ -600,7 +538,13 @@ function setupProjects() {
   };
 
   function openTrash() {
-    const trash = loadTrash();
+    let trash;
+    try {
+      trash = loadTrash();
+    } catch (error) {
+      notify(error.message, "error");
+      return;
+    }
 
     const body = trash.length
       ? `<div class="trash-items">${trash.map((item, index) => `
@@ -643,8 +587,12 @@ function setupProjects() {
           label: "Empty trash",
           className: "danger",
           onClick: () => {
-            saveTrash([]);
-            notify("Trash emptied.");
+            try {
+              saveTrash([]);
+              notify("Trash emptied.");
+            } catch (error) {
+              notify(`Could not empty trash: ${error.message}`, "error");
+            }
           }
         }
       ]
@@ -652,22 +600,60 @@ function setupProjects() {
   }
 
   function restoreTrashItem(index) {
-    const trash = loadTrash();
+    let trash;
+    try {
+      trash = loadTrash();
+    } catch (error) {
+      notify(error.message, "error");
+      return;
+    }
     const item = trash[index];
 
-    if (!item?.record) {
+    if (!item?.record || typeof item.record !== "object" || Array.isArray(item.record)) {
       notify("This trash entry is invalid.", "error");
       return;
     }
 
-    const id = getActiveProjectId();
-    const key = scopedKey(RECORDS_KEY, id);
-    const stored = localStorage.getItem(key);
-    let records = readJSON(key, id === "default" ? STARTER_RECORDS : []);
+    const projectId = getActiveProjectId();
+    const recordsKey = getScopedStorageKey(STORAGE_KEY, projectId);
+    const trashKey = getScopedStorageKey(TRASH_KEY, projectId);
+    let storedRecords;
+    let storedTrash;
+    let records;
 
-    if (!Array.isArray(records)) records = [];
+    // Never fall back to starter records if saved data is corrupt: that could overwrite it.
+    try {
+      storedRecords = localStorage.getItem(recordsKey);
+      storedTrash = localStorage.getItem(trashKey);
 
-    if (records.some(record => record.id === item.record.id)) {
+      if (storedRecords === null) {
+        records = projectId === "default"
+          ? STARTER_RECORDS.map(record => ({
+              ...record,
+              tags: [...(record.tags || [])],
+              properties: (record.properties || []).map(property => ({ ...property })),
+              related: [...(record.related || [])]
+            }))
+          : [];
+      } else {
+        records = JSON.parse(storedRecords);
+      }
+
+      if (!Array.isArray(records)) {
+        throw new Error("Saved records are not a list.");
+      }
+      if (records.some(record =>
+        !record || typeof record !== "object" || Array.isArray(record) || !record.id
+      )) {
+        throw new Error("Saved records contain an invalid entry.");
+      }
+    } catch (error) {
+      console.error("Could not safely restore a trashed record.", error);
+      notify("Restore stopped because saved data could not be read safely. Your data was not overwritten.", "error");
+      return;
+    }
+
+    if (records.some(record => String(record.id) === String(item.record.id))) {
       notify("A record with this ID already exists.", "error");
       return;
     }
@@ -675,26 +661,38 @@ function setupProjects() {
     const restored = { ...item.record };
     delete restored._trashedAt;
     delete restored._linkedFrom;
-    restored.related = Array.isArray(restored.related) ? restored.related : [];
+    restored.related = Array.isArray(restored.related) ? restored.related.map(String) : [];
 
-    records = [...records, restored];
+    const nextRecords = [...records, restored].map(record => ({
+      ...record,
+      related: Array.isArray(record.related) ? [...record.related] : []
+    }));
 
     (item.linkedFrom || item.record._linkedFrom || []).forEach(linkedId => {
-      const linked = records.find(record => record.id === linkedId);
+      const linked = nextRecords.find(record => String(record.id) === String(linkedId));
       if (linked && !linked.related.includes(restored.id)) {
         linked.related.push(restored.id);
       }
     });
 
+    trash.splice(index, 1);
+
     try {
-      localStorage.setItem(key, JSON.stringify(records));
-      trash.splice(index, 1);
+      localStorage.setItem(recordsKey, JSON.stringify(nextRecords));
       saveTrash(trash);
       notify("Record restored.");
       setTimeout(() => location.reload(), 500);
     } catch (error) {
-      // Keep the trash item if saving the restored record fails.
-      if (stored === null) localStorage.removeItem(key);
+      // Best-effort rollback so a failed trash write does not leave partial state.
+      try {
+        if (storedRecords === null) localStorage.removeItem(recordsKey);
+        else localStorage.setItem(recordsKey, storedRecords);
+        if (storedTrash === null) localStorage.removeItem(trashKey);
+        else localStorage.setItem(trashKey, storedTrash);
+      } catch (rollbackError) {
+        console.error("Could not roll back a failed trash restore.", rollbackError);
+      }
+      console.error("Could not restore trashed record.", error);
       notify(`Could not restore record: ${error.message}`, "error");
     }
   }
@@ -945,9 +943,18 @@ function setupExpandedIconPicker() {
     }
   });
 
-  // Render Game Icons selections saved as iconify:game-icons:<name>.
-  const observer = new MutationObserver(() => {
-    document.querySelectorAll(".custom-icon:not([data-iconify-rendered])").forEach(span => {
+  // Render only new Game Icons spans instead of rescanning the whole document
+  // after every unrelated DOM mutation.
+  function renderGameIconsWithin(root) {
+    const candidates = [];
+    if (root instanceof Element && root.matches(".custom-icon:not([data-iconify-rendered])")) {
+      candidates.push(root);
+    }
+    if (root.querySelectorAll) {
+      candidates.push(...root.querySelectorAll(".custom-icon:not([data-iconify-rendered])"));
+    }
+
+    candidates.forEach(span => {
       const value = span.textContent.trim();
       const match = value.match(/^iconify:game-icons:([a-z0-9-]+)$/i);
       if (!match) return;
@@ -965,6 +972,15 @@ function setupExpandedIconPicker() {
       span.dataset.iconifyRendered = "true";
       span.textContent = "";
       span.append(image);
+    });
+  }
+
+  renderGameIconsWithin(document);
+  const observer = new MutationObserver(mutations => {
+    mutations.forEach(mutation => {
+      mutation.addedNodes.forEach(node => {
+        if (node.nodeType === Node.ELEMENT_NODE) renderGameIconsWithin(node);
+      });
     });
   });
 
