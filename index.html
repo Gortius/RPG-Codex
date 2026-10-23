@@ -281,9 +281,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
 <script type="module">
-  import("./js/app.js")
-    .then(() => import("./js/features/enhancements.js"))
-    .then(() => import("./js/features/sidebar.js"))
+  // Bump this version when cached modules need to be refreshed on GitHub Pages.
+  import("./js/app.js?v=20261023-r2")
+    .then(() => import("./js/features/enhancements.js?v=20261023-r2"))
+    .then(() => import("./js/features/sidebar.js?v=20261023-r2"))
     .catch(error => {
       console.error("RPG Codex failed to start:", error);
       const status = document.getElementById("status");
