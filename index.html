@@ -26,10 +26,20 @@
 <section id="home">
   <nav class="page-nav" aria-label="Main navigation">
     <button id="nav-dashboard" class="nav-button active" type="button" title="Overview" aria-label="Overview">
-      <i data-lucide="layout-dashboard" aria-hidden="true"></i>
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <rect x="3" y="3" width="8" height="8" rx="1"></rect>
+        <rect x="14" y="3" width="7" height="5" rx="1"></rect>
+        <rect x="14" y="10" width="7" height="11" rx="1"></rect>
+        <rect x="3" y="14" width="8" height="7" rx="1"></rect>
+      </svg>
     </button>
     <button id="nav-records" class="nav-button" type="button" title="Records" aria-label="Records">
-      <i data-lucide="database" aria-hidden="true"></i>
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <ellipse cx="12" cy="5" rx="8.5" ry="3"></ellipse>
+        <path d="M3.5 5v7c0 1.66 3.81 3 8.5 3s8.5-1.34 8.5-3V5"></path>
+        <path d="M3.5 12v7c0 1.66 3.81 3 8.5 3 2.1 0 4.02-.32 5.5-.86"></path>
+        <path d="M20.5 12v2"></path>
+      </svg>
     </button>
   </nav>
 
@@ -110,17 +120,6 @@
             <label>Tags</label>
             <div id="filter-tags" class="filter-chip-row"></div>
           </div>
-          <div class="filter-group">
-            <label for="sort-records">Sort by</label>
-            <select id="sort-records">
-              <option value="name-asc">Name A–Z</option>
-              <option value="name-desc">Name Z–A</option>
-              <option value="type">Type</option>
-              <option value="category">Category</option>
-              <option value="newest">Newest first</option>
-              <option value="oldest">Oldest first</option>
-            </select>
-          </div>
         </div>
 
         <div class="filter-group">
@@ -148,10 +147,46 @@
       </div>
     </div>
 
-    <div class="section-title">
+    <div class="section-title records-heading">
       <h3>Records</h3>
-      <span id="count" class="muted"></span>
+
+      <div class="records-tools">
+        <label for="sort-records" class="sort-label">Sort by</label>
+        <select id="sort-records" aria-label="Sort records">
+          <option value="name-asc">Alphabetical · A–Z</option>
+          <option value="name-desc" hidden>Alphabetical · Z–A</option>
+
+          <option value="details-asc">Properties + tags · Fewest first</option>
+          <option value="details-desc" hidden>Properties + tags · Most first</option>
+
+          <option value="oldest" hidden>Date added · Oldest first</option>
+          <option value="newest">Date added · Newest first</option>
+
+          <option value="relations-asc">Relations · Fewest first</option>
+          <option value="relations-desc" hidden>Relations · Most first</option>
+
+          <option value="type">Type · A–Z</option>
+          <option value="type-desc" hidden>Type · Z–A</option>
+
+          <option value="category">Category · A–Z</option>
+          <option value="category-desc" hidden>Category · Z–A</option>
+
+          <option value="subcategory-asc">Subcategory · A–Z</option>
+          <option value="subcategory-desc" hidden>Subcategory · Z–A</option>
+        </select>
+
+        <button
+          id="sort-direction"
+          class="secondary sort-direction"
+          type="button"
+          aria-label="Toggle sort direction"
+          title="Switch to descending order"
+        >↑ Ascending</button>
+
+        <span id="count" class="muted"></span>
+      </div>
     </div>
+
     <div id="records" class="records"></div>
   </div>
 </section>
