@@ -1,58 +1,24 @@
+
 "use strict";
 
 const VIEW_FIX_STYLE_ID = "rpg-codex-view-mode-fixes";
 
-const SORT_PAIRS = {
-  "name-asc": "name-desc",
-  "name-desc": "name-asc",
-  "details-asc": "details-desc",
-  "details-desc": "details-asc",
-  "oldest": "newest",
-  "newest": "oldest",
-  "relations-asc": "relations-desc",
-  "relations-desc": "relations-asc",
-  "type": "type-desc",
-  "type-desc": "type",
-  "category": "category-desc",
-  "category-desc": "category",
-  "subcategory-asc": "subcategory-desc",
-  "subcategory-desc": "subcategory-asc"
+const LEGACY_SORTS = {
+  "name": { key: "name", direction: "asc", option: "name-asc" },
+  "name-asc": { key: "name", direction: "asc", option: "name-asc" },
+  "name-desc": { key: "name", direction: "desc", option: "name-asc" },
+  "details": { key: "details", direction: "asc", option: "details-asc" },
+  "details-asc": { key: "details", direction: "asc", option: "details-asc" },
+  "details-desc": { key: "details", direction: "desc", option: "details-asc" },
+  "date": { key: "date", direction: "asc", option: "oldest" },
+  "oldest": { key: "date", direction: "asc", option: "oldest" },
+  "newest": { key: "date", direction: "desc", option: "oldest" },
+  "relations": { key: "relations", direction: "asc", option: "relations-asc" },
+  "relations-asc": { key: "relations", direction: "asc", option: "relations-asc" },
+  "relations-desc": { key: "relations", direction: "desc", option: "relations-asc" },
+  "type": { key: "name", direction: "asc", option: "name-asc" },
+  "category": { key: "name", direction: "asc", option: "name-asc" }
 };
-
-function sortDirection(value) {
-  return value === "newest" ||
-    String(value).endsWith("-desc")
-    ? "desc"
-    : "asc";
-}
-
-function updateSortControls($) {
-  const select = $("sort-records");
-  const button = $("sort-direction");
-
-  if (!select || !button) return;
-
-  const direction = sortDirection(select.value);
-
-  Array.from(select.options).forEach(option => {
-    option.hidden = sortDirection(option.value) !== direction;
-  });
-
-  button.textContent = direction === "asc"
-    ? "↑ Ascending"
-    : "↓ Descending";
-
-  button.title = direction === "asc"
-    ? "Switch to descending order"
-    : "Switch to ascending order";
-
-  button.setAttribute(
-    "aria-label",
-    direction === "asc"
-      ? "Current direction: ascending. Switch to descending."
-      : "Current direction: descending. Switch to ascending."
-  );
-}
 
 function ensureViewModeStyles() {
   if (document.getElementById(VIEW_FIX_STYLE_ID)) return;
@@ -61,28 +27,29 @@ function ensureViewModeStyles() {
   style.id = VIEW_FIX_STYLE_ID;
 
   style.textContent = `
-    /* Navegação superior: ícones SVG sempre visíveis */
-    .page-nav {
+    /* Ícones de navegação no cabeçalho */
+    #top-page-nav {
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       width: fit-content;
-      max-width: 100%;
-      margin: 0 auto 24px;
-      padding: 5px;
+      margin: 0;
+      padding: 4px;
+      background: transparent;
+      border: 0;
     }
 
-    .page-nav .nav-button {
+    #top-page-nav .nav-button {
       display: grid;
       place-items: center;
-      flex: 0 0 46px;
-      width: 46px;
+      flex: 0 0 42px;
+      width: 42px;
       height: 42px;
       padding: 0;
     }
 
-    .page-nav .nav-button svg {
+    #top-page-nav .nav-button svg {
       display: block;
       width: 20px;
       height: 20px;
@@ -94,15 +61,11 @@ function ensureViewModeStyles() {
       pointer-events: none;
     }
 
-    /* Controles de ordenação junto ao título Records */
+    /* Ordenação da lista */
     .records-heading {
       align-items: center;
       flex-wrap: wrap;
       gap: 12px;
-    }
-
-    .records-heading > h3 {
-      flex: 0 0 auto;
     }
 
     .records-tools {
@@ -123,8 +86,8 @@ function ensureViewModeStyles() {
 
     .records-tools #sort-records {
       width: auto;
-      max-width: 260px;
-      min-width: 155px;
+      min-width: 170px;
+      max-width: 240px;
       padding: 9px 10px;
     }
 
@@ -161,7 +124,7 @@ function ensureViewModeStyles() {
       }
     }
 
-    /* Custom Grid: cartões com Preview */
+    /* Custom Grid com Preview */
     #records.custom-grid {
       display: grid;
       grid-template-columns:
@@ -308,6 +271,45 @@ function ensureViewModeStyles() {
   document.head.append(style);
 }
 
+function getSortInfoFromSelect(select) {
+  const value = select?.value || "name-asc";
+
+  if (LEGACY_SORTS[value]) {
+    return LEGACY_SORTS[value];
+  }
+
+  return {
+    key: "name",
+    direction: "asc",
+    option: "name-asc"
+  };
+}
+
+function updateDirectionButton($) {
+  const button = $("sort-direction");
+  if (!button) return;
+
+  const direction = button.dataset.direction === "desc"
+    ? "desc"
+    : "asc";
+
+  button.dataset.direction = direction;
+  button.textContent = direction === "asc"
+    ? "↑ Ascending"
+    : "↓ Descending";
+
+  button.title = direction === "asc"
+    ? "Switch to descending order"
+    : "Switch to ascending order";
+
+  button.setAttribute(
+    "aria-label",
+    direction === "asc"
+      ? "Switch to descending order"
+      : "Switch to ascending order"
+  );
+}
+
 export function createRecordListFeature({
   $,
   esc,
@@ -322,30 +324,46 @@ export function createRecordListFeature({
 }) {
   ensureViewModeStyles();
 
-  const sortButton = $("sort-direction");
   const sortSelect = $("sort-records");
+  const directionButton = $("sort-direction");
 
-  if (sortButton && sortSelect) {
-    sortButton.onclick = () => {
-      const currentValue = sortSelect.value || "name-asc";
-      const nextValue = SORT_PAIRS[currentValue];
+  // Compatibilidade com os valores de ordenação das versões anteriores.
+  if (sortSelect) {
+    const saved = LEGACY_SORTS[sortSelect.value];
 
-      if (!nextValue) return;
+    if (saved) {
+      sortSelect.value = saved.option;
 
-      sortSelect.value = nextValue;
-      updateSortControls($);
+      if (directionButton && saved.direction === "desc") {
+        directionButton.dataset.direction = "desc";
+      }
+    }
+  }
+
+  updateDirectionButton($);
+
+  if (directionButton) {
+    directionButton.onclick = () => {
+      directionButton.dataset.direction =
+        directionButton.dataset.direction === "desc"
+          ? "asc"
+          : "desc";
+
+      updateDirectionButton($);
       renderRecords();
     };
-
-    sortSelect.addEventListener("change", () => {
-      updateSortControls($);
-    });
   }
 
   function renderRecords() {
-    updateSortControls($);
+    updateDirectionButton($);
 
     const state = getFilterState();
+    const sortInfo = getSortInfoFromSelect(sortSelect);
+    const direction = directionButton?.dataset.direction === "desc"
+      ? "desc"
+      : "asc";
+
+    const sort = `${sortInfo.key}-${direction}`;
 
     let list = filterRecords(getRecords(), {
       query: $("search").value,
@@ -354,7 +372,7 @@ export function createRecordListFeature({
       subcategory: $("filter-subcategory").value,
       tags: state.activeTags,
       conditions: state.conditions,
-      sort: $("sort-records").value
+      sort
     });
 
     if (state.qualityOnly) {
@@ -370,20 +388,9 @@ export function createRecordListFeature({
     const viewMode = getViewMode();
     const container = $("records");
 
-    container.classList.toggle(
-      "grid-view",
-      viewMode === "grid"
-    );
-
-    container.classList.toggle(
-      "list-view",
-      viewMode === "list"
-    );
-
-    container.classList.toggle(
-      "custom-grid",
-      viewMode === "custom"
-    );
+    container.classList.toggle("grid-view", viewMode === "grid");
+    container.classList.toggle("list-view", viewMode === "list");
+    container.classList.toggle("custom-grid", viewMode === "custom");
 
     const columns = Math.max(
       2,
@@ -400,29 +407,19 @@ export function createRecordListFeature({
     if (!list.length) {
       container.innerHTML =
         '<div class="empty">No records found.<br><br>Try changing your filters or search.</div>';
-
       return;
     }
 
     container.innerHTML = list.map(record => {
-      const tags = Array.isArray(record.tags)
-        ? record.tags
-        : [];
-
+      const tags = Array.isArray(record.tags) ? record.tags : [];
       const properties = Array.isArray(record.properties)
         ? record.properties
         : [];
 
       const category = record.category || record.type;
 
-      /*
-       * Grid tradicional:
-       * cartões compactos sem Preview.
-       *
-       * Custom Grid:
-       * usa o layout da lista, com Preview e propriedades.
-       */
-
+      // O Grid tradicional permanece compacto.
+      // O Custom Grid usa o conteúdo completo da lista e inclui Preview.
       if (viewMode === "grid") {
         return `
           <div class="record-card compact-card">
@@ -432,17 +429,9 @@ export function createRecordListFeature({
               data-open="${esc(record.id)}"
               aria-pressed="false"
             >
-              <span class="record-icon">
-                ${iconOf(record)}
-              </span>
-
-              <strong class="compact-record-name">
-                ${esc(record.name)}
-              </strong>
-
-              <span class="compact-record-category">
-                ${esc(category)}
-              </span>
+              <span class="record-icon">${iconOf(record)}</span>
+              <strong class="compact-record-name">${esc(record.name)}</strong>
+              <span class="compact-record-category">${esc(category)}</span>
             </button>
           </div>
         `;
@@ -456,25 +445,16 @@ export function createRecordListFeature({
             data-open="${esc(record.id)}"
             aria-pressed="false"
           >
-            <span class="record-icon">
-              ${iconOf(record)}
-            </span>
+            <span class="record-icon">${iconOf(record)}</span>
 
             <span class="record-info">
               <strong>${esc(record.name)}</strong>
-
               <p>${esc(record.type)}${
-                record.category
-                  ? " · " + esc(record.category)
-                  : ""
+                record.category ? " · " + esc(record.category) : ""
               }${
-                record.subcategory
-                  ? " · " + esc(record.subcategory)
-                  : ""
+                record.subcategory ? " · " + esc(record.subcategory) : ""
               }${
-                tags.length
-                  ? " · " + esc(tags.join(", "))
-                  : ""
+                tags.length ? " · " + esc(tags.join(", ")) : ""
               }</p>
             </span>
 
@@ -520,15 +500,11 @@ export function createRecordListFeature({
     }).join("");
 
     try {
-      window.lucide?.createIcons?.({
-        root: container
-      });
+      window.lucide?.createIcons?.({ root: container });
     } catch {}
 
     container.querySelectorAll("[data-open]").forEach(button => {
-      button.onclick = () => {
-        openRecord(button.dataset.open);
-      };
+      button.onclick = () => openRecord(button.dataset.open);
     });
 
     container.querySelectorAll("[data-preview]").forEach(button => {
