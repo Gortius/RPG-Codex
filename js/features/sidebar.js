@@ -26,8 +26,57 @@ function addSidebarStyles() {
   style.id = "sidebar-styles";
   style.textContent = `
     header {
+      position: relative;
       justify-content: flex-start;
       gap: 14px;
+    }
+
+    #top-page-nav {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+      margin: 0;
+      padding: 4px;
+      background: transparent;
+      border: 0;
+    }
+
+    #top-page-nav .nav-button {
+      display: grid;
+      place-items: center;
+      flex: 0 0 42px;
+      width: 42px;
+      height: 42px;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel);
+      color: var(--muted);
+    }
+
+    #top-page-nav .nav-button.active {
+      color: var(--accent);
+      border-color: var(--accent);
+      background: #252130;
+    }
+
+    #top-page-nav .nav-button svg {
+      display: block;
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      pointer-events: none;
     }
 
     .sidebar-toggle {
@@ -147,10 +196,13 @@ function addSidebarStyles() {
     .sidebar-navigation .page-nav {
       display: grid;
       gap: 5px;
+      width: 100%;
       margin: 0;
       padding: 0;
       background: transparent;
       border: 0;
+      transform: none;
+      position: static;
     }
 
     .sidebar-navigation .nav-button {
@@ -173,6 +225,11 @@ function addSidebarStyles() {
       width: 19px;
       height: 19px;
       flex: 0 0 19px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
     .sidebar-navigation .nav-button.active {
@@ -282,6 +339,24 @@ function addSidebarStyles() {
       }
     }
 
+    @media (max-width: 680px) {
+      header {
+        flex-wrap: wrap;
+      }
+
+      #top-page-nav {
+        position: static;
+        transform: none;
+        order: 3;
+        width: 100%;
+        margin: 0 auto;
+      }
+
+      .brand {
+        margin-right: 0;
+      }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .app-sidebar,
       .sidebar-backdrop {
@@ -296,12 +371,10 @@ function addSidebarStyles() {
 function setupSidebar() {
   const header = document.querySelector("header");
   const brand = header?.querySelector(".brand");
-  const navigation = document.querySelector(".page-nav");
+  const navigation = $("top-page-nav") || document.querySelector(".page-nav");
   const headerTools = document.querySelector(".header-tools");
 
   if (!header || !brand || !navigation || !headerTools) return;
-
-  // Avoid duplicate sidebars if the module is loaded more than once.
   if ($("app-sidebar")) return;
 
   const toggle = document.createElement("button");
@@ -355,8 +428,30 @@ function setupSidebar() {
 
   document.body.append(backdrop, sidebar);
 
-  // Move the existing controls, preserving their event listeners and IDs.
-  $("sidebar-navigation").append(navigation);
+  // Cópia dos botões para o menu lateral: os originais ficam no cabeçalho.
+  const sidebarNavigation = navigation.cloneNode(true);
+  sidebarNavigation.id = "sidebar-page-nav";
+  sidebarNavigation.classList.add("sidebar-page-nav");
+
+  const sidebarDashboard = sidebarNavigation.querySelector("#nav-dashboard");
+  const sidebarRecords = sidebarNavigation.querySelector("#nav-records");
+
+  if (sidebarDashboard) {
+    sidebarDashboard.removeAttribute("id");
+    sidebarDashboard.innerHTML =
+      '<i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Overview</span>';
+  }
+
+  if (sidebarRecords) {
+    sidebarRecords.removeAttribute("id");
+    sidebarRecords.innerHTML =
+      '<i data-lucide="database" aria-hidden="true"></i><span>Records</span>';
+  }
+
+  $("sidebar-navigation").append(sidebarNavigation);
+
+  // Os controles do projeto são movidos para a barra lateral.
+  // Os seus IDs e event listeners permanecem intactos.
   $("sidebar-project-tools").append(headerTools);
 
   const switcher = $("project-switcher");
@@ -381,19 +476,6 @@ function setupSidebar() {
   if (trashButton) {
     trashButton.innerHTML =
       '<i data-lucide="trash-2" aria-hidden="true"></i><span>Trash</span>';
-  }
-
-  const navDashboard = $("nav-dashboard");
-  const navRecords = $("nav-records");
-
-  if (navDashboard) {
-    navDashboard.innerHTML =
-      '<i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Overview</span>';
-  }
-
-  if (navRecords) {
-    navRecords.innerHTML =
-      '<i data-lucide="database" aria-hidden="true"></i><span>Records</span>';
   }
 
   function openSidebar() {
@@ -427,10 +509,17 @@ function setupSidebar() {
   $("sidebar-close")?.addEventListener("click", () => closeSidebar());
   backdrop.addEventListener("click", () => closeSidebar());
 
-  navigation.addEventListener("click", event => {
-    if (event.target.closest(".nav-button")) {
-      closeSidebar({ returnFocus: false });
+  sidebarNavigation.addEventListener("click", event => {
+    const button = event.target.closest(".nav-button");
+    if (!button) return;
+
+    if (button.textContent.toLowerCase().includes("overview")) {
+      $("nav-dashboard")?.click();
+    } else {
+      $("nav-records")?.click();
     }
+
+    closeSidebar({ returnFocus: false });
   });
 
   document.addEventListener("keydown", event => {
@@ -439,9 +528,6 @@ function setupSidebar() {
     }
   });
 
-  // The project dropdown is created by enhancements.js after a click.
-  // Decorate its action buttons with icons when it appears.
- 
   const projectMenuObserver = new MutationObserver(() => {
     const menu = $("projects-dropdown");
     if (!menu) return;
@@ -473,7 +559,6 @@ function setupSidebar() {
       changed = true;
     });
 
-    // Renderiza ícones somente quando algum botão foi realmente alterado.
     if (changed) paintSidebarIcons(menu);
   });
 
@@ -481,10 +566,6 @@ function setupSidebar() {
     childList: true,
     subtree: true
   });
-
-
-  // Clicking a project-management action closes the sidebar but leaves the
-  // in-page modal open and usable.
 
   trashButton?.addEventListener("click", () => {
     closeSidebar({ returnFocus: false });
