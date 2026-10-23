@@ -750,3 +750,8 @@ main{padding:24px}
   .dashboard-type-list{grid-template-columns:minmax(0,1fr)}
   #records.custom-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+/* Keep Overview / Records navigation aligned to the left */
+.page-nav {
+  margin-left: 0;
+  margin-right: auto;
+}
