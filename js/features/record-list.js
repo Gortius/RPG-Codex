@@ -1,5 +1,189 @@
 "use strict";
 
+const VIEW_FIX_STYLE_ID = "rpg-codex-view-mode-fixes";
+
+function ensureViewModeStyles() {
+  if (document.getElementById(VIEW_FIX_STYLE_ID)) return;
+
+  const style = document.createElement("style");
+  style.id = VIEW_FIX_STYLE_ID;
+
+  style.textContent = `
+    /* Navegação superior centralizada */
+    .page-nav {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      width: fit-content;
+      max-width: 100%;
+      margin: 0 auto 24px;
+      padding: 5px;
+    }
+
+    .page-nav .nav-button {
+      display: grid;
+      place-items: center;
+      flex: 0 0 46px;
+      width: 46px;
+      height: 42px;
+      padding: 0;
+    }
+
+    .page-nav .nav-button svg {
+      width: 19px;
+      height: 19px;
+    }
+
+    /* Custom Grid: cartões com Preview */
+    #records.custom-grid {
+      display: grid;
+      grid-template-columns:
+        repeat(var(--custom-grid-columns, 3), minmax(0, 1fr));
+      align-items: start;
+      gap: 10px;
+    }
+
+    #records.custom-grid .record-card {
+      display: flex;
+      flex-direction: column;
+      align-self: start;
+      min-width: 0;
+      height: auto;
+    }
+
+    #records.custom-grid .record-card > .record {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      width: 100%;
+      min-width: 0;
+      height: auto;
+      padding: 11px;
+    }
+
+    #records.custom-grid .record-card > .record .record-icon {
+      flex: 0 0 30px;
+      width: 30px;
+      height: 30px;
+      font-size: 18px;
+    }
+
+    #records.custom-grid .record-info {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    #records.custom-grid .record-info strong {
+      display: block;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    #records.custom-grid .record-info p {
+      margin-top: 5px;
+      line-height: 1.4;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    #records.custom-grid .record-arrow {
+      flex: 0 0 auto;
+      margin-left: auto;
+    }
+
+    /* Não esconder o botão Preview */
+    #records.custom-grid .record-actions {
+      display: flex !important;
+      justify-content: flex-start;
+      padding: 0 11px 10px;
+    }
+
+    #records.custom-grid .preview-toggle {
+      max-width: 100%;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    /* Não esconder as propriedades expandidas */
+    #records.custom-grid .record-preview {
+      display: block !important;
+      min-width: 0;
+      padding: 10px 11px 12px;
+      overflow-wrap: anywhere;
+    }
+
+    #records.custom-grid .preview-property {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 3px;
+      min-width: 0;
+      padding: 7px 0;
+    }
+
+    #records.custom-grid .preview-property span,
+    #records.custom-grid .preview-property strong {
+      max-width: 100%;
+      overflow-wrap: anywhere;
+    }
+
+    #records.custom-grid .preview-property strong {
+      text-align: left;
+    }
+
+    @media (max-width: 760px) {
+      #records.custom-grid {
+        grid-template-columns:
+          repeat(var(--custom-grid-columns, 3), minmax(0, 1fr));
+        gap: 7px;
+      }
+
+      #records.custom-grid .record-card > .record {
+        gap: 7px;
+        padding: 9px;
+      }
+
+      #records.custom-grid .record-card > .record .record-icon {
+        flex-basis: 25px;
+        width: 25px;
+        height: 25px;
+        font-size: 16px;
+      }
+
+      #records.custom-grid .record-info strong {
+        font-size: 12px;
+      }
+
+      #records.custom-grid .record-info p {
+        font-size: 10px;
+      }
+
+      #records.custom-grid .record-actions {
+        padding: 0 9px 9px;
+      }
+
+      #records.custom-grid .preview-toggle {
+        padding: 5px 7px;
+        font-size: 11px;
+      }
+
+      #records.custom-grid .record-preview {
+        padding: 8px 9px 10px;
+      }
+    }
+
+    @media (max-width: 420px) {
+      #records.custom-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+  `;
+
+  document.head.append(style);
+}
+
 export function createRecordListFeature({
   $,
   esc,
@@ -12,6 +196,8 @@ export function createRecordListFeature({
   getViewMode = () => "list",
   getCustomColumns = () => 3
 }) {
+  ensureViewModeStyles();
+
   function renderRecords() {
     const state = getFilterState();
 
@@ -28,21 +214,39 @@ export function createRecordListFeature({
     if (state.qualityOnly) {
       list = list.filter(record =>
         !String(record.description || "").trim() ||
-        !Array.isArray(record.tags) || record.tags.length === 0 ||
-        !Array.isArray(record.properties) || record.properties.length === 0
+        !Array.isArray(record.tags) ||
+        record.tags.length === 0 ||
+        !Array.isArray(record.properties) ||
+        record.properties.length === 0
       );
     }
 
     const viewMode = getViewMode();
     const container = $("records");
 
-    container.classList.toggle("grid-view", viewMode === "grid");
-    container.classList.toggle("list-view", viewMode === "list");
-    container.classList.toggle("custom-grid", viewMode === "custom");
+    container.classList.toggle(
+      "grid-view",
+      viewMode === "grid"
+    );
+
+    container.classList.toggle(
+      "list-view",
+      viewMode === "list"
+    );
+
+    container.classList.toggle(
+      "custom-grid",
+      viewMode === "custom"
+    );
+
+    const columns = Math.max(
+      2,
+      Math.min(6, Number(getCustomColumns()) || 3)
+    );
 
     container.style.setProperty(
       "--custom-grid-columns",
-      String(Math.max(2, Math.min(6, Number(getCustomColumns()) || 3)))
+      String(columns)
     );
 
     $("count").textContent = list.length + " shown";
@@ -50,24 +254,49 @@ export function createRecordListFeature({
     if (!list.length) {
       container.innerHTML =
         '<div class="empty">No records found.<br><br>Try changing your filters or search.</div>';
+
       return;
     }
 
     container.innerHTML = list.map(record => {
-      const category = record.category || record.type;
-      const tags = Array.isArray(record.tags) ? record.tags : [];
-      const properties = Array.isArray(record.properties) ? record.properties : [];
+      const tags = Array.isArray(record.tags)
+        ? record.tags
+        : [];
 
-      if (viewMode === "grid" || viewMode === "custom") {
+      const properties = Array.isArray(record.properties)
+        ? record.properties
+        : [];
+
+      const category = record.category || record.type;
+
+      /*
+       * Grid tradicional:
+       * cartões compactos sem Preview.
+       *
+       * Custom Grid:
+       * usa o layout da lista, com Preview e propriedades.
+       */
+
+      if (viewMode === "grid") {
         return `
           <div class="record-card compact-card">
-            <button class="record compact-record"
+            <button
+              class="record compact-record"
               type="button"
               data-open="${esc(record.id)}"
-              aria-pressed="false">
-              <span class="record-icon">${iconOf(record)}</span>
-              <strong class="compact-record-name">${esc(record.name)}</strong>
-              <span class="compact-record-category">${esc(category)}</span>
+              aria-pressed="false"
+            >
+              <span class="record-icon">
+                ${iconOf(record)}
+              </span>
+
+              <strong class="compact-record-name">
+                ${esc(record.name)}
+              </strong>
+
+              <span class="compact-record-category">
+                ${esc(category)}
+              </span>
             </button>
           </div>
         `;
@@ -75,50 +304,85 @@ export function createRecordListFeature({
 
       return `
         <div class="record-card">
-          <button class="record"
+          <button
+            class="record"
             type="button"
             data-open="${esc(record.id)}"
-            aria-pressed="false">
-            <span class="record-icon">${iconOf(record)}</span>
+            aria-pressed="false"
+          >
+            <span class="record-icon">
+              ${iconOf(record)}
+            </span>
 
             <span class="record-info">
               <strong>${esc(record.name)}</strong>
-              <p>${esc(record.type)}${record.category ? " · " + esc(record.category) : ""}${record.subcategory ? " · " + esc(record.subcategory) : ""}${tags.length ? " · " + esc(tags.join(", ")) : ""}</p>
+
+              <p>${esc(record.type)}${
+                record.category
+                  ? " · " + esc(record.category)
+                  : ""
+              }${
+                record.subcategory
+                  ? " · " + esc(record.subcategory)
+                  : ""
+              }${
+                tags.length
+                  ? " · " + esc(tags.join(", "))
+                  : ""
+              }</p>
             </span>
 
             <span class="record-arrow">›</span>
           </button>
 
           <div class="record-actions">
-            <button class="preview-toggle ${expanded.has(record.id) ? "active" : ""}"
+            <button
+              class="preview-toggle ${
+                expanded.has(record.id) ? "active" : ""
+              }"
               type="button"
-              data-preview="${esc(record.id)}">
-              ${expanded.has(record.id) ? "Hide preview" : "Preview"} · ${properties.length}
+              data-preview="${esc(record.id)}"
+            >
+              ${
+                expanded.has(record.id)
+                  ? "Hide preview"
+                  : "Preview"
+              } · ${properties.length}
             </button>
           </div>
 
-          ${expanded.has(record.id) ? `
-            <div class="record-preview">
-              ${properties.length
-                ? properties.map(property => `
-                  <div class="preview-property">
-                    <span>${esc(property.name)}</span>
-                    <strong>${esc(property.value)}</strong>
-                  </div>
-                `).join("")
-                : '<p class="muted">No properties defined.</p>'}
-            </div>
-          ` : ""}
+          ${
+            expanded.has(record.id)
+              ? `
+                <div class="record-preview">
+                  ${
+                    properties.length
+                      ? properties.map(property => `
+                          <div class="preview-property">
+                            <span>${esc(property.name)}</span>
+                            <strong>${esc(property.value)}</strong>
+                          </div>
+                        `).join("")
+                      : '<p class="muted">No properties defined.</p>'
+                  }
+                </div>
+              `
+              : ""
+          }
         </div>
       `;
     }).join("");
 
     try {
-      window.lucide?.createIcons?.({ root: container });
+      window.lucide?.createIcons?.({
+        root: container
+      });
     } catch {}
 
     container.querySelectorAll("[data-open]").forEach(button => {
-      button.onclick = () => openRecord(button.dataset.open);
+      button.onclick = () => {
+        openRecord(button.dataset.open);
+      };
     });
 
     container.querySelectorAll("[data-preview]").forEach(button => {
