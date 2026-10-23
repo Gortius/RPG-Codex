@@ -9,12 +9,13 @@ export function createRecordListFeature({
   getFilterState,
   expanded,
   openRecord,
-  getViewMode = () => "list"
+  getViewMode = () => "list",
+  getCustomColumns = () => 3
 }) {
   function renderRecords() {
     const state = getFilterState();
 
-    const list = filterRecords(getRecords(), {
+    let list = filterRecords(getRecords(), {
       query: $("search").value,
       types: state.activeTypes,
       category: $("filter-category").value,
@@ -24,11 +25,25 @@ export function createRecordListFeature({
       sort: $("sort-records").value
     });
 
+    if (state.qualityOnly) {
+      list = list.filter(record =>
+        !String(record.description || "").trim() ||
+        !Array.isArray(record.tags) || record.tags.length === 0 ||
+        !Array.isArray(record.properties) || record.properties.length === 0
+      );
+    }
+
     const viewMode = getViewMode();
     const container = $("records");
 
     container.classList.toggle("grid-view", viewMode === "grid");
     container.classList.toggle("list-view", viewMode === "list");
+    container.classList.toggle("custom-grid", viewMode === "custom");
+
+    container.style.setProperty(
+      "--custom-grid-columns",
+      String(Math.max(2, Math.min(6, Number(getCustomColumns()) || 3)))
+    );
 
     $("count").textContent = list.length + " shown";
 
@@ -40,8 +55,10 @@ export function createRecordListFeature({
 
     container.innerHTML = list.map(record => {
       const category = record.category || record.type;
+      const tags = Array.isArray(record.tags) ? record.tags : [];
+      const properties = Array.isArray(record.properties) ? record.properties : [];
 
-      if (viewMode === "grid") {
+      if (viewMode === "grid" || viewMode === "custom") {
         return `
           <div class="record-card compact-card">
             <button class="record compact-record"
@@ -66,7 +83,7 @@ export function createRecordListFeature({
 
             <span class="record-info">
               <strong>${esc(record.name)}</strong>
-              <p>${esc(record.type)}${record.category ? " · " + esc(record.category) : ""}${record.subcategory ? " · " + esc(record.subcategory) : ""}${record.tags.length ? " · " + esc(record.tags.join(", ")) : ""}</p>
+              <p>${esc(record.type)}${record.category ? " · " + esc(record.category) : ""}${record.subcategory ? " · " + esc(record.subcategory) : ""}${tags.length ? " · " + esc(tags.join(", ")) : ""}</p>
             </span>
 
             <span class="record-arrow">›</span>
@@ -76,14 +93,14 @@ export function createRecordListFeature({
             <button class="preview-toggle ${expanded.has(record.id) ? "active" : ""}"
               type="button"
               data-preview="${esc(record.id)}">
-              ${expanded.has(record.id) ? "Hide preview" : "Preview"} · ${record.properties.length}
+              ${expanded.has(record.id) ? "Hide preview" : "Preview"} · ${properties.length}
             </button>
           </div>
 
           ${expanded.has(record.id) ? `
             <div class="record-preview">
-              ${record.properties.length
-                ? record.properties.map(property => `
+              ${properties.length
+                ? properties.map(property => `
                   <div class="preview-property">
                     <span>${esc(property.name)}</span>
                     <strong>${esc(property.value)}</strong>
@@ -96,7 +113,10 @@ export function createRecordListFeature({
       `;
     }).join("");
 
-    try { window.lucide?.createIcons?.({ root: container }); } catch {}
+    try {
+      window.lucide?.createIcons?.({ root: container });
+    } catch {}
+
     container.querySelectorAll("[data-open]").forEach(button => {
       button.onclick = () => openRecord(button.dataset.open);
     });
