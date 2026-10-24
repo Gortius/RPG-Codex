@@ -91,9 +91,9 @@
 
   function readSettings() {
     const value = readJSON(SETTINGS_KEY, {});
-    return {
-      showFoldersAtTop: value?.showFoldersAtTop !== false
-    };
+    // Migrate the previous setting name while keeping its meaning: checked = pinned.
+    const pinned = value?.foldersPinnedToTop ?? value?.showFoldersAtTop;
+    return { foldersPinnedToTop: pinned !== false };
   }
 
   let settings = readSettings();
@@ -344,20 +344,52 @@
     return { counts, noFolderCount };
   }
 
+  // Count records that are currently present in the normal search/filter result list.
+  // We intentionally do not exclude hidden cards here: the active folder filter hides
+  // cards after the app's regular search has produced its results.
+  function folderSearchMatchCounts() {
+    const result = new Map(folders.map(folder => [folder.id, 0]));
+    const container = $("records");
+    if (!container) return result;
+    const seen = new Set();
+    container.querySelectorAll(".record-card [data-open]").forEach(button => {
+      const id = String(button.dataset.open || "");
+      if (!id || seen.has(id)) return;
+      seen.add(id);
+      const folderId = assignments[id];
+      if (result.has(folderId)) result.set(folderId, result.get(folderId) + 1);
+    });
+    return result;
+  }
+
   function renderFolderBrowser() {
     const browser = $("folder-browser");
     if (!browser) return;
-    browser.hidden = !settings.showFoldersAtTop;
-    if (browser.hidden) return;
+    // The setting controls search behavior, not whether the folder browser exists.
+    browser.hidden = false;
     const { counts, noFolderCount } = folderCounts();
-    const folderCards = folders.map(folder => {
+    const query = $("search")?.value.trim().toLocaleLowerCase() || "";
+    const matchingCounts = folderSearchMatchCounts();
+    const visibleFolders = settings.foldersPinnedToTop || !query
+      ? folders
+      : folders.filter(folder => {
+          const folderText = [folder.name, ...(folder.tags || [])].join(" ").toLocaleLowerCase();
+          return folderText.includes(query) || (matchingCounts.get(folder.id) || 0) > 0;
+        });
+
+    const folderCards = visibleFolders.map(folder => {
       const active = selectedFolderId === folder.id ? " active" : "";
       const tags = folder.tags.map(tag => `<span class="chip">${esc(tag)}</span>`).join("");
+      const total = counts.get(folder.id) || 0;
+      const matches = matchingCounts.get(folder.id) || 0;
+      const matchLabel = query && matches > 0
+        ? ` · ${matches} correspondência${matches === 1 ? "" : "s"} dentro da pasta`
+        : "";
       return `
         <article class="folder-card${active}" data-folder-card="${esc(folder.id)}">
           <button type="button" class="folder-card-main" data-folder-open="${esc(folder.id)}" aria-pressed="${selectedFolderId === folder.id}">
             <i class="folder-card-icon" data-lucide="folder" aria-hidden="true"></i>
-            <span class="folder-card-info"><strong>${esc(folder.name)}</strong><small>${counts.get(folder.id) || 0} records</small><span class="folder-card-tags">${tags}</span></span>
+            <span class="folder-card-info"><strong>${esc(folder.name)}</strong><small>${total} registros${esc(matchLabel)}</small><span class="folder-card-tags">${tags}</span></span>
           </button>
           <div class="folder-card-actions">
             <button type="button" class="secondary" data-folder-edit="${esc(folder.id)}"><i data-lucide="pencil" aria-hidden="true"></i><span>Edit</span></button>
@@ -365,8 +397,9 @@
           </div>
         </article>`;
     }).join("");
-    const noneActive = selectedFolderId === NO_FOLDER ? " active" : "";
-    const allActive = selectedFolderId === null ? " active" : "";
+    const emptyMessage = query && !settings.foldersPinnedToTop
+      ? "No folders or matching records found."
+      : "No folders yet. Create one to group related records.";
     browser.innerHTML = `
       <div class="folder-browser-heading">
         <h3>Folders</h3>
@@ -376,9 +409,11 @@
           <button type="button" class="primary" data-folder-create><i data-lucide="folder-plus" aria-hidden="true"></i><span>New folder</span></button>
         </div>
       </div>
-      <p class="folder-browser-hint">Select a folder to show its records. Record filters continue to apply inside the selected folder.</p>
+      <p class="folder-browser-hint">${settings.foldersPinnedToTop
+        ? "Folders stay at the top while you search. Matching records inside each folder are counted."
+        : "Folders are included in search results when their name or tags match, or when they contain matching records."}</p>
       <div class="folder-card-grid">
-        ${folderCards || '<p class="muted">No folders yet. Create one to group related records.</p>'}
+        ${folderCards || `<p class="muted">${esc(emptyMessage)}</p>`}
       </div>
     `;
     const heading = browser.querySelector(".folder-browser-heading h3");
@@ -427,7 +462,10 @@
       if (count) count.textContent = `${shown} shown`;
       const defaultEmpty = container.querySelector(":scope > .empty");
       if (shown === 0 && cards.length > 0) {
-        if (defaultEmpty) defaultEmpty.textContent = "No records in this folder match the current filters.";
+        const emptyText = "No records in this folder match the current filters.";
+        if (defaultEmpty) {
+          if (defaultEmpty.textContent !== emptyText) defaultEmpty.textContent = emptyText;
+        }
         else {
           const empty = document.createElement("div");
           empty.className = "empty";
@@ -483,8 +521,8 @@
       if (folder) {
         folders = folders.map(item => item.id === folder.id ? { id: folder.id, name, tags } : item);
       } else {
+        // Creating a folder should not silently change the active record filter.
         folders.push({ id: uid("folder"), name, tags });
-        if (selectedFolderId === null) selectedFolderId = folders[folders.length - 1].id;
       }
       if (saveFolderData()) {
         close();
@@ -650,8 +688,9 @@
     const browser = document.createElement("section");
     browser.id = "folder-browser";
     browser.className = "folder-browser panel";
-    const toolbar = recordsView.querySelector(".toolbar");
-    if (toolbar) toolbar.insertAdjacentElement("beforebegin", browser);
+    // Put folders in the results area, after search and filter controls.
+    const resultsHeading = recordsView.querySelector(".records-heading");
+    if (resultsHeading) resultsHeading.insertAdjacentElement("beforebegin", browser);
     else records.insertAdjacentElement("beforebegin", browser);
   }
 
@@ -668,10 +707,10 @@
       <h2>Settings</h2>
       <p class="muted">Customize how RPG Codex organizes and displays your database.</p>
       <div class="settings-card">
-        <h3>Record browsing</h3>
-        <label class="settings-option" for="setting-folders-at-top">
-          <input type="checkbox" id="setting-folders-at-top">
-          <span><strong>Show folders at the top of the Records page</strong><small>Place folders before search, record filters and results. Turning this off also clears the active folder filter so every record remains visible.</small></span>
+        <h3>Folder search and sorting</h3>
+        <label class="settings-option" for="setting-folders-pinned">
+          <input type="checkbox" id="setting-folders-pinned">
+          <span><strong>Keep folders pinned at the top of search results</strong><small>When enabled, folders stay visible at the top while you search and show how many matching records they contain. When disabled, only folders whose name/tags match or that contain matching records appear in the folder results. This setting does not hide folders or clear the selected folder.</small></span>
         </label>
       </div>
       <div class="settings-card">
@@ -681,13 +720,9 @@
       </div>
     `;
     main.append(section);
-    $("setting-folders-at-top").checked = settings.showFoldersAtTop;
-    $("setting-folders-at-top").addEventListener("change", event => {
-      settings.showFoldersAtTop = Boolean(event.target.checked);
-      if (!settings.showFoldersAtTop) {
-        selectedFolderId = null;
-        writeJSON(scopedKey(SELECTED_FOLDER_KEY), null);
-      }
+    $("setting-folders-pinned").checked = settings.foldersPinnedToTop;
+    $("setting-folders-pinned").addEventListener("change", event => {
+      settings.foldersPinnedToTop = Boolean(event.target.checked);
       writeJSON(SETTINGS_KEY, settings);
       renderFolderBrowser();
       applyFolderFilter();
@@ -871,6 +906,7 @@
       const observer = new MutationObserver(() => {
         displayOnlyTypeAndTags();
         applyFolderFilter();
+        renderFolderBrowser();
         enhancePropertyRows();
         normalizeBackupIcons();
       });
@@ -923,7 +959,10 @@
       if ($("settings-view")) $("settings-view").hidden = true;
       document.querySelectorAll("[data-open-settings]").forEach(button => button.classList.remove("active"));
     }));
-    $("search")?.addEventListener("input", () => setTimeout(applyFolderFilter, 0));
+    $("search")?.addEventListener("input", () => setTimeout(() => {
+      applyFolderFilter();
+      renderFolderBrowser();
+    }, 0));
     ["filter-tags", "advanced-filter-content", "property-conditions"].forEach(id => $(id)?.addEventListener("change", () => setTimeout(applyFolderFilter, 0)));
     formCaptureEscape();
   }
@@ -942,10 +981,6 @@
     isFolderSetupReady = true;
     addStyles();
     loadFolderData();
-    if (!settings.showFoldersAtTop && selectedFolderId !== null) {
-      selectedFolderId = null;
-      writeJSON(scopedKey(SELECTED_FOLDER_KEY), null);
-    }
     injectFolderBrowser();
     injectFolderAssignment();
     injectSettingsPage();
