@@ -13,7 +13,7 @@ import {
   SAVED_KEY,
   TRASH_KEY,
   getScopedStorageKey
-} from "../data/storage.js?v=20261023-r5";
+} from "../data/storage.js";
 import { STARTER_RECORDS } from "../data/default-records.js";
 
 const $ = id => document.getElementById(id);
@@ -192,6 +192,7 @@ function setupProjects() {
 
       if (bundle) {
         importProjectBundle(bundle, { replace: true });
+        window.RPGCodexFolders?.importBackupData?.(bundle.folders, { replace: true, records: bundle.records });
       }
 
       location.reload();
@@ -298,6 +299,7 @@ function setupProjects() {
               SAVED_KEY,
               TRASH_KEY
             ].forEach(key => localStorage.removeItem(`${key}::${project.id}`));
+            window.RPGCodexFolders?.deleteProjectData?.(project.id);
 
             saveProjects(loadProjects().filter(item => item.id !== project.id));
             setActiveProjectId("default");
@@ -311,12 +313,17 @@ function setupProjects() {
   function exportCurrentProject() {
     try {
       const bundle = exportProjectBundle();
+      bundle.folders = window.RPGCodexFolders?.getBackupData?.() || { folders: [], assignments: {} };
       const id = getActiveProjectId();
       const storedRecords = localStorage.getItem(getScopedStorageKey(STORAGE_KEY));
 
       // Preserve the starter records if the default project has not been saved yet.
       if (storedRecords === null && id === "default") {
-        bundle.records = STARTER_RECORDS;
+        bundle.records = STARTER_RECORDS.map(record => ({
+          ...record,
+          category: "",
+          subcategory: ""
+        }));
       }
 
       downloadJSON(`rpg-codex-${id}-backup.json`, bundle);
@@ -429,6 +436,7 @@ function setupProjects() {
   function runImport(bundle, replace) {
     try {
       const count = importProjectBundle(bundle, { replace });
+      window.RPGCodexFolders?.importBackupData?.(bundle.folders, { replace, records: bundle.records });
       notify(`Import complete: ${count} records in the project.`);
       setTimeout(() => location.reload(), 650);
     } catch (error) {
