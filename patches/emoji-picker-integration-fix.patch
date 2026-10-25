@@ -1,0 +1,86 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -8,1 +8,1 @@
+-<link rel="stylesheet" href="./css/main.css?v=20261025-icons-org-r1">
++<link rel="stylesheet" href="./css/main.css?v=20261025-emoji-picker-fix-r2">
+@@ -199,5 +199,8 @@
+       <div id="custom-icon-section">
+         <label for="f-icon">Custom icon</label>
+-        <input id="f-icon" maxlength="80" placeholder="Type an emoji or short text">
+-        <button id="open-emoji-picker" class="secondary emoji-picker-open-button" type="button" aria-haspopup="dialog" aria-controls="emoji-picker-layer" aria-expanded="false">😀 Browse emojis</button>
++        <div class="emoji-icon-entry">
++          <input id="f-icon" maxlength="80" placeholder="Choose an emoji or type custom text">
++          <button id="open-emoji-picker" class="secondary emoji-picker-open-button" type="button" aria-haspopup="dialog" aria-controls="emoji-picker-layer" aria-expanded="false">😀 Open emoji library</button>
++        </div>
++        <p class="emoji-picker-help">Choose an emoji visually, or type your own symbol or text.</p>
+       </div>
+@@ -286,10 +289,9 @@
+   // Bump this version when cached modules need to be refreshed on GitHub Pages.
+   import("./js/app.js?v=20261025-theme-layout-r2")
+-    .then(() => import("./js/features/enhancements.js?v=20261025-icons-org-r1"))
++    .then(() => import("./js/features/enhancements.js?v=20261025-emoji-picker-fix-r2"))
+     .then(() => import("./js/features/sidebar.js?v=20261025-theme-layout-r2"))
+     .then(() => import("./js/features/calculator.js?v=20261025-theme-layout-r2"))
+     .then(() => import("./js/features/folders.js?v=20261025-theme-layout-r2"))
+-    .then(() => import("./js/features/emoji-picker.js?v=20261025-icons-org-r1"))
+     .catch(error => {
+       console.error("RPG Codex failed to start:", error);
+       const status = document.getElementById("status");
+@@ -302,4 +304,17 @@
+     });
+ </script>
++<!-- Load the emoji picker independently so a failure in another optional feature cannot prevent it from working. -->
++<script type="module">
++  import("./js/features/emoji-picker.js?v=20261025-emoji-picker-fix-r2")
++    .catch(error => {
++      console.error("RPG Codex emoji picker failed to initialize:", error);
++      const button = document.getElementById("open-emoji-picker");
++      if (button) {
++        button.disabled = true;
++        button.textContent = "Emoji library unavailable";
++        button.title = "The emoji picker could not load. Check the browser console and file path.";
++      }
++    });
++</script>
+ </body>
+ </html>
+diff --git a/css/main.css b/css/main.css
+--- a/css/main.css
++++ b/css/main.css
+@@ -809,5 +809,31 @@
+ /* RPG Codex emoji picker */
+-#custom-icon-section .emoji-picker-open-button {
+-  margin-top: 8px;
+-  min-height: 38px;
++.emoji-icon-entry {
++  display: flex;
++  align-items: stretch;
++  gap: 9px;
++  min-width: 0;
++}
++.emoji-icon-entry > input {
++  flex: 1 1 auto;
++  min-width: 0;
++}
++#custom-icon-section .emoji-picker-open-button {
++  flex: 0 0 auto;
++  margin: 0;
++  min-height: 42px;
++  white-space: nowrap;
++}
++.emoji-picker-help {
++  margin: 7px 0 0;
++  color: var(--muted, #9296a2);
++  font-size: 12px;
++  line-height: 1.45;
++}
++.emoji-picker-open-button:disabled {
++  opacity: .65;
++  cursor: not-allowed;
+ }
++@media (max-width: 520px) {
++  .emoji-icon-entry { flex-direction: column; }
++  #custom-icon-section .emoji-picker-open-button { width: 100%; }
++}
+
