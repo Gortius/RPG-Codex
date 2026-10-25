@@ -783,14 +783,81 @@ function iconCategory(name) {
   return categories.find(([, pattern]) => pattern.test(name))?.[0] || "General";
 }
 
+// Add common Portuguese search terms to icon names without changing the saved icon IDs.
+const ICON_SEARCH_ALIASES = {
+  sword: ["espada", "arma", "armas", "ataque", "dano"],
+  shield: ["escudo", "defesa", "armadura", "protecao"],
+  heart: ["vida", "cura", "saude", "hp", "coracao"],
+  flame: ["fogo", "chama", "incendio"],
+  fire: ["fogo", "chama", "incendio"],
+  dragon: ["dragao", "draconico"],
+  skull: ["caveira", "cranio", "morte"],
+  ghost: ["fantasma", "espirito"],
+  leaf: ["folha", "planta", "natureza"],
+  tree: ["arvore", "floresta"],
+  potion: ["pocao", "frasco", "alquimia"],
+  flask: ["pocao", "frasco", "alquimia"],
+  vial: ["pocao", "frasco", "alquimia"],
+  gem: ["gema", "cristal", "mineral"],
+  crystal: ["cristal", "gema"],
+  bow: ["arco", "flecha", "arqueiro"],
+  arrow: ["flecha", "projetil"],
+  book: ["livro", "grimorio", "magia"],
+  moon: ["lua", "noite"],
+  star: ["estrela", "espaco", "astral"],
+  sun: ["sol", "luz", "dia"],
+  map: ["mapa", "exploracao"],
+  chest: ["bau", "tesouro", "loot"],
+  coin: ["moeda", "ouro", "dinheiro"],
+  wolf: ["lobo", "fera"],
+  spider: ["aranha", "inseto"],
+  snake: ["cobra", "serpente"],
+  bee: ["abelha", "inseto"],
+  flower: ["flor", "planta"],
+  water: ["agua", "gota"],
+  droplet: ["agua", "gota"],
+  wind: ["vento", "ar"],
+  lightning: ["raio", "relampago", "eletricidade"],
+  castle: ["castelo", "fortaleza"],
+  mountain: ["montanha", "pedra"],
+  food: ["comida", "alimento", "cozinha"],
+  fish: ["peixe", "pesca"],
+  bug: ["inseto", "criatura", "mob"]
+};
+
+function normalizeIconSearch(value) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function iconSearchText(name) {
+  const normalizedName = normalizeIconSearch(name.replace(/-/g, " "));
+  const aliases = Object.entries(ICON_SEARCH_ALIASES)
+    .filter(([key]) => normalizedName.includes(key))
+    .flatMap(([, values]) => values);
+  return normalizeIconSearch(`${normalizedName} ${iconCategory(name)} ${aliases.join(" ")}`);
+}
+
+function iconMatchesSearch(name, query) {
+  if (!query) return true;
+  const searchable = iconSearchText(name);
+  return query.split(" ").every(term => searchable.includes(term));
+}
+
 function setupExpandedIconPicker() {
   const host = $("icon-picker");
   const search = $("icon-search");
   const field = $("f-icon");
+  const existingSection = $("existing-icon-section");
 
-  if (!host || !search || !field) return;
+  if (!host || !search || !field || !existingSection) return;
 
-  search.placeholder = "Search Lucide or RPG icons…";
+  search.placeholder = "Search by name or concept: sword, dragon, cura…";
   search.setAttribute("aria-label", "Search the icon library");
 
   const controls = document.createElement("div");
@@ -798,7 +865,9 @@ function setupExpandedIconPicker() {
   controls.innerHTML = `
     <div class="enhancement-icon-tabs" role="tablist" aria-label="Icon collection">
       <button type="button" class="active" data-icon-library="lucide" role="tab" aria-selected="true">Lucide</button>
-      <button type="button" data-icon-library="rpg" role="tab" aria-selected="false">RPG icons</button>
+      <button type="button" data-icon-library="lab" role="tab" aria-selected="false">Lucide Lab</button>
+      <button type="button" data-icon-library="rpg" role="tab" aria-selected="false">Game Icons (RPG)</button>
+      <button type="button" class="enhancement-icon-expand" data-expand-icon-picker aria-expanded="false">Expand selector</button>
     </div>
     <p class="enhancement-icon-caption" id="enhancement-icon-caption"></p>
   `;
@@ -806,9 +875,14 @@ function setupExpandedIconPicker() {
   host.insertAdjacentElement("beforebegin", controls);
 
   let library = "lucide";
-  let gameIcons = [];
   let searchRequest = 0;
   let searchTimer = null;
+  let lucideVisibleLimit = 180;
+  let lastLucideQuery = null;
+  let iconifyVisibleLimit = 180;
+  let lastIconifyQuery = null;
+  const iconifyCatalogs = new Map();
+  let pickerBackdrop = null;
 
   function setCaption(text) {
     const caption = $("enhancement-icon-caption");
@@ -816,10 +890,14 @@ function setupExpandedIconPicker() {
   }
 
   function renderLucide() {
-    const query = search.value.trim().toLowerCase();
+    const query = normalizeIconSearch(search.value);
+    if (query !== lastLucideQuery) {
+      lastLucideQuery = query;
+      lucideVisibleLimit = query ? 240 : 180;
+    }
     const allNames = getLucideNames();
-    const matches = allNames.filter(name => name.includes(query));
-    const visible = matches.slice(0, query ? 240 : 180);
+    const matches = allNames.filter(name => iconMatchesSearch(name, query));
+    const visible = matches.slice(0, lucideVisibleLimit);
     const groups = new Map();
 
     visible.forEach(name => {
@@ -847,64 +925,121 @@ function setupExpandedIconPicker() {
     `).join("") || '<p class="muted">No icons found.</p>';
 
     if (matches.length > visible.length) {
-      host.insertAdjacentHTML("beforeend",
-        `<p class="enhancement-icon-limit">Showing ${visible.length} of ${matches.length} matches. Search to narrow the results.</p>`
-      );
+      host.insertAdjacentHTML("beforeend", `
+        <div class="enhancement-icon-load-more">
+          <p class="enhancement-icon-limit">Showing ${visible.length.toLocaleString()} of ${matches.length.toLocaleString()} matches.</p>
+          <button type="button" data-load-more-lucide>Load 240 more</button>
+          <button type="button" data-show-all-lucide>Show all ${matches.length.toLocaleString()}</button>
+        </div>
+      `);
+      host.querySelector("[data-load-more-lucide]")?.addEventListener("click", () => {
+        const scrollTop = host.scrollTop;
+        lucideVisibleLimit = Math.min(matches.length, lucideVisibleLimit + 240);
+        renderLucide();
+        host.scrollTop = scrollTop;
+      });
+      host.querySelector("[data-show-all-lucide]")?.addEventListener("click", () => {
+        const scrollTop = host.scrollTop;
+        lucideVisibleLimit = matches.length;
+        renderLucide();
+        host.scrollTop = scrollTop;
+      });
     }
 
     setCaption(`${allNames.length.toLocaleString()} Lucide icons available · ${matches.length.toLocaleString()} matches`);
     window.lucide?.createIcons?.({ root: host });
   }
 
+  async function loadIconifyCatalog(prefix) {
+    if (iconifyCatalogs.has(prefix)) return iconifyCatalogs.get(prefix);
+    const response = await fetch(`https://api.iconify.design/collection?prefix=${encodeURIComponent(prefix)}`);
+    if (!response.ok) throw new Error(`Could not load ${prefix} icon names.`);
+    const data = await response.json();
+    const categorized = Object.values(data.categories || {}).flat();
+    const names = [...new Set([...(data.uncategorized || []), ...categorized])]
+      .filter(name => typeof name === "string" && /^[a-z0-9-]+$/i.test(name))
+      .sort((a, b) => a.localeCompare(b));
+    if (!names.length) throw new Error(`The ${prefix} icon list was empty.`);
+    iconifyCatalogs.set(prefix, names);
+    return names;
+  }
+
+  function renderIconifyResults(prefix, label, matches, totalNames) {
+    const query = normalizeIconSearch(search.value);
+    if (query !== lastIconifyQuery || prefix !== renderIconifyResults.lastPrefix) {
+      lastIconifyQuery = query;
+      renderIconifyResults.lastPrefix = prefix;
+      iconifyVisibleLimit = query ? 240 : 180;
+    }
+    const visible = matches.slice(0, iconifyVisibleLimit);
+    host.innerHTML = visible.length ? `
+      <div class="icon-group enhancement-icon-group">
+        <strong>${escapeHTML(label)}</strong>
+        <div class="icon-group-grid">
+          ${visible.map(name => `
+            <button type="button"
+              class="icon-choice ${field.value === `iconify:${prefix}:${name}` ? "selected" : ""}"
+              data-enhanced-icon="iconify:${prefix}:${escapeHTML(name)}"
+              title="${escapeHTML(name)}"
+              aria-label="${escapeHTML(name)}">
+              <img src="https://api.iconify.design/${encodeURIComponent(prefix)}/${encodeURIComponent(name)}.svg?color=%23B9A0FF"
+                alt="" loading="lazy">
+              <small>${escapeHTML(name.replace(/-/g, " "))}</small>
+            </button>
+          `).join("")}
+        </div>
+      </div>
+    ` : '<p class="muted">No icons found. Try another word or spelling.</p>';
+
+    if (matches.length > visible.length) {
+      host.insertAdjacentHTML("beforeend", `
+        <div class="enhancement-icon-load-more">
+          <p class="enhancement-icon-limit">Showing ${visible.length.toLocaleString()} of ${matches.length.toLocaleString()} matching icons.</p>
+          <button type="button" data-load-more-iconify>Load 240 more</button>
+          <button type="button" data-show-all-iconify>Show all ${matches.length.toLocaleString()}</button>
+        </div>
+      `);
+      host.querySelector("[data-load-more-iconify]")?.addEventListener("click", () => {
+        const scrollTop = host.scrollTop;
+        iconifyVisibleLimit = Math.min(matches.length, iconifyVisibleLimit + 240);
+        renderIconifyResults(prefix, label, matches, totalNames);
+        host.scrollTop = scrollTop;
+      });
+      host.querySelector("[data-show-all-iconify]")?.addEventListener("click", () => {
+        const scrollTop = host.scrollTop;
+        iconifyVisibleLimit = matches.length;
+        renderIconifyResults(prefix, label, matches, totalNames);
+        host.scrollTop = scrollTop;
+      });
+    }
+
+    setCaption(`${totalNames.toLocaleString()} ${label} icons available · ${matches.length.toLocaleString()} matches`);
+  }
+
   async function searchGameIcons() {
-    const query = search.value.trim() || "sword";
+    const prefix = library === "lab" ? "lucide-lab" : "game-icons";
+    const label = library === "lab" ? "Lucide Lab" : "Game Icons (RPG)";
+    const query = normalizeIconSearch(search.value);
     const request = ++searchRequest;
 
-    host.innerHTML = '<p class="muted">Searching RPG icons…</p>';
-    setCaption("Searching the Game Icons collection");
+    host.innerHTML = `<p class="muted">Loading ${escapeHTML(label)}…</p>`;
+    setCaption("Loading the icon catalog");
 
     try {
-      const url = `https://api.iconify.design/search?prefix=game-icons&query=${encodeURIComponent(query)}&limit=72`;
-      const response = await fetch(url);
-
-      if (!response.ok) throw new Error("The icon service could not be reached.");
-
-      const data = await response.json();
+      const names = await loadIconifyCatalog(prefix);
       if (request !== searchRequest) return;
-
-      gameIcons = (data.icons || []).map(icon => icon.replace(/^game-icons:/, ""));
-
-      host.innerHTML = gameIcons.length
-        ? `
-          <div class="icon-group enhancement-icon-group">
-            <strong>Game Icons</strong>
-            <div class="icon-group-grid">
-              ${gameIcons.map(name => `
-                <button type="button"
-                  class="icon-choice ${field.value === `iconify:game-icons:${name}` ? "selected" : ""}"
-                  data-enhanced-icon="iconify:game-icons:${escapeHTML(name)}"
-                  title="${escapeHTML(name)}"
-                  aria-label="${escapeHTML(name)}">
-                  <img src="https://api.iconify.design/game-icons/${encodeURIComponent(name)}.svg?color=%23B9A0FF"
-                    alt="" loading="lazy">
-                  <small>${escapeHTML(name.replace(/-/g, " "))}</small>
-                </button>
-              `).join("")}
-            </div>
-          </div>
-        `
-        : '<p class="muted">No RPG icons found. Try another search term.</p>';
-
-      setCaption(`${data.total ?? gameIcons.length} Game Icons matches · Search terms like sword, armor, bow, potion or magic`);
+      const matches = names.filter(name => iconMatchesSearch(name, query));
+      renderIconifyResults(prefix, label, matches, names.length);
     } catch (error) {
       if (request !== searchRequest) return;
-      host.innerHTML = `<p class="muted">Could not load RPG icons. Check your connection and try again.</p>`;
-      setCaption("Lucide icons remain available offline once loaded by the browser.");
+      host.innerHTML = `<p class="muted">Could not load ${escapeHTML(label)}. Check your connection and try again.</p>`;
+      setCaption("Lucide icons remain available through the loaded library.");
     }
   }
 
   function render() {
     if (library === "lucide") {
+      searchRequest++;
       renderLucide();
       return;
     }
@@ -927,6 +1062,47 @@ function setupExpandedIconPicker() {
     render();
   });
 
+  const expandButton = controls.querySelector("[data-expand-icon-picker]");
+
+  function setPickerExpanded(expanded) {
+    if (expanded && !pickerBackdrop) {
+      pickerBackdrop = document.createElement("div");
+      pickerBackdrop.className = "icon-picker-fullscreen-backdrop";
+      pickerBackdrop.setAttribute("aria-hidden", "true");
+      pickerBackdrop.addEventListener("click", () => setPickerExpanded(false));
+      document.body.append(pickerBackdrop);
+    }
+
+    existingSection.classList.toggle("icon-picker-expanded", expanded);
+    if (expandButton) {
+      expandButton.setAttribute("aria-expanded", String(expanded));
+      expandButton.textContent = expanded ? "Close selector" : "Expand selector";
+    }
+
+    if (expanded) {
+      existingSection.setAttribute("role", "dialog");
+      existingSection.setAttribute("aria-modal", "true");
+      search.focus();
+    } else {
+      existingSection.removeAttribute("role");
+      existingSection.removeAttribute("aria-modal");
+      pickerBackdrop?.remove();
+      pickerBackdrop = null;
+    }
+  }
+
+  expandButton?.addEventListener("click", () => {
+    setPickerExpanded(!existingSection.classList.contains("icon-picker-expanded"));
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && existingSection.classList.contains("icon-picker-expanded")) {
+      setPickerExpanded(false);
+    }
+  });
+  $("icon-mode")?.addEventListener("change", event => {
+    if (event.target.value !== "existing") setPickerExpanded(false);
+  });
+
   // Capture the selection before the original 100-icon picker handles the click.
   host.addEventListener("click", event => {
     const button = event.target.closest("[data-enhanced-icon]");
@@ -937,6 +1113,7 @@ function setupExpandedIconPicker() {
 
     field.value = button.dataset.enhancedIcon;
     field.dispatchEvent(new Event("input", { bubbles: true }));
+    setPickerExpanded(false);
     render();
   }, true);
 
@@ -964,7 +1141,7 @@ function setupExpandedIconPicker() {
 
     candidates.forEach(span => {
       const value = span.textContent.trim();
-      const match = value.match(/^iconify:game-icons:([a-z0-9-]+)$/i);
+      const match = value.match(/^iconify:(game-icons|lucide-lab):([a-z0-9-]+)$/i);
       if (!match) return;
 
       const colorMatch = span.getAttribute("style")?.match(/color:\s*(#[0-9a-f]{6})/i);
@@ -972,9 +1149,9 @@ function setupExpandedIconPicker() {
       const image = document.createElement("img");
       image.alt = "";
       image.className = "game-icon-image";
-      image.src = `https://api.iconify.design/game-icons/${encodeURIComponent(match[1])}.svg?color=${encodeURIComponent(color)}`;
+      image.src = `https://api.iconify.design/${encodeURIComponent(match[1])}/${encodeURIComponent(match[2])}.svg?color=${encodeURIComponent(color)}`;
       image.addEventListener("error", () => {
-        span.textContent = match[1].replace(/-/g, " ");
+        span.textContent = match[2].replace(/-/g, " ");
       }, { once: true });
 
       span.dataset.iconifyRendered = "true";
@@ -1049,11 +1226,25 @@ function addEnhancementStyles() {
     .enhancement-icon-group .icon-choice img { width: 23px; height: 23px; object-fit: contain; }
     .game-icon-image { display: inline-block; width: 1.1em; height: 1.1em; vertical-align: middle; object-fit: contain; }
     .custom-icon img { width: 1em; height: 1em; object-fit: contain; vertical-align: -0.12em; }
+    .enhancement-icon-tabs { align-items: center; }
+    .enhancement-icon-tabs .enhancement-icon-expand { margin-left: auto; }
+    .enhancement-icon-load-more { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; padding: 14px 8px; margin: 10px 0; border-top: 1px solid var(--border, #343442); }
+    .enhancement-icon-load-more .enhancement-icon-limit { flex: 1 1 100%; text-align: center; }
+    .enhancement-icon-load-more button { padding: 9px 12px; border: 1px solid var(--border, #343442); border-radius: 9px; background: var(--panel, #191922); color: var(--text, #f4f4f7); cursor: pointer; }
+    .enhancement-icon-load-more button:hover { border-color: var(--accent, #B9A0FF); color: var(--accent, #B9A0FF); }
+    .icon-picker-fullscreen-backdrop { position: fixed; inset: 0; z-index: 2400; background: rgba(5,5,8,.76); backdrop-filter: blur(3px); }
+    #existing-icon-section.icon-picker-expanded { position: fixed !important; inset: 12px; z-index: 2401; display: flex !important; flex-direction: column; gap: 10px; width: auto; max-width: none; margin: 0; padding: 17px; border: 1px solid var(--border, #343442); border-radius: 14px; background: var(--panel, #191922); box-shadow: 0 24px 80px rgba(0,0,0,.55); overflow: hidden; }
+    #existing-icon-section.icon-picker-expanded > label { flex: 0 0 auto; }
+    #existing-icon-section.icon-picker-expanded #icon-search { width: 100%; max-width: none; flex: 0 0 auto; }
+    #existing-icon-section.icon-picker-expanded .enhancement-icon-toolbar { flex: 0 0 auto; }
+    #existing-icon-section.icon-picker-expanded #icon-picker { display: block; flex: 1; min-height: 0; max-height: none; overflow: auto; }
     @media (max-width: 600px) {
       .enhancement-modal { padding: 22px 17px; }
       .enhancement-modal-actions { justify-content: stretch; }
       .enhancement-modal-actions button { flex: 1 1 auto; }
       .projects-dropdown { right: -4px; }
+      #existing-icon-section.icon-picker-expanded { inset: 5px; padding: 10px; border-radius: 11px; }
+      .enhancement-icon-tabs .enhancement-icon-expand { margin-left: 0; flex: 1 1 100%; }
     }
   `;
 
