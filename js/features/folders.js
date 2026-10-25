@@ -88,6 +88,7 @@
   let currentRecordId = null;
   let currentModal = null;
   let isFolderSetupReady = false;
+  let folderBrowserUpdateScheduled = false;
 
   function readSettings() {
     const value = readJSON(SETTINGS_KEY, {});
@@ -158,6 +159,7 @@
       .reference-picker-trigger span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
       .folder-browser { margin: 14px 0 20px; padding: 16px; }
       .folder-browser[hidden] { display:none !important; }
+      .folder-card[hidden], .folder-browser-empty[hidden] { display:none !important; }
       .record-card[hidden] { display:none !important; }
       .folder-browser-actions button[aria-pressed="true"] { border-color:var(--accent, #B9A0FF); background:rgba(185,160,255,.10); }
       .folder-browser-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
@@ -370,12 +372,9 @@
     const { counts, noFolderCount } = folderCounts();
     const query = $("search")?.value.trim().toLocaleLowerCase() || "";
     const matchingCounts = folderSearchMatchCounts();
-    const visibleFolders = settings.foldersPinnedToTop || !query
-      ? folders
-      : folders.filter(folder => {
-          const folderText = [folder.name, ...(folder.tags || [])].join(" ").toLocaleLowerCase();
-          return folderText.includes(query) || (matchingCounts.get(folder.id) || 0) > 0;
-        });
+    // Keep every folder card mounted. Search only toggles its hidden state in place,
+    // so clearing a query never requires rebuilding the whole folder browser.
+    const visibleFolders = folders;
 
     const folderCards = visibleFolders.map(folder => {
       const active = selectedFolderId === folder.id ? " active" : "";
@@ -389,7 +388,7 @@
         <article class="folder-card${active}" data-folder-card="${esc(folder.id)}">
           <button type="button" class="folder-card-main" data-folder-open="${esc(folder.id)}" aria-pressed="${selectedFolderId === folder.id}">
             <i class="folder-card-icon" data-lucide="folder" aria-hidden="true"></i>
-            <span class="folder-card-info"><strong>${esc(folder.name)}</strong><small>${total} registros${esc(matchLabel)}</small><span class="folder-card-tags">${tags}</span></span>
+            <span class="folder-card-info"><strong>${esc(folder.name)}</strong><small class="folder-card-count" data-folder-count="${esc(folder.id)}">${total} registros${esc(matchLabel)}</small><span class="folder-card-tags">${tags}</span></span>
           </button>
           <div class="folder-card-actions">
             <button type="button" class="secondary" data-folder-edit="${esc(folder.id)}"><i data-lucide="pencil" aria-hidden="true"></i><span>Edit</span></button>
@@ -413,7 +412,8 @@
         ? "Folders stay at the top while you search. Matching records inside each folder are counted."
         : "Folders are included in search results when their name or tags match, or when they contain matching records."}</p>
       <div class="folder-card-grid">
-        ${folderCards || `<p class="muted">${esc(emptyMessage)}</p>`}
+        ${folderCards}
+        <p class="muted folder-browser-empty" data-folder-browser-empty ${visibleFolders.length ? "hidden" : ""}>${esc(emptyMessage)}</p>
       </div>
     `;
     const heading = browser.querySelector(".folder-browser-heading h3");
@@ -442,6 +442,70 @@
     browser.querySelectorAll("[data-folder-edit]").forEach(button => button.addEventListener("click", () => openFolderEditor(folders.find(folder => folder.id === button.dataset.folderEdit))));
     browser.querySelectorAll("[data-folder-delete]").forEach(button => button.addEventListener("click", () => deleteFolder(button.dataset.folderDelete)));
     try { window.lucide?.createIcons?.({ root: browser }); } catch {}
+    updateFolderBrowserResults();
+  }
+
+  // Refresh counts and search visibility without rebuilding every folder card.
+  // A full innerHTML replacement caused repeated SVG replacement/layout work when
+  // the regular record list changed. The MutationObserver now updates this in place.
+  function scheduleFolderBrowserResultsUpdate() {
+    if (folderBrowserUpdateScheduled) return;
+    folderBrowserUpdateScheduled = true;
+    const run = () => {
+      folderBrowserUpdateScheduled = false;
+      updateFolderBrowserResults();
+    };
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(run);
+    else setTimeout(run, 0);
+  }
+
+  function updateFolderBrowserResults() {
+    const browser = $("folder-browser");
+    if (!browser) return;
+
+    const query = $("search")?.value.trim().toLocaleLowerCase() || "";
+    const { counts, noFolderCount } = folderCounts();
+    const matchingCounts = folderSearchMatchCounts();
+    let visibleFolders = 0;
+
+    browser.querySelectorAll("[data-folder-card]").forEach(card => {
+      const folderId = String(card.dataset.folderCard || "");
+      const folder = folders.find(item => item.id === folderId);
+      if (!folder) {
+        card.hidden = true;
+        return;
+      }
+
+      const folderText = [folder.name, ...(folder.tags || [])].join(" ").toLocaleLowerCase();
+      const matches = matchingCounts.get(folderId) || 0;
+      const visible = settings.foldersPinnedToTop || !query || folderText.includes(query) || matches > 0;
+      card.hidden = !visible;
+      if (visible) visibleFolders++;
+
+      const count = counts.get(folderId) || 0;
+      const label = `${count} registros${query && matches > 0 ? ` · ${matches} correspondência${matches === 1 ? "" : "s"} dentro da pasta` : ""}`;
+      const countNode = card.querySelector("[data-folder-count]");
+      if (countNode && countNode.textContent !== label) countNode.textContent = label;
+    });
+
+    const empty = browser.querySelector("[data-folder-browser-empty]");
+    if (empty) {
+      empty.hidden = visibleFolders > 0;
+      const message = query && !settings.foldersPinnedToTop
+        ? "No folders or matching records found."
+        : "No folders yet. Create one to group related records.";
+      if (empty.textContent !== message) empty.textContent = message;
+    }
+
+    const hint = browser.querySelector(".folder-browser-hint");
+    const hintText = settings.foldersPinnedToTop
+      ? "Folders stay at the top while you search. Matching records inside each folder are counted."
+      : "Folders are included in search results when their name or tags match, or when they contain matching records.";
+    if (hint && hint.textContent !== hintText) hint.textContent = hintText;
+
+    const noFolderButton = browser.querySelector("[data-folder-filter-none] span");
+    const noFolderLabel = `No folder (${noFolderCount})`;
+    if (noFolderButton && noFolderButton.textContent !== noFolderLabel) noFolderButton.textContent = noFolderLabel;
   }
 
   function applyFolderFilter() {
@@ -724,7 +788,7 @@
     $("setting-folders-pinned").addEventListener("change", event => {
       settings.foldersPinnedToTop = Boolean(event.target.checked);
       writeJSON(SETTINGS_KEY, settings);
-      renderFolderBrowser();
+      updateFolderBrowserResults();
       applyFolderFilter();
     });
     $("settings-create-folder").addEventListener("click", () => openFolderEditor());
@@ -774,7 +838,7 @@
   function normalizeBackupIcons() {
     const menu = $("projects-dropdown");
     if (!menu) return;
-    const desired = { export: "upload", import: "download" };
+    const desired = { export: "download", import: "upload" };
     Object.entries(desired).forEach(([action, iconName]) => {
       const button = menu.querySelector(`[data-project-action="${action}"]`);
       if (!button || button.dataset.rpgCodexIconFixed === iconName) return;
@@ -903,12 +967,18 @@
   function setupObservers() {
     const recordList = $("records");
     if (recordList) {
-      const observer = new MutationObserver(() => {
-        displayOnlyTypeAndTags();
+      const observer = new MutationObserver(mutations => {
+        // Only normalize labels when record cards themselves are added/removed.
+        // Text-node edits caused by normalization must not trigger another full render.
+        const cardsChanged = mutations.some(mutation =>
+          [...mutation.addedNodes, ...mutation.removedNodes].some(node =>
+            node.nodeType === Node.ELEMENT_NODE &&
+            (node.matches?.(".record-card") || node.querySelector?.(".record-card"))
+          )
+        );
+        if (cardsChanged) displayOnlyTypeAndTags();
         applyFolderFilter();
-        renderFolderBrowser();
-        enhancePropertyRows();
-        normalizeBackupIcons();
+        scheduleFolderBrowserResultsUpdate();
       });
       observer.observe(recordList, { childList: true, subtree: true });
     }
@@ -928,14 +998,9 @@
       const observer = new MutationObserver(() => displayOnlyTypeAndTags());
       observer.observe(dashboard, { childList: true, subtree: true });
     }
-    const bodyObserver = new MutationObserver(() => {
-      addSettingsMenuItem();
-      normalizeBackupIcons();
-      hideLegacyFields();
-      displayOnlyTypeAndTags();
-      enhancePropertyRows();
-    });
-    bodyObserver.observe(document.body, { childList: true, subtree: true });
+    // Do not observe the entire document here. Folder modals, SVG icon rendering,
+    // and normal record updates create many unrelated child-list mutations. The
+    // specific observers above/below cover the elements that actually need syncing.
     const editor = $("editor");
     if (editor) {
       const editorObserver = new MutationObserver(() => {
@@ -961,7 +1026,7 @@
     }));
     $("search")?.addEventListener("input", () => setTimeout(() => {
       applyFolderFilter();
-      renderFolderBrowser();
+      scheduleFolderBrowserResultsUpdate();
     }, 0));
     ["filter-tags", "advanced-filter-content", "property-conditions"].forEach(id => $(id)?.addEventListener("change", () => setTimeout(applyFolderFilter, 0)));
     formCaptureEscape();
