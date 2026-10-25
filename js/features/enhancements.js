@@ -1002,16 +1002,19 @@ async function fetchIconifyDefinitions(prefix, names) {
   for (let index = 0; index < missing.length; index += 40) chunks.push(missing.slice(index, index + 40));
 
   for (const chunk of chunks) {
-    let data = null;
+    // IconifyJSON stores common width/height at the response level for many
+    // collections (Game Icons uses a 512×512 canvas). Keep the whole response
+    // so each icon can inherit those dimensions unless it overrides them.
+    let responseData = null;
     let lastError = null;
     for (const apiHost of ICONIFY_API_HOSTS) {
       try {
         const iconQuery = chunk.map(name => encodeURIComponent(name)).join(",");
-        const response = await fetch(`${apiHost}/${encodeURIComponent(prefix)}.json?icons=${iconQuery}`, { cache: "force-cache" });
+        const response = await fetch(`${apiHost}/${encodeURIComponent(prefix)}.json?icons=${iconQuery}`, { cache: "no-cache" });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const result = await response.json();
         if (!result || !result.icons || typeof result.icons !== "object") throw new Error("Invalid Iconify JSON response");
-        data = result.icons;
+        responseData = result;
         break;
       } catch (error) {
         lastError = error;
@@ -1020,15 +1023,24 @@ async function fetchIconifyDefinitions(prefix, names) {
 
     for (const name of chunk) {
       const key = `${prefix}:${name}`;
-      const definition = data?.[name];
+      const definition = responseData?.icons?.[name];
       if (definition && typeof definition.body === "string") {
-        iconifyDefinitionCache.set(key, definition);
+        // Do not default every icon to 24×24: that crops Game Icons to a tiny
+        // point because their path coordinates use the collection's 512 canvas.
+        const normalized = {
+          ...definition,
+          width: definition.width ?? responseData.width ?? 24,
+          height: definition.height ?? responseData.height ?? 24,
+          left: definition.left ?? responseData.left ?? 0,
+          top: definition.top ?? responseData.top ?? 0
+        };
+        iconifyDefinitionCache.set(key, normalized);
       } else {
         iconifyDefinitionCache.set(key, null);
       }
     }
 
-    if (!data && lastError) {
+    if (!responseData && lastError) {
       console.warn(`Iconify could not load ${prefix} icons:`, lastError);
     }
   }
