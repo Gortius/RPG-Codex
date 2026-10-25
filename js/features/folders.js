@@ -90,14 +90,76 @@
   let isFolderSetupReady = false;
   let folderBrowserUpdateScheduled = false;
 
+  const DEFAULT_THEME = Object.freeze({
+    bg: "#101114",
+    panel: "#191b20",
+    border: "#2b2e35",
+    text: "#f1f1f4",
+    muted: "#9296a2",
+    accent: "#b9a0ff"
+  });
+
+  const THEME_PRESETS = {
+    violet: { label: "Violet", colors: { ...DEFAULT_THEME } },
+    ocean: { label: "Ocean", colors: { bg: "#0e151a", panel: "#16242c", border: "#2b424d", text: "#edf7fa", muted: "#91a7af", accent: "#65d6e8" } },
+    forest: { label: "Forest", colors: { bg: "#111812", panel: "#1b271d", border: "#334434", text: "#eef6eb", muted: "#a6b5a1", accent: "#9bd47c" } },
+    ember: { label: "Ember", colors: { bg: "#1a1210", panel: "#261b18", border: "#49322b", text: "#fff0e8", muted: "#c0a397", accent: "#ffab70" } }
+  };
+
+  const THEME_FIELDS = [
+    { key: "bg", label: "Background" },
+    { key: "panel", label: "Panels and cards" },
+    { key: "border", label: "Borders" },
+    { key: "text", label: "Main text" },
+    { key: "muted", label: "Secondary text" },
+    { key: "accent", label: "Highlight / accent" }
+  ];
+
+  function normalizeHex(value, fallback) {
+    const color = String(value || "").trim();
+    return /^#[0-9a-f]{6}$/i.test(color) ? color.toLowerCase() : fallback;
+  }
+
+  function normalizeTheme(value) {
+    const source = value && typeof value === "object" ? value : {};
+    return Object.fromEntries(THEME_FIELDS.map(field => [
+      field.key,
+      normalizeHex(source[field.key], DEFAULT_THEME[field.key])
+    ]));
+  }
+
   function readSettings() {
     const value = readJSON(SETTINGS_KEY, {});
-    // Migrate the previous setting name while keeping its meaning: checked = pinned.
-    const pinned = value?.foldersPinnedToTop ?? value?.showFoldersAtTop;
-    return { foldersPinnedToTop: pinned !== false };
+    // Folder pinning now uses the default behavior; Settings is reserved for theme colors.
+    return {
+      foldersPinnedToTop: true,
+      theme: normalizeTheme(value?.theme)
+    };
   }
 
   let settings = readSettings();
+
+  function applySiteTheme(theme = settings.theme) {
+    const colors = normalizeTheme(theme);
+    const root = document.documentElement;
+    Object.entries(colors).forEach(([key, value]) => root.style.setProperty(`--${key}`, value));
+    // A few legacy styles use fixed purple tones; these tokens make them follow
+    // the selected accent without changing the application data or layout.
+    root.style.setProperty("--accent-soft", "color-mix(in srgb, var(--accent) 14%, var(--panel))");
+    root.style.setProperty("--accent-hover", "color-mix(in srgb, var(--accent) 9%, var(--panel))");
+    root.style.setProperty("--accent-border", "color-mix(in srgb, var(--accent) 34%, var(--border))");
+    root.style.setProperty("--hover", "color-mix(in srgb, var(--accent) 9%, var(--panel))");
+    const rgb = colors.accent.slice(1).match(/.{2}/g).map(channel => parseInt(channel, 16) / 255).map(channel =>
+      channel <= 0.04045 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2)
+    );
+    const luminance = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+    root.style.setProperty("--accent-ink", luminance > 0.45 ? "#191324" : "#ffffff");
+  }
+
+  function saveSettings() {
+    settings.theme = normalizeTheme(settings.theme);
+    return writeJSON(SETTINGS_KEY, settings);
+  }
 
   function loadFolderData() {
     const loadedFolders = readJSON(scopedKey(FOLDERS_KEY), []);
@@ -157,29 +219,67 @@
       .property-value-container { width:100%; }
       .reference-picker-trigger { width:100%; display:flex; align-items:center; gap:8px; text-align:left; justify-content:space-between; min-height:40px; overflow:hidden; }
       .reference-picker-trigger span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-      .folder-browser { margin: 14px 0 20px; padding: 16px; }
+      .folder-browser { margin:14px 0 20px; padding:18px; overflow:hidden; }
       .folder-browser[hidden] { display:none !important; }
       .folder-card[hidden], .folder-browser-empty[hidden] { display:none !important; }
       .record-card[hidden] { display:none !important; }
-      .folder-browser-actions button[aria-pressed="true"] { border-color:var(--accent, #B9A0FF); background:rgba(185,160,255,.10); }
-      .folder-browser-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
-      .folder-browser-heading h3 { margin:0; }
+      .folder-browser-actions button[aria-pressed="true"] { border-color:var(--accent); background:var(--accent-soft); }
+      .folder-browser-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:10px; flex-wrap:wrap; }
+      .folder-browser-heading h3 { margin:0; line-height:1.4; }
       .folder-browser-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-      .folder-browser-actions button, .folder-card-actions button { display:inline-flex; align-items:center; gap:6px; }
-      .folder-card-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:10px; }
-      .folder-card { min-width:0; border:1px solid var(--border, #38313f); border-radius:12px; background:var(--panel, #211e26); overflow:hidden; }
-      .folder-card.active { border-color:var(--accent, #B9A0FF); box-shadow:0 0 0 1px var(--accent, #B9A0FF) inset; }
-      .folder-card-main { border:0; background:transparent; color:inherit; width:100%; display:flex; gap:10px; align-items:flex-start; text-align:left; padding:12px 12px 8px; cursor:pointer; }
-      .folder-card-main:hover { background:rgba(185,160,255,.08); }
-      .folder-card-icon { flex:0 0 20px; margin-top:2px; opacity:.9; }
-      .folder-card-info { min-width:0; display:flex; flex-direction:column; gap:4px; }
-      .folder-card-info strong { overflow-wrap:anywhere; }
-      .folder-card-info small { color:var(--muted, #aaa); }
-      .folder-card-tags { display:flex; flex-wrap:wrap; gap:4px; margin-top:3px; }
-      .folder-card-tags .chip { font-size:11px; padding:2px 6px; }
-      .folder-card-actions { border-top:1px solid var(--border, #38313f); display:flex; gap:6px; justify-content:flex-end; padding:6px 8px; }
-      .folder-card-actions button { padding:5px 8px; font-size:12px; }
-      .folder-browser-hint { margin:0 0 10px; color:var(--muted, #aaa); font-size:12px; }
+      .folder-browser-actions button, .folder-card-actions button { display:inline-flex; align-items:center; justify-content:center; gap:7px; white-space:nowrap; }
+      .folder-browser-actions button svg, .folder-card-actions button svg { width:15px; height:15px; flex:0 0 auto; }
+      .folder-card-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr)); align-items:stretch; gap:12px; }
+      .folder-card { display:flex; flex-direction:column; min-width:0; min-height:145px; border:1px solid var(--border); border-radius:14px; background:var(--panel); overflow:hidden; transition:border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+      .folder-card:hover { border-color:var(--accent-border); }
+      .folder-card.active { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
+      .folder-card-main { border:0; background:transparent; color:inherit; width:100%; min-width:0; flex:1; display:flex; gap:11px; align-items:flex-start; text-align:left; padding:14px; cursor:pointer; }
+      .folder-card-main:hover { background:var(--accent-soft); }
+      .folder-card-icon { display:grid; place-items:center; flex:0 0 34px; width:34px; height:34px; margin:0; border-radius:10px; background:var(--accent-soft); color:var(--accent); }
+      .folder-card-icon svg { width:18px; height:18px; }
+      .folder-card-info { min-width:0; width:100%; display:flex; flex-direction:column; align-items:flex-start; gap:7px; }
+      .folder-card-info strong { display:block; max-width:100%; line-height:1.35; overflow-wrap:anywhere; word-break:normal; }
+      .folder-card-info small { display:block; max-width:100%; color:var(--muted); font-size:11px; line-height:1.45; overflow-wrap:anywhere; }
+      .folder-card-tags { display:flex; flex-wrap:wrap; align-items:center; gap:5px; width:100%; margin-top:1px; }
+      .folder-card-tags .chip { display:inline-flex; align-items:center; max-width:100%; min-height:22px; padding:3px 7px; border-radius:6px; font-size:11px; line-height:1.25; overflow-wrap:anywhere; }
+      .folder-card-actions { display:flex; align-items:center; justify-content:flex-end; gap:7px; margin-top:auto; padding:8px 10px; border-top:1px solid var(--border); background:color-mix(in srgb, var(--panel) 94%, var(--accent)); }
+      .folder-card-actions button { min-height:31px; padding:5px 9px; border-radius:8px; font-size:12px; line-height:1; }
+      .folder-browser-hint { margin:0 0 14px; color:var(--muted); font-size:12px; line-height:1.5; }
+      .folder-browser-empty { grid-column:1 / -1; padding:18px 10px; text-align:center; }
+      .settings-card-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:16px; }
+      .settings-card-heading h3 { margin:0 0 5px; }
+      .settings-card-heading p { margin:0; color:var(--muted); font-size:12px; line-height:1.5; }
+      .theme-presets { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 18px; }
+      .theme-preset { display:inline-flex; align-items:center; gap:8px; min-height:38px; padding:7px 11px; border:1px solid var(--border); border-radius:9px; background:var(--bg); color:var(--text); cursor:pointer; }
+      .theme-preset[aria-pressed="true"] { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
+      .theme-preset-swatches { display:inline-flex; gap:3px; }
+      .theme-preset-swatches i { width:11px; height:11px; border-radius:50%; border:1px solid #ffffff24; }
+      .settings-color-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+      .settings-color-control { display:flex; align-items:center; justify-content:space-between; gap:10px; min-width:0; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:var(--bg); }
+      .settings-color-control > span:first-child { min-width:0; font-size:13px; font-weight:600; }
+      .settings-color-value { display:flex; flex:0 0 auto; align-items:center; gap:8px; }
+      .settings-color-value input[type="color"] { width:34px; min-width:34px; height:32px; padding:3px; border:1px solid var(--border); border-radius:8px; background:var(--panel); cursor:pointer; }
+      .settings-color-value code { width:65px; color:var(--muted); font-size:11px; text-align:right; }
+      .theme-settings-note { margin-top:12px; color:var(--muted); font-size:12px; line-height:1.5; }
+      @media (max-width:680px) { .reference-modal-tools { grid-template-columns:1fr; } .folder-card-grid { grid-template-columns:1fr; } .folder-browser { padding:12px; } .folder-modal, .reference-modal { padding:15px; } }
+      @media (max-width:520px) { .settings-color-grid { grid-template-columns:1fr; } .settings-card { padding:14px; } .folder-browser-heading { align-items:stretch; } .folder-browser-actions { display:grid; grid-template-columns:1fr 1fr; } .folder-browser-actions [data-folder-create] { grid-column:1 / -1; } }
+
+      /* Theme-aware equivalents for older hard-coded accent surfaces. */
+      .category.active, .filter-chip.active, .nav-tab.active, .nav-button.active,
+      .bulk-selected > .record, #records.grid-view .bulk-selected .compact-record { background:var(--accent-soft) !important; }
+      .record-icon, .notice, .selected-item { background:var(--accent-soft) !important; border-color:var(--accent-border) !important; }
+      .picker-menu, .dashboard-record, .dashboard-type { background:var(--panel); }
+      .picker-option:hover, .dashboard-type:hover, .dashboard-record:hover,
+      .projects-dropdown button:hover, .app-sidebar .sidebar-navigation .nav-button:hover { background:var(--accent-hover) !important; }
+      .page-nav { background:color-mix(in srgb, var(--panel) 75%, var(--bg)) !important; }
+      .app-sidebar .sidebar-navigation .nav-button.active { background:var(--accent-soft) !important; border-color:var(--accent-border) !important; }
+      .sidebar-project-picker { background:color-mix(in srgb, var(--panel) 82%, var(--bg)) !important; }
+      .record-card:hover, .stat-card:hover, .dashboard-type:hover, .dashboard-record:hover { border-color:var(--accent-border) !important; }
+      .record:hover { background:color-mix(in srgb, var(--panel) 84%, var(--accent)) !important; }
+      .bulk-selected { background:color-mix(in srgb, var(--panel) 72%, var(--accent)) !important; }
+      .bar-fill { background:var(--accent) !important; }
+      button.primary, .logo { color:var(--accent-ink) !important; }
+      .eyebrow, .back, .stat-value, .stat-card .stat-value { color:var(--accent) !important; }
       .folder-modal-overlay, .reference-modal-overlay { position:fixed; inset:0; z-index:10010; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(0,0,0,.68); }
       .folder-modal, .reference-modal { width:min(680px,100%); max-height:min(86vh,850px); overflow:auto; background:var(--panel, #211e26); color:var(--text, #f2edf7); border:1px solid var(--border, #403849); border-radius:16px; padding:20px; box-shadow:0 24px 70px rgba(0,0,0,.4); }
       .folder-modal h2, .reference-modal h2 { margin:0 36px 8px 0; }
@@ -765,34 +865,92 @@
     const section = document.createElement("section");
     section.id = "settings-view";
     section.hidden = true;
+    const colorControls = THEME_FIELDS.map(field => `
+      <label class="settings-color-control" for="setting-color-${field.key}">
+        <span>${esc(field.label)}</span>
+        <span class="settings-color-value">
+          <input id="setting-color-${field.key}" type="color" data-theme-color="${field.key}" value="${settings.theme[field.key]}" aria-label="${esc(field.label)}">
+          <code data-theme-value="${field.key}">${settings.theme[field.key].toUpperCase()}</code>
+        </span>
+      </label>
+    `).join("");
+    const presetButtons = Object.entries(THEME_PRESETS).map(([id, preset]) => `
+      <button type="button" class="theme-preset" data-theme-preset="${id}" aria-pressed="false">
+        <span class="theme-preset-swatches" aria-hidden="true">
+          <i style="background:${preset.colors.bg}"></i><i style="background:${preset.colors.panel}"></i><i style="background:${preset.colors.accent}"></i>
+        </span>
+        <span>${esc(preset.label)}</span>
+      </button>
+    `).join("");
+
     section.innerHTML = `
       <button type="button" class="back" id="settings-back">← Back to records</button>
       <p class="eyebrow">WORKSPACE</p>
       <h2>Settings</h2>
-      <p class="muted">Customize how RPG Codex organizes and displays your database.</p>
+      <p class="muted">Personalize the visual appearance of RPG Codex.</p>
       <div class="settings-card">
-        <h3>Folder search and sorting</h3>
-        <label class="settings-option" for="setting-folders-pinned">
-          <input type="checkbox" id="setting-folders-pinned">
-          <span><strong>Keep folders pinned at the top of search results</strong><small>When enabled, folders stay visible at the top while you search and show how many matching records they contain. When disabled, only folders whose name/tags match or that contain matching records appear in the folder results. This setting does not hide folders or clear the selected folder.</small></span>
-        </label>
-      </div>
-      <div class="settings-card">
-        <h3>Folders</h3>
-        <p class="muted">Folders have a name and tags. Records keep their own Type, Tags, properties and relationships.</p>
-        <button type="button" class="secondary" id="settings-create-folder"><i data-lucide="folder-plus" aria-hidden="true"></i> Create folder</button>
+        <div class="settings-card-heading">
+          <div><h3>Site colors</h3><p>Changes apply immediately and are saved in this browser.</p></div>
+          <button type="button" class="secondary" id="settings-theme-reset">Restore default</button>
+        </div>
+        <div class="theme-presets" role="group" aria-label="Color presets">${presetButtons}</div>
+        <div class="settings-color-grid">${colorControls}</div>
+        <p class="theme-settings-note">The accent color is used for highlights, active controls and folder accents. The colors you choose do not modify your records or project data.</p>
       </div>
     `;
     main.append(section);
-    $("setting-folders-pinned").checked = settings.foldersPinnedToTop;
-    $("setting-folders-pinned").addEventListener("change", event => {
-      settings.foldersPinnedToTop = Boolean(event.target.checked);
-      writeJSON(SETTINGS_KEY, settings);
-      updateFolderBrowserResults();
-      applyFolderFilter();
+
+    function syncThemeControls() {
+      THEME_FIELDS.forEach(field => {
+        const input = section.querySelector(`[data-theme-color="${field.key}"]`);
+        const value = section.querySelector(`[data-theme-value="${field.key}"]`);
+        if (input) input.value = settings.theme[field.key];
+        if (value) value.textContent = settings.theme[field.key].toUpperCase();
+      });
+      Object.entries(THEME_PRESETS).forEach(([id, preset]) => {
+        const button = section.querySelector(`[data-theme-preset="${id}"]`);
+        const active = button && THEME_FIELDS.every(field => settings.theme[field.key] === preset.colors[field.key]);
+        if (button) button.setAttribute("aria-pressed", String(Boolean(active)));
+      });
+    }
+
+    function updateThemeField(event) {
+      const field = event.currentTarget.dataset.themeColor;
+      if (!THEME_FIELDS.some(item => item.key === field)) return;
+      settings.theme[field] = normalizeHex(event.currentTarget.value, DEFAULT_THEME[field]);
+      applySiteTheme(settings.theme);
+      const value = section.querySelector(`[data-theme-value="${field}"]`);
+      if (value) value.textContent = settings.theme[field].toUpperCase();
+      section.querySelectorAll("[data-theme-preset]").forEach(button => button.setAttribute("aria-pressed", "false"));
+    }
+
+    section.querySelectorAll("[data-theme-color]").forEach(input => {
+      input.addEventListener("input", updateThemeField);
+      input.addEventListener("change", () => {
+        updateThemeField({ currentTarget: input });
+        saveSettings();
+      });
     });
-    $("settings-create-folder").addEventListener("click", () => openFolderEditor());
+
+    section.querySelectorAll("[data-theme-preset]").forEach(button => {
+      button.addEventListener("click", () => {
+        const preset = THEME_PRESETS[button.dataset.themePreset];
+        if (!preset) return;
+        settings.theme = { ...preset.colors };
+        applySiteTheme(settings.theme);
+        syncThemeControls();
+        saveSettings();
+      });
+    });
+
+    $("settings-theme-reset").addEventListener("click", () => {
+      settings.theme = { ...DEFAULT_THEME };
+      applySiteTheme(settings.theme);
+      syncThemeControls();
+      saveSettings();
+    });
     $("settings-back").addEventListener("click", () => $("nav-records")?.click());
+    syncThemeControls();
     try { window.lucide?.createIcons?.({ root: section }); } catch {}
   }
 
@@ -838,7 +996,7 @@
   function normalizeBackupIcons() {
     const menu = $("projects-dropdown");
     if (!menu) return;
-    const desired = { export: "download", import: "upload" };
+    const desired = { export: "upload", import: "download" };
     Object.entries(desired).forEach(([action, iconName]) => {
       const button = menu.querySelector(`[data-project-action="${action}"]`);
       if (!button || button.dataset.rpgCodexIconFixed === iconName) return;
@@ -1045,6 +1203,7 @@
     if (isFolderSetupReady) return;
     isFolderSetupReady = true;
     addStyles();
+    applySiteTheme(settings.theme);
     loadFolderData();
     injectFolderBrowser();
     injectFolderAssignment();
