@@ -981,12 +981,15 @@ function buildRecoloredSVG(body, width = 24, height = 24, left = 0, top = 0) {
     }
   }
 
-  svg.setAttribute("width", "1em");
-  svg.setAttribute("height", "1em");
+  // The outer HTML wrapper owns the icon size. Never let a source SVG keep
+  // intrinsic dimensions that can enlarge the picker cells or record cards.
+  svg.setAttribute("width", "100%");
+  svg.setAttribute("height", "100%");
   svg.setAttribute("fill", "currentColor");
   svg.setAttribute("aria-hidden", "true");
   svg.setAttribute("focusable", "false");
   svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  svg.setAttribute("style", "display:block;width:100%;height:100%;min-width:0;min-height:0;max-width:100%;max-height:100%;margin:0;padding:0;overflow:hidden;box-sizing:border-box;");
   svg.classList.add("iconify-rendered-svg");
   return document.importNode(svg, true);
 }
@@ -1494,12 +1497,43 @@ function addEnhancementStyles() {
     .enhancement-icon-group .icon-group-grid { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); }
     .enhancement-icon-group .icon-choice { min-width: 0; overflow: hidden; }
     .enhancement-icon-group .icon-choice img { width: 23px; height: 23px; object-fit: contain; }
-    .iconify-inline { display: inline-flex; align-items: center; justify-content: center; width: 1.1em; height: 1.1em; vertical-align: -0.12em; color: inherit; flex: 0 0 auto; }
-    .iconify-inline svg, .iconify-rendered-svg { display: block; width: 100%; height: 100%; overflow: visible; fill: currentColor; color: inherit; }
-    .enhancement-icon-group .iconify-picker-icon { width: 24px; height: 24px; color: var(--accent, #B9A0FF); }
+    /* Hard bounds prevent source SVG dimensions or app-wide SVG rules from expanding icons. */
+    .iconify-inline {
+      box-sizing: border-box !important; display: inline-flex !important;
+      align-items: center !important; justify-content: center !important;
+      width: 1.1em !important; height: 1.1em !important;
+      min-width: 1.1em !important; min-height: 1.1em !important;
+      max-width: 1.1em !important; max-height: 1.1em !important;
+      flex: 0 0 1.1em !important; overflow: hidden !important;
+      vertical-align: middle; line-height: 1 !important; color: inherit;
+    }
+    .iconify-inline > svg, .iconify-inline > .iconify-rendered-svg, svg.iconify-rendered-svg {
+      display: block !important; box-sizing: border-box !important;
+      width: 100% !important; height: 100% !important;
+      min-width: 0 !important; min-height: 0 !important;
+      max-width: 100% !important; max-height: 100% !important;
+      margin: 0 !important; padding: 0 !important;
+      overflow: hidden !important; fill: currentColor; color: inherit;
+    }
+    .enhancement-icon-group .iconify-picker-icon {
+      width: 24px !important; height: 24px !important;
+      min-width: 24px !important; min-height: 24px !important;
+      max-width: 24px !important; max-height: 24px !important;
+      flex: 0 0 24px !important; color: var(--accent, #B9A0FF);
+    }
+    .enhancement-icon-group .iconify-picker-icon > svg,
+    .enhancement-icon-group .iconify-picker-icon > .iconify-rendered-svg {
+      width: 100% !important; height: 100% !important;
+      max-width: 100% !important; max-height: 100% !important;
+    }
     .iconify-placeholder { display: inline-grid; place-items: center; width: 100%; height: 100%; font-size: 1em; line-height: 1; opacity: .62; }
     .iconify-placeholder-error { opacity: .9; }
-    .custom-icon .iconify-record-icon { width: 1.1em; height: 1.1em; }
+    .custom-icon .iconify-record-icon {
+      width: 1.1em !important; height: 1.1em !important;
+      min-width: 1.1em !important; min-height: 1.1em !important;
+      max-width: 1.1em !important; max-height: 1.1em !important;
+      flex: 0 0 1.1em !important;
+    }
     .enhancement-icon-load-more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 14px 0; }
     .enhancement-icon-load-more p { flex-basis: 100%; }
     .enhancement-icon-load-more button { padding: 8px 12px; border: 1px solid var(--border, #343442); border-radius: 8px; background: var(--panel, #191922); color: inherit; cursor: pointer; }
