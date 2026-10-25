@@ -849,55 +849,271 @@ function iconMatchesSearch(name, query) {
   return query.split(" ").every(term => searchable.includes(term));
 }
 
-const ICONIFY_IMAGE_HOSTS = [
+const ICONIFY_API_HOSTS = [
   "https://api.iconify.design",
   "https://api.simplesvg.com",
   "https://api.unisvg.com"
 ];
 
-function iconifyImageURL(prefix, name, color = "#B9A0FF", hostIndex = 0) {
-  const safePrefix = /^[a-z0-9-]+$/i.test(prefix) ? prefix : "game-icons";
-  const safeName = /^[a-z0-9-]+$/i.test(name) ? name : "unknown";
-  const safeColor = /^#[0-9a-f]{6}$/i.test(color) ? color : "#B9A0FF";
-  const host = ICONIFY_IMAGE_HOSTS[Math.max(0, Math.min(ICONIFY_IMAGE_HOSTS.length - 1, hostIndex))];
-  return `${host}/${encodeURIComponent(safePrefix)}/${encodeURIComponent(safeName)}.svg?color=${encodeURIComponent(safeColor)}`;
+const iconifyCatalogs = new Map();
+const iconifyDefinitionCache = new Map();
+const iconifyPendingTargets = new Set();
+let iconifyFlushScheduled = false;
+let iconifyIntersectionObserver = null;
+
+function isSafeIconifyToken(value) {
+  return /^[a-z0-9-]+$/i.test(String(value || ""));
 }
 
-function wireIconifyImageFallbacks(root) {
+async function loadIconifyCatalog(prefix) {
+  if (!isSafeIconifyToken(prefix)) throw new Error("Invalid icon collection.");
+  if (iconifyCatalogs.has(prefix)) return iconifyCatalogs.get(prefix);
+
+  let lastError = null;
+  for (const apiHost of ICONIFY_API_HOSTS) {
+    try {
+      const response = await fetch(`${apiHost}/collection?prefix=${encodeURIComponent(prefix)}`, { cache: "force-cache" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      const categorized = Object.values(data.categories || {}).flat();
+      const names = [...new Set([...(data.uncategorized || []), ...categorized])]
+        .filter(name => typeof name === "string" && isSafeIconifyToken(name))
+        .sort((a, b) => a.localeCompare(b));
+      if (!names.length) throw new Error(`The ${prefix} collection returned no icon names.`);
+      iconifyCatalogs.set(prefix, names);
+      return names;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw new Error(`Could not load ${prefix} catalog. ${lastError?.message || "Icon service unavailable."}`);
+}
+
+function scheduleIconifyFlush() {
+  if (iconifyFlushScheduled) return;
+  iconifyFlushScheduled = true;
+  setTimeout(() => {
+    iconifyFlushScheduled = false;
+    flushIconifyTargets().catch(error => console.warn("Iconify rendering failed:", error));
+  }, 0);
+}
+
+function scanIconifyTargets(root) {
   if (!root) return;
-  const images = [];
-  if (root instanceof HTMLImageElement && root.matches("[data-iconify-prefix][data-iconify-name]")) {
-    images.push(root);
+  const targets = [];
+  if (root instanceof Element && root.matches(".iconify-inline[data-iconify-prefix][data-iconify-name]")) {
+    targets.push(root);
   }
   if (root.querySelectorAll) {
-    images.push(...root.querySelectorAll("img[data-iconify-prefix][data-iconify-name]"));
+    targets.push(...root.querySelectorAll(".iconify-inline[data-iconify-prefix][data-iconify-name]"));
   }
 
-  images.forEach(image => {
-    if (image.dataset.iconifyFallbackBound === "true") return;
-    image.dataset.iconifyFallbackBound = "true";
-    image.dataset.iconifyHostIndex = image.dataset.iconifyHostIndex || "0";
-
-    image.addEventListener("error", () => {
-      const prefix = image.dataset.iconifyPrefix;
-      const name = image.dataset.iconifyName;
-      const color = image.dataset.iconifyColor || "#B9A0FF";
-      const currentHost = Number(image.dataset.iconifyHostIndex || "0");
-
-      if (currentHost + 1 < ICONIFY_IMAGE_HOSTS.length) {
-        image.dataset.iconifyHostIndex = String(currentHost + 1);
-        image.src = iconifyImageURL(prefix, name, color, currentHost + 1);
-        return;
-      }
-
-      const fallback = document.createElement("span");
-      fallback.className = "iconify-icon-fallback";
-      fallback.textContent = "◇";
-      fallback.title = `${name.replace(/-/g, " ")} (icon could not be loaded)`;
-      fallback.setAttribute("aria-label", fallback.title);
-      image.replaceWith(fallback);
-    });
+  targets.forEach(target => {
+    if (target.dataset.iconifyLoaded === "true" || target.dataset.iconifyFailed === "true" || target.dataset.iconifyQueued) return;
+    if (iconifyIntersectionObserver) iconifyIntersectionObserver.observe(target);
+    else queueIconifyTarget(target);
   });
+}
+
+function queueIconifyTarget(target) {
+  if (!target?.isConnected || target.dataset.iconifyLoaded === "true" || target.dataset.iconifyFailed === "true") return;
+  target.dataset.iconifyQueued = "true";
+  iconifyPendingTargets.add(target);
+  scheduleIconifyFlush();
+}
+
+function buildRecoloredSVG(body, width = 24, height = 24, left = 0, top = 0) {
+  const safeNumber = (value, fallback) => Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : fallback;
+  width = safeNumber(width, 24);
+  height = safeNumber(height, 24);
+  left = Number.isFinite(Number(left)) ? Number(left) : 0;
+  top = Number.isFinite(Number(top)) ? Number(top) : 0;
+
+  const parsed = new DOMParser().parseFromString(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${left} ${top} ${width} ${height}">${body}</svg>`,
+    "image/svg+xml"
+  );
+  if (parsed.querySelector("parsererror") || parsed.documentElement.localName.toLowerCase() !== "svg") return null;
+  const svg = parsed.documentElement;
+  const forbidden = new Set(["script", "style", "foreignobject", "iframe", "object", "embed", "image"]);
+  const elements = [svg, ...svg.querySelectorAll("*")];
+
+  for (const element of elements) {
+    if (forbidden.has(element.localName.toLowerCase())) {
+      element.remove();
+      continue;
+    }
+
+    for (const attribute of [...element.attributes]) {
+      const name = attribute.name.toLowerCase();
+      const value = attribute.value.trim();
+      if (name.startsWith("on")) {
+        element.removeAttribute(attribute.name);
+        continue;
+      }
+      if ((name === "href" || name.endsWith(":href")) && value && !value.startsWith("#")) {
+        element.removeAttribute(attribute.name);
+        continue;
+      }
+      if (name === "style") {
+        if (/url\s*\(\s*(?!#)|expression\s*\(|@import/i.test(value)) {
+          element.removeAttribute(attribute.name);
+          continue;
+        }
+        const rewritten = value.split(";").map(rule => {
+          const colon = rule.indexOf(":");
+          if (colon < 0) return rule.trim();
+          const property = rule.slice(0, colon).trim().toLowerCase();
+          const current = rule.slice(colon + 1).trim();
+          if ((property === "fill" || property === "stroke") && current && !/^(none|transparent)$/i.test(current) && !/^url\(\s*#/i.test(current)) {
+            return `${property}:currentColor`;
+          }
+          return `${property}:${current}`;
+        }).filter(Boolean).join(";");
+        element.setAttribute("style", rewritten);
+        continue;
+      }
+      if (name === "fill" || name === "stroke") {
+        if (value && !/^(none|transparent)$/i.test(value) && !/^url\(\s*#/i.test(value)) {
+          element.setAttribute(attribute.name, "currentColor");
+        }
+      }
+    }
+  }
+
+  svg.setAttribute("width", "1em");
+  svg.setAttribute("height", "1em");
+  svg.setAttribute("fill", "currentColor");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("focusable", "false");
+  svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  svg.classList.add("iconify-rendered-svg");
+  return document.importNode(svg, true);
+}
+
+async function fetchIconifyDefinitions(prefix, names) {
+  const missing = names.filter(name => !iconifyDefinitionCache.has(`${prefix}:${name}`));
+  if (!missing.length) return;
+
+  const chunks = [];
+  for (let index = 0; index < missing.length; index += 40) chunks.push(missing.slice(index, index + 40));
+
+  for (const chunk of chunks) {
+    let data = null;
+    let lastError = null;
+    for (const apiHost of ICONIFY_API_HOSTS) {
+      try {
+        const iconQuery = chunk.map(name => encodeURIComponent(name)).join(",");
+        const response = await fetch(`${apiHost}/${encodeURIComponent(prefix)}.json?icons=${iconQuery}`, { cache: "force-cache" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const result = await response.json();
+        if (!result || !result.icons || typeof result.icons !== "object") throw new Error("Invalid Iconify JSON response");
+        data = result.icons;
+        break;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    for (const name of chunk) {
+      const key = `${prefix}:${name}`;
+      const definition = data?.[name];
+      if (definition && typeof definition.body === "string") {
+        iconifyDefinitionCache.set(key, definition);
+      } else {
+        iconifyDefinitionCache.set(key, null);
+      }
+    }
+
+    if (!data && lastError) {
+      console.warn(`Iconify could not load ${prefix} icons:`, lastError);
+    }
+  }
+}
+
+async function loadSingleIconifySVG(prefix, name) {
+  for (const apiHost of ICONIFY_API_HOSTS) {
+    try {
+      const response = await fetch(`${apiHost}/${encodeURIComponent(prefix)}/${encodeURIComponent(name)}.svg`, { cache: "force-cache" });
+      if (!response.ok) continue;
+      const text = await response.text();
+      const parsed = new DOMParser().parseFromString(text, "image/svg+xml");
+      const svg = parsed.documentElement;
+      if (parsed.querySelector("parsererror") || svg.localName.toLowerCase() !== "svg") continue;
+      const viewBox = (svg.getAttribute("viewBox") || "0 0 24 24").trim().split(/[\s,]+/).map(Number);
+      if (viewBox.length !== 4 || !viewBox.every(Number.isFinite)) continue;
+      const clean = buildRecoloredSVG(svg.innerHTML, viewBox[2], viewBox[3], viewBox[0], viewBox[1]);
+      if (clean) return clean;
+    } catch {}
+  }
+  return null;
+}
+
+async function flushIconifyTargets() {
+  const activeTargets = [...iconifyPendingTargets].filter(target => target.isConnected);
+  iconifyPendingTargets.clear();
+  activeTargets.forEach(target => { target.dataset.iconifyQueued = "loading"; });
+  const groups = new Map();
+  activeTargets.forEach(target => {
+    const prefix = target.dataset.iconifyPrefix;
+    const name = target.dataset.iconifyName;
+    if (!isSafeIconifyToken(prefix) || !isSafeIconifyToken(name)) {
+      target.dataset.iconifyFailed = "true";
+      delete target.dataset.iconifyQueued;
+      target.textContent = "◇";
+      target.title = "Invalid icon reference";
+      return;
+    }
+    if (!groups.has(prefix)) groups.set(prefix, new Map());
+    const group = groups.get(prefix);
+    if (!group.has(name)) group.set(name, []);
+    group.get(name).push(target);
+  });
+
+  for (const [prefix, nameTargets] of groups) {
+    const names = [...nameTargets.keys()];
+    await fetchIconifyDefinitions(prefix, names);
+
+    for (const name of names) {
+      const targets = nameTargets.get(name).filter(target => target.isConnected);
+      const definition = iconifyDefinitionCache.get(`${prefix}:${name}`);
+      let svg = definition
+        ? buildRecoloredSVG(definition.body, definition.width, definition.height, definition.left, definition.top)
+        : null;
+
+      if (!svg) svg = await loadSingleIconifySVG(prefix, name);
+
+      targets.forEach(target => {
+        target.replaceChildren();
+        if (svg) {
+          target.append(document.importNode(svg, true));
+          target.dataset.iconifyLoaded = "true";
+          delete target.dataset.iconifyFailed;
+          delete target.dataset.iconifyQueued;
+          target.removeAttribute("title");
+        } else {
+          const fallback = document.createElement("span");
+          fallback.className = "iconify-placeholder iconify-placeholder-error";
+          fallback.textContent = "◇";
+          target.append(fallback);
+          target.dataset.iconifyFailed = "true";
+          delete target.dataset.iconifyQueued;
+          target.title = `Icon not found by Iconify: ${prefix}:${name}`;
+          target.setAttribute("aria-label", `Icon not found: ${name.replace(/-/g, " ")}`);
+        }
+      });
+    }
+  }
+}
+
+if ("IntersectionObserver" in window) {
+  iconifyIntersectionObserver = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      iconifyIntersectionObserver.unobserve(entry.target);
+      queueIconifyTarget(entry.target);
+    });
+  }, { rootMargin: "320px 0px" });
 }
 
 function setupExpandedIconPicker() {
@@ -916,13 +1132,11 @@ function setupExpandedIconPicker() {
   controls.innerHTML = `
     <div class="enhancement-icon-tabs" role="tablist" aria-label="Icon collection">
       <button type="button" class="active" data-icon-library="lucide" role="tab" aria-selected="true">Lucide</button>
-      <button type="button" data-icon-library="lab" role="tab" aria-selected="false">Lucide Lab</button>
       <button type="button" data-icon-library="rpg" role="tab" aria-selected="false">Game Icons (RPG)</button>
       <button type="button" class="enhancement-icon-expand" data-expand-icon-picker aria-expanded="false">Expand selector</button>
     </div>
     <p class="enhancement-icon-caption" id="enhancement-icon-caption"></p>
   `;
-
   host.insertAdjacentElement("beforebegin", controls);
 
   let library = "lucide";
@@ -932,12 +1146,28 @@ function setupExpandedIconPicker() {
   let lastLucideQuery = null;
   let iconifyVisibleLimit = 180;
   let lastIconifyQuery = null;
-  const iconifyCatalogs = new Map();
+  let showAllWhenExpanded = false;
   let pickerBackdrop = null;
+  let labNames = [];
+  let labCatalogPromise = null;
 
   function setCaption(text) {
     const caption = $("enhancement-icon-caption");
     if (caption) caption.textContent = text;
+  }
+
+  function ensureLabCatalog() {
+    if (!labCatalogPromise) {
+      labCatalogPromise = loadIconifyCatalog("lucide-lab").then(names => {
+        labNames = names;
+        if (library === "lucide") renderLucide();
+        return names;
+      }).catch(error => {
+        console.warn("Lucide Lab catalog unavailable; the main Lucide set remains available.", error);
+        return [];
+      });
+    }
+    return labCatalogPromise;
   }
 
   function renderLucide() {
@@ -946,89 +1176,72 @@ function setupExpandedIconPicker() {
       lastLucideQuery = query;
       lucideVisibleLimit = query ? 240 : 180;
     }
-    const allNames = getLucideNames();
-    const matches = allNames.filter(name => iconMatchesSearch(name, query));
-    const visible = matches.slice(0, lucideVisibleLimit);
-    const groups = new Map();
 
-    visible.forEach(name => {
-      const category = iconCategory(name);
-      if (!groups.has(category)) groups.set(category, []);
-      groups.get(category).push(name);
+    const coreNames = getLucideNames();
+    const coreSet = new Set(coreNames);
+    const items = [
+      ...coreNames.map(name => ({ name, id: `lucide:${name}`, prefix: "lucide", category: iconCategory(name) })),
+      ...labNames.filter(name => !coreSet.has(name)).map(name => ({ name, id: `iconify:lucide-lab:${name}`, prefix: "lucide-lab", category: iconCategory(name) }))
+    ].filter(item => iconMatchesSearch(item.name, query));
+    items.sort((a, b) => a.name.localeCompare(b.name) || a.prefix.localeCompare(b.prefix));
+
+    const visible = showAllWhenExpanded ? items : items.slice(0, lucideVisibleLimit);
+    const groups = new Map();
+    visible.forEach(item => {
+      if (!groups.has(item.category)) groups.set(item.category, []);
+      groups.get(item.category).push(item);
     });
 
-    host.innerHTML = [...groups.entries()].map(([category, names]) => `
+    host.innerHTML = [...groups.entries()].map(([category, groupItems]) => `
       <div class="icon-group enhancement-icon-group">
         <strong>${escapeHTML(category)}</strong>
         <div class="icon-group-grid">
-          ${names.map(name => `
-            <button type="button"
-              class="icon-choice ${field.value === `lucide:${name}` ? "selected" : ""}"
-              data-enhanced-icon="lucide:${escapeHTML(name)}"
-              title="${escapeHTML(name)}"
-              aria-label="${escapeHTML(name)}">
-              <i data-lucide="${escapeHTML(name)}"></i>
-              <small>${escapeHTML(name)}</small>
-            </button>
-          `).join("")}
+          ${groupItems.map(item => {
+            const visual = item.prefix === "lucide"
+              ? `<i data-lucide="${escapeHTML(item.name)}"></i>`
+              : `<span class="iconify-inline iconify-picker-icon" data-iconify-prefix="${escapeHTML(item.prefix)}" data-iconify-name="${escapeHTML(item.name)}" aria-hidden="true"><span class="iconify-placeholder">◇</span></span>`;
+            return `
+              <button type="button"
+                class="icon-choice ${field.value === item.id ? "selected" : ""}"
+                data-enhanced-icon="${escapeHTML(item.id)}"
+                title="${escapeHTML(item.name)}"
+                aria-label="${escapeHTML(item.name)}">
+                ${visual}
+                <small>${escapeHTML(item.name.replace(/-/g, " "))}</small>
+              </button>
+            `;
+          }).join("")}
         </div>
       </div>
     `).join("") || '<p class="muted">No icons found.</p>';
 
-    if (matches.length > visible.length) {
+    if (!showAllWhenExpanded && items.length > visible.length) {
       host.insertAdjacentHTML("beforeend", `
         <div class="enhancement-icon-load-more">
-          <p class="enhancement-icon-limit">Showing ${visible.length.toLocaleString()} of ${matches.length.toLocaleString()} matches.</p>
+          <p class="enhancement-icon-limit">Showing ${visible.length.toLocaleString()} of ${items.length.toLocaleString()} matches.</p>
           <button type="button" data-load-more-lucide>Load 240 more</button>
-          <button type="button" data-show-all-lucide>Show all ${matches.length.toLocaleString()}</button>
+          <button type="button" data-show-all-lucide>Show all ${items.length.toLocaleString()}</button>
         </div>
       `);
       host.querySelector("[data-load-more-lucide]")?.addEventListener("click", () => {
         const scrollTop = host.scrollTop;
-        lucideVisibleLimit = Math.min(matches.length, lucideVisibleLimit + 240);
+        lucideVisibleLimit = Math.min(items.length, lucideVisibleLimit + 240);
         renderLucide();
         host.scrollTop = scrollTop;
       });
       host.querySelector("[data-show-all-lucide]")?.addEventListener("click", () => {
         const scrollTop = host.scrollTop;
-        lucideVisibleLimit = matches.length;
+        lucideVisibleLimit = items.length;
         renderLucide();
         host.scrollTop = scrollTop;
       });
     }
 
-    setCaption(`${allNames.length.toLocaleString()} Lucide icons available · ${matches.length.toLocaleString()} matches`);
+    setCaption(`${coreNames.length.toLocaleString()} Lucide icons + ${labNames.length.toLocaleString()} Lab icons · ${items.length.toLocaleString()} matches`);
     window.lucide?.createIcons?.({ root: host });
-  }
+    scanIconifyTargets(host);
 
-  async function loadIconifyCatalog(prefix) {
-    if (iconifyCatalogs.has(prefix)) return iconifyCatalogs.get(prefix);
-
-    let data = null;
-    let lastError = null;
-
-    for (const apiHost of ICONIFY_IMAGE_HOSTS) {
-      try {
-        const response = await fetch(`${apiHost}/collection?prefix=${encodeURIComponent(prefix)}`);
-        if (!response.ok) throw new Error(`${apiHost} returned HTTP ${response.status}.`);
-        data = await response.json();
-        break;
-      } catch (error) {
-        lastError = error;
-      }
-    }
-
-    if (!data) {
-      throw new Error(`Could not load ${prefix} icon names. ${lastError?.message || "Icon service unavailable."}`);
-    }
-
-    const categorized = Object.values(data.categories || {}).flat();
-    const names = [...new Set([...(data.uncategorized || []), ...categorized])]
-      .filter(name => typeof name === "string" && /^[a-z0-9-]+$/i.test(name))
-      .sort((a, b) => a.localeCompare(b));
-    if (!names.length) throw new Error(`The ${prefix} icon list was empty.`);
-    iconifyCatalogs.set(prefix, names);
-    return names;
+    if (!labCatalogPromise) ensureLabCatalog();
   }
 
   function renderIconifyResults(prefix, label, matches, totalNames) {
@@ -1038,7 +1251,8 @@ function setupExpandedIconPicker() {
       renderIconifyResults.lastPrefix = prefix;
       iconifyVisibleLimit = query ? 240 : 180;
     }
-    const visible = matches.slice(0, iconifyVisibleLimit);
+
+    const visible = showAllWhenExpanded ? matches : matches.slice(0, iconifyVisibleLimit);
     host.innerHTML = visible.length ? `
       <div class="icon-group enhancement-icon-group">
         <strong>${escapeHTML(label)}</strong>
@@ -1049,13 +1263,7 @@ function setupExpandedIconPicker() {
               data-enhanced-icon="iconify:${prefix}:${escapeHTML(name)}"
               title="${escapeHTML(name)}"
               aria-label="${escapeHTML(name)}">
-              <img class="iconify-picker-image"
-                data-iconify-prefix="${escapeHTML(prefix)}"
-                data-iconify-name="${escapeHTML(name)}"
-                data-iconify-color="#B9A0FF"
-                data-iconify-host-index="0"
-                src="${escapeHTML(iconifyImageURL(prefix, name, "#B9A0FF"))}"
-                alt="" loading="lazy">
+              <span class="iconify-inline iconify-picker-icon" data-iconify-prefix="${escapeHTML(prefix)}" data-iconify-name="${escapeHTML(name)}" aria-hidden="true"><span class="iconify-placeholder">◇</span></span>
               <small>${escapeHTML(name.replace(/-/g, " "))}</small>
             </button>
           `).join("")}
@@ -1063,9 +1271,7 @@ function setupExpandedIconPicker() {
       </div>
     ` : '<p class="muted">No icons found. Try another word or spelling.</p>';
 
-    wireIconifyImageFallbacks(host);
-
-    if (matches.length > visible.length) {
+    if (!showAllWhenExpanded && matches.length > visible.length) {
       host.insertAdjacentHTML("beforeend", `
         <div class="enhancement-icon-load-more">
           <p class="enhancement-icon-limit">Showing ${visible.length.toLocaleString()} of ${matches.length.toLocaleString()} matching icons.</p>
@@ -1087,27 +1293,29 @@ function setupExpandedIconPicker() {
       });
     }
 
-    setCaption(`${totalNames.toLocaleString()} ${label} icons available · ${matches.length.toLocaleString()} matches`);
+    setCaption(`${totalNames.toLocaleString()} ${label} icons · ${matches.length.toLocaleString()} matches`);
+    scanIconifyTargets(host);
   }
 
   async function searchGameIcons() {
-    const prefix = library === "lab" ? "lucide-lab" : "game-icons";
-    const label = library === "lab" ? "Lucide Lab" : "Game Icons (RPG)";
+    const prefix = "game-icons";
+    const label = "Game Icons (RPG)";
     const query = normalizeIconSearch(search.value);
     const request = ++searchRequest;
 
-    host.innerHTML = `<p class="muted">Loading ${escapeHTML(label)}…</p>`;
-    setCaption("Loading the icon catalog");
+    host.innerHTML = '<p class="muted">Loading RPG icon catalog…</p>';
+    setCaption("Loading icon names, then loading drawings as they come into view");
 
     try {
       const names = await loadIconifyCatalog(prefix);
-      if (request !== searchRequest) return;
+      if (request !== searchRequest || library !== "rpg") return;
       const matches = names.filter(name => iconMatchesSearch(name, query));
       renderIconifyResults(prefix, label, matches, names.length);
     } catch (error) {
       if (request !== searchRequest) return;
-      host.innerHTML = `<p class="muted">Could not load ${escapeHTML(label)}. Check your connection and try again.</p>`;
-      setCaption("Lucide icons remain available through the loaded library.");
+      host.innerHTML = '<p class="muted">Could not load the RPG icon catalog. Check your connection and try again.</p>';
+      setCaption("Lucide and Lucide Lab are still available.");
+      console.warn("RPG icon catalog error:", error);
     }
   }
 
@@ -1117,22 +1325,19 @@ function setupExpandedIconPicker() {
       renderLucide();
       return;
     }
-
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(searchGameIcons, 180);
+    searchTimer = setTimeout(searchGameIcons, 120);
   }
 
   controls.addEventListener("click", event => {
     const button = event.target.closest("[data-icon-library]");
     if (!button) return;
-
     library = button.dataset.iconLibrary;
     controls.querySelectorAll("[data-icon-library]").forEach(tab => {
       const active = tab === button;
       tab.classList.toggle("active", active);
       tab.setAttribute("aria-selected", String(active));
     });
-
     render();
   });
 
@@ -1148,6 +1353,7 @@ function setupExpandedIconPicker() {
     }
 
     existingSection.classList.toggle("icon-picker-expanded", expanded);
+    showAllWhenExpanded = expanded;
     if (expandButton) {
       expandButton.setAttribute("aria-expanded", String(expanded));
       expandButton.textContent = expanded ? "Close selector" : "Expand selector";
@@ -1156,12 +1362,15 @@ function setupExpandedIconPicker() {
     if (expanded) {
       existingSection.setAttribute("role", "dialog");
       existingSection.setAttribute("aria-modal", "true");
+      // Expanding is equivalent to choosing "Show all" for the active collection.
+      render();
       search.focus();
     } else {
       existingSection.removeAttribute("role");
       existingSection.removeAttribute("aria-modal");
       pickerBackdrop?.remove();
       pickerBackdrop = null;
+      render();
     }
   }
 
@@ -1177,78 +1386,59 @@ function setupExpandedIconPicker() {
     if (event.target.value !== "existing") setPickerExpanded(false);
   });
 
-  // Capture the selection before the original 100-icon picker handles the click.
   host.addEventListener("click", event => {
     const button = event.target.closest("[data-enhanced-icon]");
     if (!button) return;
-
     event.preventDefault();
     event.stopImmediatePropagation();
-
     field.value = button.dataset.enhancedIcon;
     field.dispatchEvent(new Event("input", { bubbles: true }));
     setPickerExpanded(false);
-    render();
   }, true);
 
   search.addEventListener("input", render);
-
   field.addEventListener("input", () => {
-    if (library === "lucide") renderLucide();
-    else {
-      host.querySelectorAll("[data-enhanced-icon]").forEach(button => {
-        button.classList.toggle("selected", button.dataset.enhancedIcon === field.value);
-      });
-    }
+    host.querySelectorAll("[data-enhanced-icon]").forEach(button => {
+      button.classList.toggle("selected", button.dataset.enhancedIcon === field.value);
+    });
   });
 
-  // Render only new Game Icons spans instead of rescanning the whole document
-  // after every unrelated DOM mutation.
-  function renderGameIconsWithin(root) {
+  // Convert IDs already saved as literal text by the original icon renderer into inline SVG placeholders.
+  function renderSavedIconifyReferences(root) {
     const candidates = [];
-    if (root instanceof Element && root.matches(".custom-icon:not([data-iconify-rendered])")) {
-      candidates.push(root);
-    }
-    if (root.querySelectorAll) {
-      candidates.push(...root.querySelectorAll(".custom-icon:not([data-iconify-rendered])"));
-    }
+    if (root instanceof Element && root.matches(".custom-icon:not([data-iconify-rendered])")) candidates.push(root);
+    if (root.querySelectorAll) candidates.push(...root.querySelectorAll(".custom-icon:not([data-iconify-rendered])"));
 
     candidates.forEach(span => {
       const value = span.textContent.trim();
-      const match = value.match(/^iconify:(game-icons|lucide-lab):([a-z0-9-]+)$/i);
+      const match = value.match(/^iconify:([a-z0-9-]+):([a-z0-9-]+)$/i);
       if (!match) return;
-
-      const colorMatch = span.getAttribute("style")?.match(/color:\s*(#[0-9a-f]{6})/i);
-      const color = colorMatch?.[1] || "#B9A0FF";
-      const image = document.createElement("img");
-      image.alt = "";
-      image.className = "game-icon-image";
-      image.dataset.iconifyPrefix = match[1].toLowerCase();
-      image.dataset.iconifyName = match[2].toLowerCase();
-      image.dataset.iconifyColor = color;
-      image.dataset.iconifyHostIndex = "0";
-      image.src = iconifyImageURL(match[1], match[2], color);
-
+      const prefix = match[1].toLowerCase();
+      const name = match[2].toLowerCase();
       span.dataset.iconifyRendered = "true";
-      span.textContent = "";
-      span.append(image);
-      wireIconifyImageFallbacks(image);
+      span.replaceChildren();
+      const icon = document.createElement("span");
+      icon.className = "iconify-inline iconify-record-icon";
+      icon.dataset.iconifyPrefix = prefix;
+      icon.dataset.iconifyName = name;
+      icon.setAttribute("aria-hidden", "true");
+      icon.innerHTML = '<span class="iconify-placeholder">◇</span>';
+      span.append(icon);
+      scanIconifyTargets(icon);
     });
   }
 
-  renderGameIconsWithin(document);
-  wireIconifyImageFallbacks(document);
+  renderSavedIconifyReferences(document);
+  scanIconifyTargets(document);
   const observer = new MutationObserver(mutations => {
     mutations.forEach(mutation => {
       mutation.addedNodes.forEach(node => {
-        if (node.nodeType === Node.ELEMENT_NODE) {
-          renderGameIconsWithin(node);
-          wireIconifyImageFallbacks(node);
-        }
+        if (node.nodeType !== Node.ELEMENT_NODE) return;
+        renderSavedIconifyReferences(node);
+        scanIconifyTargets(node);
       });
     });
   });
-
   observer.observe(document.body, { childList: true, subtree: true });
   render();
 }
@@ -1304,10 +1494,16 @@ function addEnhancementStyles() {
     .enhancement-icon-group .icon-group-grid { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); }
     .enhancement-icon-group .icon-choice { min-width: 0; overflow: hidden; }
     .enhancement-icon-group .icon-choice img { width: 23px; height: 23px; object-fit: contain; }
-    .enhancement-icon-group .icon-choice .iconify-icon-fallback { display: grid; place-items: center; width: 23px; height: 23px; font-size: 22px; line-height: 1; opacity: .8; }
-    .game-icon-image { display: inline-block; width: 1.1em; height: 1.1em; vertical-align: middle; object-fit: contain; }
-    .custom-icon img { width: 1em; height: 1em; object-fit: contain; vertical-align: -0.12em; }
-    .custom-icon .iconify-icon-fallback { display: inline-grid; place-items: center; width: 1.1em; height: 1.1em; vertical-align: middle; font-size: 1em; line-height: 1; }
+    .iconify-inline { display: inline-flex; align-items: center; justify-content: center; width: 1.1em; height: 1.1em; vertical-align: -0.12em; color: inherit; flex: 0 0 auto; }
+    .iconify-inline svg, .iconify-rendered-svg { display: block; width: 100%; height: 100%; overflow: visible; fill: currentColor; color: inherit; }
+    .enhancement-icon-group .iconify-picker-icon { width: 24px; height: 24px; color: var(--accent, #B9A0FF); }
+    .iconify-placeholder { display: inline-grid; place-items: center; width: 100%; height: 100%; font-size: 1em; line-height: 1; opacity: .62; }
+    .iconify-placeholder-error { opacity: .9; }
+    .custom-icon .iconify-record-icon { width: 1.1em; height: 1.1em; }
+    .enhancement-icon-load-more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 14px 0; }
+    .enhancement-icon-load-more p { flex-basis: 100%; }
+    .enhancement-icon-load-more button { padding: 8px 12px; border: 1px solid var(--border, #343442); border-radius: 8px; background: var(--panel, #191922); color: inherit; cursor: pointer; }
+    .custom-icon .iconify-placeholder-error { color: #ff8d97; }
     .enhancement-icon-tabs { align-items: center; }
     .enhancement-icon-tabs .enhancement-icon-expand { margin-left: auto; }
     .enhancement-icon-load-more { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; padding: 14px 8px; margin: 10px 0; border-top: 1px solid var(--border, #343442); }
