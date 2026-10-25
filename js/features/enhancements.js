@@ -849,6 +849,57 @@ function iconMatchesSearch(name, query) {
   return query.split(" ").every(term => searchable.includes(term));
 }
 
+const ICONIFY_IMAGE_HOSTS = [
+  "https://api.iconify.design",
+  "https://api.simplesvg.com",
+  "https://api.unisvg.com"
+];
+
+function iconifyImageURL(prefix, name, color = "#B9A0FF", hostIndex = 0) {
+  const safePrefix = /^[a-z0-9-]+$/i.test(prefix) ? prefix : "game-icons";
+  const safeName = /^[a-z0-9-]+$/i.test(name) ? name : "unknown";
+  const safeColor = /^#[0-9a-f]{6}$/i.test(color) ? color : "#B9A0FF";
+  const host = ICONIFY_IMAGE_HOSTS[Math.max(0, Math.min(ICONIFY_IMAGE_HOSTS.length - 1, hostIndex))];
+  return `${host}/${encodeURIComponent(safePrefix)}/${encodeURIComponent(safeName)}.svg?color=${encodeURIComponent(safeColor)}`;
+}
+
+function wireIconifyImageFallbacks(root) {
+  if (!root) return;
+  const images = [];
+  if (root instanceof HTMLImageElement && root.matches("[data-iconify-prefix][data-iconify-name]")) {
+    images.push(root);
+  }
+  if (root.querySelectorAll) {
+    images.push(...root.querySelectorAll("img[data-iconify-prefix][data-iconify-name]"));
+  }
+
+  images.forEach(image => {
+    if (image.dataset.iconifyFallbackBound === "true") return;
+    image.dataset.iconifyFallbackBound = "true";
+    image.dataset.iconifyHostIndex = image.dataset.iconifyHostIndex || "0";
+
+    image.addEventListener("error", () => {
+      const prefix = image.dataset.iconifyPrefix;
+      const name = image.dataset.iconifyName;
+      const color = image.dataset.iconifyColor || "#B9A0FF";
+      const currentHost = Number(image.dataset.iconifyHostIndex || "0");
+
+      if (currentHost + 1 < ICONIFY_IMAGE_HOSTS.length) {
+        image.dataset.iconifyHostIndex = String(currentHost + 1);
+        image.src = iconifyImageURL(prefix, name, color, currentHost + 1);
+        return;
+      }
+
+      const fallback = document.createElement("span");
+      fallback.className = "iconify-icon-fallback";
+      fallback.textContent = "◇";
+      fallback.title = `${name.replace(/-/g, " ")} (icon could not be loaded)`;
+      fallback.setAttribute("aria-label", fallback.title);
+      image.replaceWith(fallback);
+    });
+  });
+}
+
 function setupExpandedIconPicker() {
   const host = $("icon-picker");
   const search = $("icon-search");
@@ -952,9 +1003,25 @@ function setupExpandedIconPicker() {
 
   async function loadIconifyCatalog(prefix) {
     if (iconifyCatalogs.has(prefix)) return iconifyCatalogs.get(prefix);
-    const response = await fetch(`https://api.iconify.design/collection?prefix=${encodeURIComponent(prefix)}`);
-    if (!response.ok) throw new Error(`Could not load ${prefix} icon names.`);
-    const data = await response.json();
+
+    let data = null;
+    let lastError = null;
+
+    for (const apiHost of ICONIFY_IMAGE_HOSTS) {
+      try {
+        const response = await fetch(`${apiHost}/collection?prefix=${encodeURIComponent(prefix)}`);
+        if (!response.ok) throw new Error(`${apiHost} returned HTTP ${response.status}.`);
+        data = await response.json();
+        break;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    if (!data) {
+      throw new Error(`Could not load ${prefix} icon names. ${lastError?.message || "Icon service unavailable."}`);
+    }
+
     const categorized = Object.values(data.categories || {}).flat();
     const names = [...new Set([...(data.uncategorized || []), ...categorized])]
       .filter(name => typeof name === "string" && /^[a-z0-9-]+$/i.test(name))
@@ -982,7 +1049,12 @@ function setupExpandedIconPicker() {
               data-enhanced-icon="iconify:${prefix}:${escapeHTML(name)}"
               title="${escapeHTML(name)}"
               aria-label="${escapeHTML(name)}">
-              <img src="https://api.iconify.design/${encodeURIComponent(prefix)}/${encodeURIComponent(name)}.svg?color=%23B9A0FF"
+              <img class="iconify-picker-image"
+                data-iconify-prefix="${escapeHTML(prefix)}"
+                data-iconify-name="${escapeHTML(name)}"
+                data-iconify-color="#B9A0FF"
+                data-iconify-host-index="0"
+                src="${escapeHTML(iconifyImageURL(prefix, name, "#B9A0FF"))}"
                 alt="" loading="lazy">
               <small>${escapeHTML(name.replace(/-/g, " "))}</small>
             </button>
@@ -990,6 +1062,8 @@ function setupExpandedIconPicker() {
         </div>
       </div>
     ` : '<p class="muted">No icons found. Try another word or spelling.</p>';
+
+    wireIconifyImageFallbacks(host);
 
     if (matches.length > visible.length) {
       host.insertAdjacentHTML("beforeend", `
@@ -1149,22 +1223,28 @@ function setupExpandedIconPicker() {
       const image = document.createElement("img");
       image.alt = "";
       image.className = "game-icon-image";
-      image.src = `https://api.iconify.design/${encodeURIComponent(match[1])}/${encodeURIComponent(match[2])}.svg?color=${encodeURIComponent(color)}`;
-      image.addEventListener("error", () => {
-        span.textContent = match[2].replace(/-/g, " ");
-      }, { once: true });
+      image.dataset.iconifyPrefix = match[1].toLowerCase();
+      image.dataset.iconifyName = match[2].toLowerCase();
+      image.dataset.iconifyColor = color;
+      image.dataset.iconifyHostIndex = "0";
+      image.src = iconifyImageURL(match[1], match[2], color);
 
       span.dataset.iconifyRendered = "true";
       span.textContent = "";
       span.append(image);
+      wireIconifyImageFallbacks(image);
     });
   }
 
   renderGameIconsWithin(document);
+  wireIconifyImageFallbacks(document);
   const observer = new MutationObserver(mutations => {
     mutations.forEach(mutation => {
       mutation.addedNodes.forEach(node => {
-        if (node.nodeType === Node.ELEMENT_NODE) renderGameIconsWithin(node);
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          renderGameIconsWithin(node);
+          wireIconifyImageFallbacks(node);
+        }
       });
     });
   });
@@ -1224,8 +1304,10 @@ function addEnhancementStyles() {
     .enhancement-icon-group .icon-group-grid { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); }
     .enhancement-icon-group .icon-choice { min-width: 0; overflow: hidden; }
     .enhancement-icon-group .icon-choice img { width: 23px; height: 23px; object-fit: contain; }
+    .enhancement-icon-group .icon-choice .iconify-icon-fallback { display: grid; place-items: center; width: 23px; height: 23px; font-size: 22px; line-height: 1; opacity: .8; }
     .game-icon-image { display: inline-block; width: 1.1em; height: 1.1em; vertical-align: middle; object-fit: contain; }
     .custom-icon img { width: 1em; height: 1em; object-fit: contain; vertical-align: -0.12em; }
+    .custom-icon .iconify-icon-fallback { display: inline-grid; place-items: center; width: 1.1em; height: 1.1em; vertical-align: middle; font-size: 1em; line-height: 1; }
     .enhancement-icon-tabs { align-items: center; }
     .enhancement-icon-tabs .enhancement-icon-expand { margin-left: auto; }
     .enhancement-icon-load-more { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; padding: 14px 8px; margin: 10px 0; border-top: 1px solid var(--border, #343442); }
