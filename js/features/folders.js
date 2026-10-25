@@ -99,11 +99,38 @@
     accent: "#b9a0ff"
   });
 
-  const THEME_PRESETS = {
-    violet: { label: "Violet", colors: { ...DEFAULT_THEME } },
-    ocean: { label: "Ocean", colors: { bg: "#0e151a", panel: "#16242c", border: "#2b424d", text: "#edf7fa", muted: "#91a7af", accent: "#65d6e8" } },
-    forest: { label: "Forest", colors: { bg: "#111812", panel: "#1b271d", border: "#334434", text: "#eef6eb", muted: "#a6b5a1", accent: "#9bd47c" } },
-    ember: { label: "Ember", colors: { bg: "#1a1210", panel: "#261b18", border: "#49322b", text: "#fff0e8", muted: "#c0a397", accent: "#ffab70" } }
+  // Accent presets change only the highlight color, so they can be combined
+  // with any neutral base preset without resetting the user's background/text.
+  const COLOR_PRESETS = {
+    violet: { label: "Violet", accent: "#b9a0ff" },
+    ocean: { label: "Ocean", accent: "#65d6e8" },
+    mint: { label: "Mint", accent: "#6fe0ae" },
+    rose: { label: "Rose", accent: "#ff8fa9" },
+    amber: { label: "Amber", accent: "#ffca72" },
+    crimson: { label: "Crimson", accent: "#ff7373" },
+    indigo: { label: "Indigo", accent: "#8fa8ff" },
+    fuchsia: { label: "Fuchsia", accent: "#f28be8" },
+    lime: { label: "Lime", accent: "#b5e66f" },
+    copper: { label: "Copper", accent: "#ffab70" }
+  };
+
+  // Base presets affect only neutral surfaces and text, never the accent.
+  const BASE_PRESETS = {
+    midnight: { label: "Midnight (default)", colors: {
+      bg: "#101114", panel: "#191b20", border: "#2b2e35", text: "#f1f1f4", muted: "#9296a2"
+    } },
+    graphite: { label: "Graphite", colors: {
+      bg: "#17181b", panel: "#212328", border: "#383b42", text: "#eceef1", muted: "#a0a4ad"
+    } },
+    slate: { label: "Slate", colors: {
+      bg: "#111923", panel: "#1b2836", border: "#344758", text: "#eef5fc", muted: "#9eafc2"
+    } },
+    mist: { label: "Light mist", colors: {
+      bg: "#f0f2f5", panel: "#ffffff", border: "#d5dbe4", text: "#202733", muted: "#636d7b"
+    } },
+    paper: { label: "Warm paper", colors: {
+      bg: "#f7f5ef", panel: "#fffdf8", border: "#ded8cc", text: "#28251f", muted: "#766f63"
+    } }
   };
 
   const THEME_FIELDS = [
@@ -143,6 +170,11 @@
     const colors = normalizeTheme(theme);
     const root = document.documentElement;
     Object.entries(colors).forEach(([key, value]) => root.style.setProperty(`--${key}`, value));
+    const backgroundRGB = colors.bg.slice(1).match(/.{2}/g).map(channel => parseInt(channel, 16) / 255).map(channel =>
+      channel <= 0.04045 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2)
+    );
+    const backgroundLuminance = 0.2126 * backgroundRGB[0] + 0.7152 * backgroundRGB[1] + 0.0722 * backgroundRGB[2];
+    root.style.colorScheme = backgroundLuminance > 0.45 ? "light" : "dark";
     // A few legacy styles use fixed purple tones; these tokens make them follow
     // the selected accent without changing the application data or layout.
     root.style.setProperty("--accent-soft", "color-mix(in srgb, var(--accent) 14%, var(--panel))");
@@ -214,9 +246,26 @@
       .property-inline-label { display:none !important; }
       .property-type-wrap { justify-content:flex-start !important; align-self:stretch; min-width:0; }
       .property-type-wrap .property-type { margin-top:0 !important; }
-      .property-row { align-items:start; }
+      .property-row {
+        display:grid !important;
+        grid-template-columns:minmax(0,1fr) max-content minmax(0,1.4fr) auto !important;
+        align-items:start;
+        gap:8px;
+      }
       .property-name-wrap, .property-type-wrap, .property-value-container { min-width:0; }
+      .property-type-wrap { width:max-content; max-width:100%; justify-self:start; }
+      .property-type-wrap .property-type {
+        display:block; width:max-content !important; max-width:100%; min-width:0;
+        justify-self:start; flex:0 1 auto; box-sizing:border-box;
+      }
       .property-value-container { width:100%; }
+      /* Keep the permanent RPG Codex mark from clipping its letter in header layouts. */
+      .brand { min-width:0; align-items:center; }
+      .brand .logo {
+        box-sizing:border-box; flex:0 0 42px; min-width:42px; width:42px; height:42px;
+        line-height:1; padding:0 0 2px; overflow:visible; align-self:center;
+        font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      }
       .reference-picker-trigger { width:100%; display:flex; align-items:center; gap:8px; text-align:left; justify-content:space-between; min-height:40px; overflow:hidden; }
       .reference-picker-trigger span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
       .folder-browser { margin:14px 0 20px; padding:18px; overflow:hidden; }
@@ -249,11 +298,11 @@
       .settings-card-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:16px; }
       .settings-card-heading h3 { margin:0 0 5px; }
       .settings-card-heading p { margin:0; color:var(--muted); font-size:12px; line-height:1.5; }
-      .theme-presets { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 18px; }
-      .theme-preset { display:inline-flex; align-items:center; gap:8px; min-height:38px; padding:7px 11px; border:1px solid var(--border); border-radius:9px; background:var(--bg); color:var(--text); cursor:pointer; }
-      .theme-preset[aria-pressed="true"] { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
-      .theme-preset-swatches { display:inline-flex; gap:3px; }
-      .theme-preset-swatches i { width:11px; height:11px; border-radius:50%; border:1px solid #ffffff24; }
+      .theme-preset-selects { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:0 0 18px; }
+      .theme-preset-select { display:flex; flex-direction:column; gap:7px; min-width:0; }
+      .theme-preset-select label { color:var(--text); font-size:13px; font-weight:650; }
+      .theme-preset-select select { width:100%; min-width:0; max-width:100%; }
+      .theme-preset-select small { color:var(--muted); font-size:11px; line-height:1.4; }
       .settings-color-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
       .settings-color-control { display:flex; align-items:center; justify-content:space-between; gap:10px; min-width:0; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:var(--bg); }
       .settings-color-control > span:first-child { min-width:0; font-size:13px; font-weight:600; }
@@ -261,8 +310,31 @@
       .settings-color-value input[type="color"] { width:34px; min-width:34px; height:32px; padding:3px; border:1px solid var(--border); border-radius:8px; background:var(--panel); cursor:pointer; }
       .settings-color-value code { width:65px; color:var(--muted); font-size:11px; text-align:right; }
       .theme-settings-note { margin-top:12px; color:var(--muted); font-size:12px; line-height:1.5; }
+      @media (max-width:760px) {
+        .property-row { grid-template-columns:minmax(0,1fr) max-content auto !important; }
+        .property-row > .property-value-container { grid-column:1 / -1; }
+        .property-row > .remove { grid-column:3; grid-row:1; justify-self:end; }
+        .property-type-wrap .property-type { max-width:100%; }
+      }
       @media (max-width:680px) { .reference-modal-tools { grid-template-columns:1fr; } .folder-card-grid { grid-template-columns:1fr; } .folder-browser { padding:12px; } .folder-modal, .reference-modal { padding:15px; } }
-      @media (max-width:520px) { .settings-color-grid { grid-template-columns:1fr; } .settings-card { padding:14px; } .folder-browser-heading { align-items:stretch; } .folder-browser-actions { display:grid; grid-template-columns:1fr 1fr; } .folder-browser-actions [data-folder-create] { grid-column:1 / -1; } }
+      @media (max-width:520px) { .settings-color-grid, .theme-preset-selects { grid-template-columns:1fr; } .settings-card { padding:14px; } .folder-browser-heading { align-items:stretch; } .folder-browser-actions { display:grid; grid-template-columns:1fr 1fr; } .folder-browser-actions [data-folder-create] { grid-column:1 / -1; } }
+
+      /* Theme-aware surfaces: these overrides also make the light bases complete. */
+      html, body, .app, main { background:var(--bg) !important; color:var(--text); }
+      header, .panel, .dashboard-panel, .stat-card, .record-card, .record, .compact-record,
+      .dashboard-record, .dashboard-type, .settings-card, .folder-browser, .enhancement-modal,
+      .trash-panel, .projects-dropdown, .sidebar-project-picker { color:var(--text); border-color:var(--border); }
+      .panel, .dashboard-panel, .stat-card, .record-card, .record, .compact-record,
+      .dashboard-record, .dashboard-type, .settings-card, .folder-browser,
+      .enhancement-modal, .folder-modal, .reference-modal, .projects-dropdown,
+      .sidebar-project-picker { background:var(--panel); }
+      input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]),
+      select, textarea { color:var(--text) !important; border-color:var(--border) !important; background:var(--bg) !important; }
+      button.secondary, .back, .sort-direction, #toggle-filters { color:var(--text); border-color:var(--border); background:var(--panel); }
+      .bulk-selected > .record, #records.grid-view .bulk-selected .compact-record { background:var(--accent-soft) !important; }
+      .bar-track { background:color-mix(in srgb, var(--border) 45%, var(--panel)) !important; }
+      .dash-record { background:var(--panel) !important; color:var(--text); border-color:var(--border); }
+      .sidebar-project-picker { background:color-mix(in srgb, var(--panel) 82%, var(--bg)) !important; }
 
       /* Theme-aware equivalents for older hard-coded accent surfaces. */
       .category.active, .filter-chip.active, .nav-tab.active, .nav-button.active,
@@ -874,14 +946,12 @@
         </span>
       </label>
     `).join("");
-    const presetButtons = Object.entries(THEME_PRESETS).map(([id, preset]) => `
-      <button type="button" class="theme-preset" data-theme-preset="${id}" aria-pressed="false">
-        <span class="theme-preset-swatches" aria-hidden="true">
-          <i style="background:${preset.colors.bg}"></i><i style="background:${preset.colors.panel}"></i><i style="background:${preset.colors.accent}"></i>
-        </span>
-        <span>${esc(preset.label)}</span>
-      </button>
-    `).join("");
+    const colorOptions = Object.entries(COLOR_PRESETS).map(([id, preset]) =>
+      `<option value="${id}">${esc(preset.label)}</option>`
+    ).join("");
+    const baseOptions = Object.entries(BASE_PRESETS).map(([id, preset]) =>
+      `<option value="${id}">${esc(preset.label)}</option>`
+    ).join("");
 
     section.innerHTML = `
       <button type="button" class="back" id="settings-back">← Back to records</button>
@@ -893,12 +963,37 @@
           <div><h3>Site colors</h3><p>Changes apply immediately and are saved in this browser.</p></div>
           <button type="button" class="secondary" id="settings-theme-reset">Restore default</button>
         </div>
-        <div class="theme-presets" role="group" aria-label="Color presets">${presetButtons}</div>
+        <div class="theme-preset-selects">
+          <div class="theme-preset-select">
+            <label for="setting-color-preset">Color template</label>
+            <select id="setting-color-preset" aria-label="Choose an accent color template">
+              <option value="">Custom color</option>${colorOptions}
+            </select>
+            <small>Changes only the highlight color. Your base remains as selected.</small>
+          </div>
+          <div class="theme-preset-select">
+            <label for="setting-base-preset">Base template</label>
+            <select id="setting-base-preset" aria-label="Choose a neutral base template">
+              <option value="">Custom base</option>${baseOptions}
+            </select>
+            <small>Changes the background, panels, borders and text, not your highlight color.</small>
+          </div>
+        </div>
         <div class="settings-color-grid">${colorControls}</div>
-        <p class="theme-settings-note">The accent color is used for highlights, active controls and folder accents. The colors you choose do not modify your records or project data.</p>
+        <p class="theme-settings-note">Color and base templates can be combined. Custom color controls remain available below, and these preferences do not modify your records or project data.</p>
       </div>
     `;
     main.append(section);
+
+    function findColorPreset() {
+      return Object.entries(COLOR_PRESETS).find(([, preset]) => settings.theme.accent === preset.accent)?.[0] || "";
+    }
+
+    function findBasePreset() {
+      return Object.entries(BASE_PRESETS).find(([, preset]) =>
+        ["bg", "panel", "border", "text", "muted"].every(key => settings.theme[key] === preset.colors[key])
+      )?.[0] || "";
+    }
 
     function syncThemeControls() {
       THEME_FIELDS.forEach(field => {
@@ -907,11 +1002,10 @@
         if (input) input.value = settings.theme[field.key];
         if (value) value.textContent = settings.theme[field.key].toUpperCase();
       });
-      Object.entries(THEME_PRESETS).forEach(([id, preset]) => {
-        const button = section.querySelector(`[data-theme-preset="${id}"]`);
-        const active = button && THEME_FIELDS.every(field => settings.theme[field.key] === preset.colors[field.key]);
-        if (button) button.setAttribute("aria-pressed", String(Boolean(active)));
-      });
+      const colorSelect = $("setting-color-preset");
+      const baseSelect = $("setting-base-preset");
+      if (colorSelect) colorSelect.value = findColorPreset();
+      if (baseSelect) baseSelect.value = findBasePreset();
     }
 
     function updateThemeField(event) {
@@ -921,7 +1015,10 @@
       applySiteTheme(settings.theme);
       const value = section.querySelector(`[data-theme-value="${field}"]`);
       if (value) value.textContent = settings.theme[field].toUpperCase();
-      section.querySelectorAll("[data-theme-preset]").forEach(button => button.setAttribute("aria-pressed", "false"));
+      const colorSelect = $("setting-color-preset");
+      const baseSelect = $("setting-base-preset");
+      if (colorSelect) colorSelect.value = findColorPreset();
+      if (baseSelect) baseSelect.value = findBasePreset();
     }
 
     section.querySelectorAll("[data-theme-color]").forEach(input => {
@@ -932,15 +1029,22 @@
       });
     });
 
-    section.querySelectorAll("[data-theme-preset]").forEach(button => {
-      button.addEventListener("click", () => {
-        const preset = THEME_PRESETS[button.dataset.themePreset];
-        if (!preset) return;
-        settings.theme = { ...preset.colors };
-        applySiteTheme(settings.theme);
-        syncThemeControls();
-        saveSettings();
-      });
+    $("setting-color-preset").addEventListener("change", event => {
+      const preset = COLOR_PRESETS[event.currentTarget.value];
+      if (!preset) return;
+      settings.theme.accent = preset.accent;
+      applySiteTheme(settings.theme);
+      syncThemeControls();
+      saveSettings();
+    });
+
+    $("setting-base-preset").addEventListener("change", event => {
+      const preset = BASE_PRESETS[event.currentTarget.value];
+      if (!preset) return;
+      settings.theme = { ...settings.theme, ...preset.colors };
+      applySiteTheme(settings.theme);
+      syncThemeControls();
+      saveSettings();
     });
 
     $("settings-theme-reset").addEventListener("click", () => {
